@@ -96,6 +96,7 @@ class CoverLetterTemplateResponse(BaseModel):
     id: int
     name: str
     content: str
+    file_path: str | None = None
     created_at: datetime | None = None
 
 

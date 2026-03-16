@@ -158,6 +158,21 @@ def create_template(
     return db_tpl
 
 
+def create_template_from_pdf(
+    db: Session, user_id: int, name: str, content: str, file_path: str
+) -> models.CoverLetterTemplate:
+    db_tpl = models.CoverLetterTemplate(
+        user_id=user_id,
+        name=name,
+        content=content,
+        file_path=file_path,
+    )
+    db.add(db_tpl)
+    db.commit()
+    db.refresh(db_tpl)
+    return db_tpl
+
+
 def get_templates(db: Session, user_id: int) -> list[models.CoverLetterTemplate]:
     return (
         db.query(models.CoverLetterTemplate)
@@ -182,8 +197,13 @@ def delete_template(db: Session, template_id: int) -> bool:
     )
     if not tpl:
         return False
+    file_path = tpl.file_path
     db.delete(tpl)
     db.commit()
+    if file_path:
+        from src.file_service import delete_file
+
+        delete_file(file_path)
     return True
 
 
