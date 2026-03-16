@@ -17,7 +17,6 @@
 - [x] Install PostgreSQL locally
 - [x] Create `career_db` database
 - [x] Setup SQLAlchemy with DeclarativeBase (mypy compatible)
-- [x] Create User model
 - [x] Auto-create tables on startup (Base.metadata.create_all)
 - [x] Implement get_db() dependency
 
@@ -29,7 +28,7 @@
 - [x] GET /users/{id} (get user)
 - [x] Pydantic schemas (UserCreate, UserResponse)
 - [x] CRUD functions in crud.py
-- [x] Tests for user endpoints (3 tests passing)
+- [x] Tests for user endpoints
 
 ---
 
@@ -42,85 +41,82 @@
 
 ---
 
-## Phase 5 — User Profile Data Models
+## Phase 5 — Data Models & Profile [DONE]
 
-- [ ] Create SQLAlchemy models: Skill, Project, Education, Language
-- [ ] Create Pydantic schemas for each
-- [ ] CRUD operations for each
-- [ ] API endpoints:
-  - [ ] POST/GET `/users/{id}/skills`
-  - [ ] POST/GET `/users/{id}/projects`
-  - [ ] POST/GET `/users/{id}/education`
-  - [ ] POST/GET `/users/{id}/languages`
-- [ ] Tests
+- [x] SQLAlchemy models: User, Skill, Project, Education, Language, CoverLetterTemplate, InternshipOffer, CV
+- [x] Enums: OfferStatus, LanguageLevel, SkillCategory
+- [x] All relationships with cascade delete
+- [x] Pydantic schemas for all models
+- [x] CRUD operations for all models
+- [x] API endpoints: POST/GET/DELETE for skills, projects, education, languages
+- [x] Tests (6 tests)
 
 ---
 
-## Phase 6 — Cover Letter Templates
+## Phase 6 — Cover Letter Templates [DONE]
 
-- [ ] Create CoverLetterTemplate model
-- [ ] Pydantic schemas
-- [ ] CRUD operations
-- [ ] API endpoints:
-  - [ ] POST/GET `/users/{id}/templates`
-- [ ] Tests
+- [x] CoverLetterTemplate model
+- [x] POST/GET/DELETE endpoints
+- [x] Tests (2 tests)
 
 ---
 
-## Phase 7 — Internship Offers
+## Phase 7 — Internship Offers [DONE]
 
-- [ ] Create InternshipOffer model (company, title, link, locations, date_applied, status, description)
-- [ ] Status enum: applied / rejected / screened
-- [ ] Pydantic schemas
-- [ ] CRUD operations
-- [ ] API endpoints:
-  - [ ] POST/GET `/users/{id}/offers`
-  - [ ] PATCH `/users/{id}/offers/{offer_id}` (update status)
-- [ ] Tests
+- [x] InternshipOffer model (company, title, description, link, locations, date_applied, status)
+- [x] Status enum: applied / screened / interview / rejected / accepted
+- [x] POST/GET/GET by id/PATCH endpoints
+- [x] Filter offers by status
+- [x] Tests (5 tests)
 
 ---
 
-## Phase 8 — CV Management
+## Phase 8 — CV Management [DONE]
 
-- [ ] Update CV model (link to user + optional offer, company field)
-- [ ] Pydantic schemas
-- [ ] CRUD operations
-- [ ] API endpoints:
-  - [ ] POST/GET `/users/{id}/cvs`
-- [ ] Tests
+- [x] CV model (user, offer FK, company, content, is_adapted)
+- [x] POST/GET endpoints
+- [x] Link CV to specific offer
+- [x] Tests (2 tests)
 
 ---
 
-## Phase 9 — AI: CV Adaptation
+## Phase 9 — AI: CV Adaptation [DONE]
 
-- [ ] Add `adapt_cv()` in llm_service.py
-- [ ] Takes user CV + offer description, returns adapted CV
-- [ ] Endpoint: POST `/users/{id}/offers/{offer_id}/adapt-cv`
-- [ ] Tests (mock Mistral)
-
----
-
-## Phase 10 — AI: Skill Gap Analysis
-
-- [ ] Add `analyze_skill_gap()` in llm_service.py
-- [ ] Takes user skills + offer description, returns what to work on
-- [ ] Endpoint: POST `/users/{id}/offers/{offer_id}/skill-gap`
-- [ ] Tests (mock Mistral)
+- [x] `adapt_cv()` in llm_service.py
+- [x] POST `/users/{id}/offers/{offer_id}/adapt-cv`
+- [x] Stores adapted CV in database (is_adapted=True)
 
 ---
 
-## Phase 11 — AI: Cover Letter Generation
+## Phase 10 — AI: Skill Gap Analysis [DONE]
 
-- [ ] Add `generate_cover_letter()` in llm_service.py
-- [ ] Takes offer + user templates + user profile, returns draft
-- [ ] Endpoint: POST `/users/{id}/offers/{offer_id}/cover-letter`
-- [ ] Tests (mock Mistral)
+- [x] `analyze_skill_gap()` in llm_service.py
+- [x] POST `/users/{id}/offers/{offer_id}/skill-gap`
+- [x] Returns missing_hard_skills, missing_soft_skills, recommendations (JSON)
 
 ---
 
-## Phase 12 — Polish & Deploy
+## Phase 11 — AI: Cover Letter Generation [DONE]
 
-- [ ] Alembic migrations
-- [ ] User authentication
+- [x] `generate_cover_letter()` in llm_service.py
+- [x] POST `/users/{id}/offers/{offer_id}/cover-letter`
+- [x] Uses user profile + offer + optional template
+
+---
+
+## Phase 12 — Refactoring [DONE]
+
+- [x] Reorganize into FastAPI routers (users, profile, offers, cvs, templates, ai)
+- [x] main.py is now a thin entry point
+- [x] Shared test fixtures in conftest.py
+- [x] 18 tests passing, mypy clean, 22 source files checked
+
+---
+
+## Phase 13 — Next Steps (TODO)
+
+- [ ] Alembic migrations (proper schema versioning)
+- [ ] User authentication (JWT or session-based)
+- [ ] Tests for AI endpoints (mock Mistral calls)
 - [ ] Dockerfile + docker-compose
 - [ ] Frontend (TBD)
