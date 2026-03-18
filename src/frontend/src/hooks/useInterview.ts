@@ -27,7 +27,7 @@ type ServerMessage = {
 // Hook
 // ---------------------------------------------------------------------------
 
-export function useInterview(sessionId: string | null) {
+export function useInterview(sessionId: string | null, userId?: number) {
   const [state, setState] = useState<InterviewState>({
     status: "idle",
     currentQuestion: "",
@@ -56,8 +56,9 @@ export function useInterview(sessionId: string | null) {
     setState((s) => ({ ...s, status: "connecting", error: null }));
 
     const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+    const userParam = userId != null ? `?user_id=${userId}` : "";
     const ws = new WebSocket(
-      `${protocol}://${window.location.hostname}:8000/ws/interview/${sessionId}`
+      `${protocol}://${window.location.hostname}:8000/ws/interview/${sessionId}${userParam}`
     );
 
     ws.onopen = () => {
@@ -85,7 +86,7 @@ export function useInterview(sessionId: string | null) {
     return () => {
       ws.close();
     };
-  }, [sessionId]);
+  }, [sessionId, userId]);
 
   // Handle server messages
   const handleMessage = useCallback((msg: ServerMessage) => {

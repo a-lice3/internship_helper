@@ -43,7 +43,20 @@ def upload_cv_file(
         save_cv_upload,
         save_cv_zip_upload,
         extract_text_from_pdf,
+        validate_file_magic,
     )
+
+    # Read content once for validation
+    raw = file.file.read()
+    try:
+        if is_pdf:
+            validate_file_magic(raw, "pdf")
+        elif is_zip:
+            validate_file_magic(raw, "zip")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    # Reset file cursor so save functions can read it
+    file.file.seek(0)
 
     content = ""
     latex_content = None

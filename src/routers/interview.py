@@ -317,7 +317,9 @@ def interview_progress(user_id: int, db: Session = Depends(get_db)):
 
 
 @router.websocket("/ws/interview/{session_id}")
-async def interview_websocket(websocket: WebSocket, session_id: str):
+async def interview_websocket(
+    websocket: WebSocket, session_id: str, user_id: int | None = None
+):
     """WebSocket endpoint for live interview simulation."""
     await websocket.accept()
 
@@ -327,6 +329,14 @@ async def interview_websocket(websocket: WebSocket, session_id: str):
         if not db_session:
             await websocket.send_json(
                 {"type": "error", "data": {"message": "Session not found"}}
+            )
+            await websocket.close()
+            return
+
+        # Verify the connecting user owns this session
+        if user_id is None or db_session.user_id != user_id:
+            await websocket.send_json(
+                {"type": "error", "data": {"message": "Unauthorized"}}
             )
             await websocket.close()
             return
