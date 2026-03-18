@@ -1,28 +1,25 @@
-from fastapi import FastAPI, Depends, HTTPException
-from sqlalchemy.orm import Session
-from src import crud, schemas
-from src.database import Base, engine, get_db
-from src.llm_service import ask_mistral
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI()
+from src.database import Base, engine
+from src.routers import users, profile, offers, cvs, templates, ai, interview
+
+app = FastAPI(title="Internship Helper API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 Base.metadata.create_all(bind=engine)
 
-
-@app.post("/users")
-def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
-    return crud.create_user(db, user)
-
-
-@app.get("/users/{user_id}")
-def get_user(user_id: int, db: Session = Depends(get_db)):
-    user = crud.get_user(db, user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    return user
-
-
-@app.post("/ask", response_model=schemas.AskResponse)
-def ask(body: schemas.AskRequest):
-    answer = ask_mistral(body.question)
-    return schemas.AskResponse(question=body.question, answer=answer)
+app.include_router(users.router)
+app.include_router(profile.router)
+app.include_router(offers.router)
+app.include_router(cvs.router)
+app.include_router(templates.router)
+app.include_router(ai.router)
+app.include_router(interview.router)
