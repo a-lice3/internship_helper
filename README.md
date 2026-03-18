@@ -1,6 +1,6 @@
 # Internship Helper
 
-A full-stack web application that helps students manage and optimize their internship search using AI (Mistral). Track applications, manage CVs, generate cover letters, analyze skill gaps, and practice your pitch — all in one place.
+A full-stack web application that helps students manage and optimize their internship search using AI (Mistral). Track applications, manage CVs, generate cover letters, analyze skill gaps, practice mock interviews, and refine your pitch — all in one place.
 
 ## Features
 
@@ -20,6 +20,16 @@ A full-stack web application that helps students manage and optimize their inter
 - AI-powered chat editing: describe changes in natural language, get updated LaTeX
 - Compile LaTeX to PDF directly from the app
 
+### Interview Simulation
+- **Live mock interviews** via WebSocket with AI-generated questions in real time
+- Configurable: type (HR, technical, behavioral, pitch), difficulty (junior/intermediate/advanced), language (EN/FR), duration (5–30 min)
+- Optionally linked to a specific offer for tailored questions based on the job description and your profile
+- **Voice recording**: record your answers with the mic, transcribed via Voxtral — timer pauses automatically during transcription
+- **Real-time hints**: opt-in hints from the AI while you answer
+- **Question prediction**: generate likely interview questions for a given offer before the session
+- **Post-interview AI analysis**: overall, communication, confidence, technical, and behavioral scores; strengths, weaknesses, improvements; filler words analysis, STAR method feedback, per-question breakdown with suggested better answers
+- **Progress tracking**: total sessions, average score, practice minutes, sessions this week, best/worst category, score trend
+
 ### AI-Powered Features
 - **CV Adaptation**: adapt a CV (plain text or LaTeX) to match a specific offer while preserving your style and structure. LaTeX adaptation includes auto-compilation and page count validation (1-page target with iterative shortening)
 - **Cover Letter Generation**: generate a professional cover letter from your profile, an offer, and an optional template (~300 words)
@@ -32,7 +42,7 @@ A full-stack web application that helps students manage and optimize their inter
 - Use templates as a base for AI-generated cover letters
 
 ### History & Export
-- All AI-generated content (cover letters, skill gaps, pitch analyses) is persisted and browsable
+- All AI-generated content (cover letters, skill gaps, pitch analyses, interview analyses) is persisted and browsable
 - Export cover letters as .docx
 - Download compiled CVs as PDF
 
@@ -46,8 +56,8 @@ A full-stack web application that helps students manage and optimize their inter
 
 ### AI
 - **Mistral API** (`mistralai` SDK v2.0.2)
-- Chat model: `mistral-small-2503`
-- Audio transcription: `voxtral-mini-2602`
+- Chat model: `mistral-small-2503` (CV adaptation, cover letters, interview questions, analysis)
+- Audio transcription: `voxtral-mini-2602` (pitch analysis, interview voice answers)
 
 ### Frontend
 - **React 19** with **TypeScript**, built with **Vite**
@@ -110,31 +120,37 @@ mypy .
 ```
 internship_helper/
 ├── src/
-│   ├── main.py             # FastAPI app, router registration, CORS
-│   ├── config.py           # Environment variables
-│   ├── database.py         # SQLAlchemy engine & session
-│   ├── models.py           # 11 SQLAlchemy models
-│   ├── schemas.py          # 30+ Pydantic schemas
-│   ├── crud.py             # Database operations
-│   ├── llm_service.py      # 9 Mistral AI functions
-│   ├── file_service.py     # PDF extraction, LaTeX compilation
+│   ├── main.py                # FastAPI app, router registration, CORS
+│   ├── config.py              # Environment variables
+│   ├── database.py            # SQLAlchemy engine & session
+│   ├── models.py              # 15 SQLAlchemy models
+│   ├── schemas.py             # 40+ Pydantic schemas
+│   ├── crud.py                # Database operations
+│   ├── llm_service.py         # Mistral AI functions (CV, cover letter, pitch, etc.)
+│   ├── interview_service.py   # Interview AI functions (questions, analysis, hints)
+│   ├── file_service.py        # PDF extraction, LaTeX compilation
 │   ├── routers/
-│   │   ├── users.py        # User CRUD
-│   │   ├── profile.py      # Skills, experiences, education, languages, extracurriculars
-│   │   ├── offers.py       # Internship offer management
-│   │   ├── cvs.py          # CV upload, edit, compile
-│   │   ├── templates.py    # Cover letter templates
-│   │   └── ai.py           # All AI endpoints (adapt, generate, analyze)
+│   │   ├── users.py           # User CRUD
+│   │   ├── profile.py         # Skills, experiences, education, languages, extracurriculars
+│   │   ├── offers.py          # Internship offer management
+│   │   ├── cvs.py             # CV upload, edit, compile
+│   │   ├── templates.py       # Cover letter templates
+│   │   ├── ai.py              # AI endpoints (adapt, generate, analyze)
+│   │   └── interview.py       # Interview REST + WebSocket endpoints
 │   └── frontend/
 │       └── src/
-│           ├── App.tsx      # Login, tab navigation
-│           ├── api.ts       # API client
+│           ├── App.tsx         # Login, tab navigation
+│           ├── api.ts          # API client
+│           ├── hooks/
+│           │   ├── useInterview.ts        # WebSocket interview state machine
+│           │   └── useSpeechRecognition.ts # Mic recording + Voxtral transcription
 │           └── pages/
 │               ├── ProfilePage.tsx
 │               ├── OffersPage.tsx
 │               ├── CVsPage.tsx
 │               ├── TemplatesPage.tsx
-│               └── AIPage.tsx
+│               ├── AIPage.tsx
+│               └── InterviewPage.tsx
 ├── tests/
 ├── requirements.txt
 ├── mypy.ini
@@ -142,7 +158,7 @@ internship_helper/
 └── CLAUDE.md
 ```
 
-## API Endpoints (~70+)
+## API Endpoints (~80+)
 
 | Area | Examples |
 |------|----------|
@@ -152,6 +168,7 @@ internship_helper/
 | **CVs** | Upload (PDF/tex/zip), download, compile PDF, chat edit |
 | **Templates** | Create from text or PDF upload, list, delete |
 | **AI** | Adapt CV (text + LaTeX), skill gap analysis, cover letter generation, pitch analysis, offer parsing, profile auto-fill |
+| **Interview** | Create/list/delete sessions, view detail, run analysis, predict questions, progress stats, `WS /ws/interview/{id}` |
 
 Full interactive documentation available at `/docs` when the server is running.
 
@@ -161,6 +178,6 @@ Full interactive documentation available at `/docs` when the server is running.
 |------|---------|
 | CVs | PDF, LaTeX (.tex), LaTeX project (.zip) |
 | Templates | PDF, plain text |
-| Audio (pitch) | mp3, wav, webm, ogg, m4a, flac |
+| Audio (pitch & interview) | mp3, wav, webm, ogg, m4a, flac |
 
 See [TASKS.md](TASKS.md) for the roadmap and [ARCHITECTURE.md](ARCHITECTURE.md) for technical details.
