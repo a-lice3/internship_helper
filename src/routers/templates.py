@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from src import crud, schemas
 from src.database import get_db
-from src.file_service import extract_text_from_pdf, save_upload
+from src.file_service import extract_text_from_pdf, save_upload, validate_file_magic
 
 router = APIRouter(prefix="/users/{user_id}/templates", tags=["cover letter templates"])
 
@@ -28,6 +28,13 @@ def upload_template_pdf(
         raise HTTPException(status_code=404, detail="User not found")
     if not file.filename or not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are accepted")
+
+    raw = file.file.read()
+    try:
+        validate_file_magic(raw, "pdf")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    file.file.seek(0)
 
     path = save_upload(user_id, file)
     content = extract_text_from_pdf(path)

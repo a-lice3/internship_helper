@@ -1,3 +1,4 @@
+import uuid
 import zipfile
 from pathlib import Path
 
@@ -6,15 +7,62 @@ from fastapi import UploadFile
 
 from src.config import UPLOAD_DIR
 
+# ---------------------------------------------------------------------------
+# Security constants
+# ---------------------------------------------------------------------------
+MAX_UPLOAD_SIZE = 20 * 1024 * 1024  # 20 MB per file
+MAX_ZIP_EXTRACTED_SIZE = 50 * 1024 * 1024  # 50 MB total extracted
+MAX_ZIP_FILES = 100  # max files inside a zip
+
+
+PDF_MAGIC = b"%PDF"
+ZIP_MAGIC = b"PK\x03\x04"
+
+
+def validate_file_magic(content: bytes, expected_type: str) -> None:
+    """Check that file content matches expected type via magic bytes."""
+    if expected_type == "pdf" and not content[:4].startswith(PDF_MAGIC):
+        raise ValueError("File content does not look like a valid PDF")
+    if expected_type == "zip" and not content[:4].startswith(ZIP_MAGIC):
+        raise ValueError("File content does not look like a valid ZIP")
+    # .tex and audio files are not easily validated by magic bytes — skip
+
+
+def _safe_filename(original: str | None, extension: str | None = None) -> str:
+    """Return a UUID-based filename, preserving only the extension."""
+    if extension is None and original:
+        ext = Path(original).suffix.lower()
+    else:
+        ext = extension or ""
+    return f"{uuid.uuid4().hex}{ext}"
+
+
+def _read_upload_limited(file: UploadFile) -> bytes:
+    """Read upload content and enforce size limit."""
+    content = file.file.read()
+    if len(content) > MAX_UPLOAD_SIZE:
+        raise ValueError(
+            f"File too large ({len(content)} bytes). Maximum is {MAX_UPLOAD_SIZE} bytes."
+        )
+    return content
+
+
+def _validate_path_within(path: Path, parent: Path) -> None:
+    """Ensure a resolved path is inside the expected parent directory."""
+    if not path.resolve().is_relative_to(parent.resolve()):
+        raise ValueError("Path traversal detected")
+
 
 def save_upload(user_id: int, file: UploadFile) -> Path:
     """Save an uploaded file to disk and return its path."""
     user_dir = UPLOAD_DIR / f"users/{user_id}/templates"
     user_dir.mkdir(parents=True, exist_ok=True)
 
-    dest = user_dir / file.filename  # type: ignore[operator]
+    content = _read_upload_limited(file)
+    dest = user_dir / _safe_filename(file.filename)
+    _validate_path_within(dest, user_dir)
     with open(dest, "wb") as f:
-        f.write(file.file.read())
+        f.write(content)
     return dest
 
 
@@ -23,9 +71,11 @@ def save_cv_upload(user_id: int, file: UploadFile) -> Path:
     user_dir = UPLOAD_DIR / f"users/{user_id}/cvs"
     user_dir.mkdir(parents=True, exist_ok=True)
 
-    dest = user_dir / file.filename  # type: ignore[operator]
+    content = _read_upload_limited(file)
+    dest = user_dir / _safe_filename(file.filename)
+    _validate_path_within(dest, user_dir)
     with open(dest, "wb") as f:
-        f.write(file.file.read())
+        f.write(content)
     return dest
 
 
@@ -34,10 +84,11 @@ def save_cv_zip_upload(user_id: int, file: UploadFile) -> tuple[Path, Path]:
     user_dir = UPLOAD_DIR / f"users/{user_id}/cvs"
     user_dir.mkdir(parents=True, exist_ok=True)
 
-    # Save the zip temporarily
-    zip_path = user_dir / (file.filename or "cv.zip")
+    content = _read_upload_limited(file)
+    zip_path = user_dir / _safe_filename(file.filename, ".zip")
+    _validate_path_within(zip_path, user_dir)
     with open(zip_path, "wb") as f:
-        f.write(file.file.read())
+        f.write(content)
 
     # Create a directory for the extracted project
     stem = zip_path.stem
@@ -45,6 +96,25 @@ def save_cv_zip_upload(user_id: int, file: UploadFile) -> tuple[Path, Path]:
     project_dir.mkdir(parents=True, exist_ok=True)
 
     with zipfile.ZipFile(zip_path, "r") as zf:
+        # Guard against zip bombs and path traversal
+        entries = zf.infolist()
+        if len(entries) > MAX_ZIP_FILES:
+            zip_path.unlink()
+            raise ValueError(
+                f"Zip contains too many files ({len(entries)}). Maximum is {MAX_ZIP_FILES}."
+            )
+        total_size = sum(e.file_size for e in entries)
+        if total_size > MAX_ZIP_EXTRACTED_SIZE:
+            zip_path.unlink()
+            raise ValueError(
+                f"Zip extracted size too large ({total_size} bytes). "
+                f"Maximum is {MAX_ZIP_EXTRACTED_SIZE} bytes."
+            )
+        for entry in entries:
+            target = (project_dir / entry.filename).resolve()
+            if not target.is_relative_to(project_dir.resolve()):
+                zip_path.unlink()
+                raise ValueError(f"Zip contains path traversal entry: {entry.filename}")
         zf.extractall(project_dir)
 
     # Remove the zip file after extraction
@@ -131,6 +201,7 @@ def compile_latex(
         else:
             cmd = [
                 compiler,
+                "-no-shell-escape",
                 "-interaction=nonstopmode",
                 "-output-directory",
                 tmpdir,
@@ -186,6 +257,7 @@ def compile_latex_tmp(
         else:
             cmd = [
                 compiler,
+                "-no-shell-escape",
                 "-interaction=nonstopmode",
                 "-output-directory",
                 tmpdir,

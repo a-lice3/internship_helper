@@ -354,7 +354,14 @@ def auto_fill_profile_from_upload(
     if not file.filename or not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are accepted")
 
-    from src.file_service import save_upload, extract_text_from_pdf
+    from src.file_service import save_upload, extract_text_from_pdf, validate_file_magic
+
+    raw = file.file.read()
+    try:
+        validate_file_magic(raw, "pdf")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    file.file.seek(0)
 
     path = save_upload(user_id, file)
     cv_text = extract_text_from_pdf(path)

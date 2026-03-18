@@ -52,7 +52,7 @@ export default function InterviewPage({ userId }: { userId: number }) {
 
   const [view, setView] = useState<"setup" | "live" | "history" | "detail">("setup");
 
-  const interview = useInterview(activeSession?.session_id ?? null);
+  const interview = useInterview(activeSession?.session_id ?? null, userId);
   const speech = useSpeechRecognition(language);
 
   useEffect(() => {
