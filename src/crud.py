@@ -679,3 +679,224 @@ def delete_pitch_analysis(db: Session, analysis_id: int) -> bool:
     db.delete(obj)
     db.commit()
     return True
+
+
+# ---------- Interview Session ----------
+
+
+def create_interview_session(
+    db: Session,
+    user_id: int,
+    session_id: str,
+    interview_type: str,
+    difficulty: str,
+    language: str,
+    duration_minutes: int,
+    enable_hints: bool,
+    offer_id: int | None = None,
+    offer_title: str | None = None,
+    company: str | None = None,
+) -> models.InterviewSession:
+    obj = models.InterviewSession(
+        session_id=session_id,
+        user_id=user_id,
+        offer_id=offer_id,
+        interview_type=models.InterviewType(interview_type),
+        difficulty=models.InterviewDifficulty(difficulty),
+        language=language,
+        duration_minutes=duration_minutes,
+        enable_hints=enable_hints,
+        offer_title=offer_title,
+        company=company,
+    )
+    db.add(obj)
+    db.commit()
+    db.refresh(obj)
+    return obj
+
+
+def get_interview_session(
+    db: Session, session_id: str
+) -> models.InterviewSession | None:
+    return (
+        db.query(models.InterviewSession)
+        .filter(models.InterviewSession.session_id == session_id)
+        .first()
+    )
+
+
+def get_interview_session_by_pk(db: Session, pk: int) -> models.InterviewSession | None:
+    return (
+        db.query(models.InterviewSession)
+        .filter(models.InterviewSession.id == pk)
+        .first()
+    )
+
+
+def get_interview_sessions(db: Session, user_id: int) -> list[models.InterviewSession]:
+    return (
+        db.query(models.InterviewSession)
+        .filter(models.InterviewSession.user_id == user_id)
+        .order_by(models.InterviewSession.created_at.desc())
+        .all()
+    )
+
+
+def update_interview_session_status(
+    db: Session, session_id: str, status: str
+) -> models.InterviewSession | None:
+    from datetime import datetime as dt
+
+    obj = get_interview_session(db, session_id)
+    if not obj:
+        return None
+    obj.status = models.InterviewSessionStatus(status)
+    if status == "active" and obj.started_at is None:
+        obj.started_at = dt.utcnow()
+    if status in ("completed", "analyzed"):
+        obj.ended_at = dt.utcnow()
+    db.commit()
+    db.refresh(obj)
+    return obj
+
+
+def delete_interview_session(db: Session, pk: int) -> bool:
+    obj = (
+        db.query(models.InterviewSession)
+        .filter(models.InterviewSession.id == pk)
+        .first()
+    )
+    if not obj:
+        return False
+    db.delete(obj)
+    db.commit()
+    return True
+
+
+# ---------- Interview Turn ----------
+
+
+def create_interview_turn(
+    db: Session,
+    session_pk: int,
+    turn_number: int,
+    question_text: str,
+    question_category: str | None = None,
+) -> models.InterviewTurn:
+    obj = models.InterviewTurn(
+        session_id=session_pk,
+        turn_number=turn_number,
+        question_text=question_text,
+        question_category=question_category,
+    )
+    db.add(obj)
+    db.commit()
+    db.refresh(obj)
+    return obj
+
+
+def update_interview_turn_answer(
+    db: Session,
+    turn_id: int,
+    answer_transcript: str,
+    answer_duration_seconds: int | None = None,
+    skipped: bool = False,
+) -> models.InterviewTurn | None:
+    obj = (
+        db.query(models.InterviewTurn)
+        .filter(models.InterviewTurn.id == turn_id)
+        .first()
+    )
+    if not obj:
+        return None
+    obj.answer_transcript = answer_transcript
+    obj.answer_duration_seconds = answer_duration_seconds
+    obj.skipped = skipped
+    db.commit()
+    db.refresh(obj)
+    return obj
+
+
+def update_interview_turn_scores(
+    db: Session,
+    turn_id: int,
+    clarity_score: int | None,
+    relevance_score: int | None,
+    structure_score: int | None,
+    feedback: str | None,
+    better_answer: str | None,
+) -> models.InterviewTurn | None:
+    obj = (
+        db.query(models.InterviewTurn)
+        .filter(models.InterviewTurn.id == turn_id)
+        .first()
+    )
+    if not obj:
+        return None
+    obj.clarity_score = clarity_score
+    obj.relevance_score = relevance_score
+    obj.structure_score = structure_score
+    obj.feedback = feedback
+    obj.better_answer = better_answer
+    db.commit()
+    db.refresh(obj)
+    return obj
+
+
+def get_interview_turns(db: Session, session_pk: int) -> list[models.InterviewTurn]:
+    return (
+        db.query(models.InterviewTurn)
+        .filter(models.InterviewTurn.session_id == session_pk)
+        .order_by(models.InterviewTurn.turn_number)
+        .all()
+    )
+
+
+# ---------- Interview Analysis ----------
+
+
+def create_interview_analysis(
+    db: Session,
+    session_pk: int,
+    overall_score: int,
+    communication_score: int,
+    confidence_score: int,
+    strengths: str,
+    weaknesses: str,
+    improvements: str,
+    summary: str,
+    technical_score: int | None = None,
+    behavioral_score: int | None = None,
+    filler_words_analysis: str | None = None,
+    star_method_usage: str | None = None,
+    full_transcript: str | None = None,
+) -> models.InterviewAnalysis:
+    obj = models.InterviewAnalysis(
+        session_id=session_pk,
+        overall_score=overall_score,
+        communication_score=communication_score,
+        technical_score=technical_score,
+        behavioral_score=behavioral_score,
+        confidence_score=confidence_score,
+        strengths=strengths,
+        weaknesses=weaknesses,
+        improvements=improvements,
+        summary=summary,
+        filler_words_analysis=filler_words_analysis,
+        star_method_usage=star_method_usage,
+        full_transcript=full_transcript,
+    )
+    db.add(obj)
+    db.commit()
+    db.refresh(obj)
+    return obj
+
+
+def get_interview_analysis(
+    db: Session, session_pk: int
+) -> models.InterviewAnalysis | None:
+    return (
+        db.query(models.InterviewAnalysis)
+        .filter(models.InterviewAnalysis.session_id == session_pk)
+        .first()
+    )

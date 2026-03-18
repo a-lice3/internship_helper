@@ -518,6 +518,143 @@ export const getStoredPitchAnalyses = (uid: number) =>
 export const deleteStoredPitchAnalysis = (uid: number, id: number) =>
   request<void>(`/users/${uid}/pitch-analyses/${id}`, { method: "DELETE" });
 
+// ---------- Audio Transcription (Voxtral) ----------
+
+export const transcribeAudio = async (audioBlob: Blob): Promise<string> => {
+  const fd = new FormData();
+  fd.append("file", audioBlob, "recording.webm");
+  const res = await fetch(`${BASE}/transcribe-audio`, {
+    method: "POST",
+    body: fd,
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail || `HTTP ${res.status}`);
+  }
+  const data = await res.json();
+  return data.transcription;
+};
+
+// ---------- Interview Simulation ----------
+
+export interface InterviewSession {
+  id: number;
+  session_id: string;
+  offer_id: number | null;
+  interview_type: string;
+  difficulty: string;
+  language: string;
+  duration_minutes: number;
+  enable_hints: boolean;
+  status: string;
+  offer_title: string | null;
+  company: string | null;
+  started_at: string | null;
+  ended_at: string | null;
+  created_at: string | null;
+}
+
+export interface InterviewTurn {
+  id: number;
+  turn_number: number;
+  question_text: string;
+  question_category: string | null;
+  answer_transcript: string | null;
+  answer_duration_seconds: number | null;
+  skipped: boolean;
+  clarity_score: number | null;
+  relevance_score: number | null;
+  structure_score: number | null;
+  feedback: string | null;
+  better_answer: string | null;
+}
+
+export interface InterviewAnalysis {
+  id: number;
+  overall_score: number;
+  communication_score: number;
+  technical_score: number | null;
+  behavioral_score: number | null;
+  confidence_score: number;
+  strengths: string[];
+  weaknesses: string[];
+  improvements: string[];
+  summary: string;
+  filler_words_analysis: string | null;
+  star_method_usage: string | null;
+  full_transcript: string | null;
+  per_turn_feedback: InterviewTurn[];
+  created_at: string | null;
+}
+
+export interface InterviewSessionDetail extends InterviewSession {
+  turns: InterviewTurn[];
+  analysis: InterviewAnalysis | null;
+}
+
+export interface PredictedQuestion {
+  question: string;
+  category: string;
+  difficulty: string;
+  tip: string;
+}
+
+export interface InterviewProgress {
+  total_sessions: number;
+  average_score: number | null;
+  score_trend: number[];
+  best_category: string | null;
+  worst_category: string | null;
+  total_practice_minutes: number;
+  sessions_this_week: number;
+}
+
+export const createInterviewSession = (uid: number, data: {
+  offer_id?: number | null;
+  interview_type: string;
+  difficulty: string;
+  language: string;
+  duration_minutes: number;
+  enable_hints?: boolean;
+}) =>
+  request<InterviewSession>(`/users/${uid}/interview-sessions`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+
+export const getInterviewSessions = (uid: number) =>
+  request<InterviewSession[]>(`/users/${uid}/interview-sessions`);
+
+export const getInterviewSessionDetail = (uid: number, sessionId: number) =>
+  request<InterviewSessionDetail>(`/users/${uid}/interview-sessions/${sessionId}`);
+
+export const deleteInterviewSession = (uid: number, sessionId: number) =>
+  request<void>(`/users/${uid}/interview-sessions/${sessionId}`, { method: "DELETE" });
+
+export const analyzeInterview = (uid: number, sessionId: number) =>
+  request<InterviewAnalysis>(`/users/${uid}/interview-sessions/${sessionId}/analyze`, {
+    method: "POST",
+  });
+
+export const getInterviewAnalysis = (uid: number, sessionId: number) =>
+  request<InterviewAnalysis>(`/users/${uid}/interview-sessions/${sessionId}/analysis`);
+
+export const predictQuestions = (uid: number, offerId: number, data: {
+  interview_type: string;
+  difficulty: string;
+  language: string;
+  count?: number;
+}) =>
+  request<PredictedQuestion[]>(`/users/${uid}/offers/${offerId}/predict-questions`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+
+export const getInterviewProgress = (uid: number) =>
+  request<InterviewProgress>(`/users/${uid}/interview-progress`);
+
+// ---------- Auto-fill Profile (upload) ----------
+
 export const autoFillProfileFromUpload = async (uid: number, file: File): Promise<AutoFillResult> => {
   const form = new FormData();
   form.append("file", file);

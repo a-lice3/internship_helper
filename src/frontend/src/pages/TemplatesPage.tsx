@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import * as api from "../api";
 
 export default function TemplatesPage({ userId }: { userId: number }) {
@@ -73,17 +73,59 @@ export default function TemplatesPage({ userId }: { userId: number }) {
       ) : (
         <div className="card-list">
           {templates.map((t) => (
-            <div key={t.id} className="card">
-              <div className="card-header">
-                <strong>{t.name}</strong>
-                {t.file_path && <span className="tag">PDF</span>}
-                <button className="btn-delete" onClick={() => handleDelete(t.id)}>x</button>
-              </div>
-              <pre className="card-body">{t.content}</pre>
-            </div>
+            <TemplateAccordion
+              key={t.id}
+              name={t.name}
+              content={t.content}
+              isPdf={!!t.file_path}
+              createdAt={t.created_at}
+              onDelete={() => handleDelete(t.id)}
+            />
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+/* ---------- Accordion component for templates ---------- */
+
+function TemplateAccordion({
+  name,
+  content,
+  isPdf,
+  createdAt,
+  onDelete,
+}: {
+  name: string;
+  content: string;
+  isPdf: boolean;
+  createdAt: string | null;
+  onDelete: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  const toggle = useCallback(() => setOpen((o) => !o), []);
+
+  return (
+    <div className={`card accordion ${open ? "accordion-open" : ""}`}>
+      <div className="card-header accordion-header" onClick={toggle}>
+        <span className="accordion-chevron">{open ? "\u25BC" : "\u25B6"}</span>
+        <strong>{name}</strong>
+        {isPdf && <span className="tag">PDF</span>}
+        {createdAt && (
+          <span className="hint" style={{ marginLeft: "auto" }}>
+            {new Date(createdAt).toLocaleDateString()}
+          </span>
+        )}
+        <button
+          className="btn-delete"
+          onClick={(e) => { e.stopPropagation(); onDelete(); }}
+        >
+          x
+        </button>
+      </div>
+      {open && <pre className="card-body">{content}</pre>}
     </div>
   );
 }

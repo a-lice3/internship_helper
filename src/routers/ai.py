@@ -585,6 +585,15 @@ def pitch_analysis_offer(
     )
 
 
+@router.post("/transcribe-audio")
+def transcribe_audio_endpoint(file: UploadFile):
+    """Transcribe an audio file using Voxtral. Returns plain text."""
+    _validate_audio_file(file)
+    audio_content = file.file.read()
+    text = transcribe_audio(file.filename or "audio.webm", audio_content)
+    return {"transcription": text}
+
+
 @router.get(
     "/users/{user_id}/pitch-analyses",
     response_model=list[schemas.PitchAnalysisStoredResponse],

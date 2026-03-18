@@ -2,6 +2,7 @@ import enum
 from datetime import date, datetime
 
 from sqlalchemy import (
+    Boolean,
     Date,
     DateTime,
     Enum,
@@ -40,6 +41,26 @@ class SkillCategory(str, enum.Enum):
     soft = "soft"
     tools = "tools"
     other = "other"
+
+
+class InterviewType(str, enum.Enum):
+    hr = "hr"
+    technical = "technical"
+    behavioral = "behavioral"
+    pitch = "pitch"
+
+
+class InterviewDifficulty(str, enum.Enum):
+    junior = "junior"
+    intermediate = "intermediate"
+    advanced = "advanced"
+
+
+class InterviewSessionStatus(str, enum.Enum):
+    created = "created"
+    active = "active"
+    completed = "completed"
+    analyzed = "analyzed"
 
 
 # ---------- Models ----------
@@ -88,6 +109,9 @@ class User(Base):
         back_populates="user", cascade="all, delete-orphan"
     )
     pitch_analyses: Mapped[list["PitchAnalysis"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+    interview_sessions: Mapped[list["InterviewSession"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
 
@@ -278,3 +302,118 @@ class PitchAnalysis(Base):
 
     user: Mapped["User"] = relationship(back_populates="pitch_analyses")
     offer: Mapped["InternshipOffer | None"] = relationship()
+
+
+class InterviewSession(Base):
+    __tablename__ = "interview_sessions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    session_id: Mapped[str] = mapped_column(String(36), unique=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    offer_id: Mapped[int | None] = mapped_column(
+        ForeignKey("internship_offers.id", ondelete="SET NULL"), nullable=True
+    )
+
+    # Configuration
+    interview_type: Mapped[InterviewType] = mapped_column(
+        Enum(InterviewType), nullable=False
+    )
+    difficulty: Mapped[InterviewDifficulty] = mapped_column(
+        Enum(InterviewDifficulty), nullable=False
+    )
+    language: Mapped[str] = mapped_column(String(5), nullable=False, default="en")
+    duration_minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=15)
+    enable_hints: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    # State
+    status: Mapped[InterviewSessionStatus] = mapped_column(
+        Enum(InterviewSessionStatus),
+        nullable=False,
+        default=InterviewSessionStatus.created,
+    )
+
+    # Denormalized offer info
+    offer_title: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    company: Mapped[str | None] = mapped_column(String(200), nullable=True)
+
+    # Timing
+    started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    ended_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+    # Relationships
+    user: Mapped["User"] = relationship(back_populates="interview_sessions")
+    offer: Mapped["InternshipOffer | None"] = relationship()
+    turns: Mapped[list["InterviewTurn"]] = relationship(
+        back_populates="session",
+        cascade="all, delete-orphan",
+        order_by="InterviewTurn.turn_number",
+    )
+    analysis: Mapped["InterviewAnalysis | None"] = relationship(
+        back_populates="session", uselist=False, cascade="all, delete-orphan"
+    )
+
+
+class InterviewTurn(Base):
+    __tablename__ = "interview_turns"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    session_id: Mapped[int] = mapped_column(
+        ForeignKey("interview_sessions.id", ondelete="CASCADE"), nullable=False
+    )
+    turn_number: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    # AI question
+    question_text: Mapped[str] = mapped_column(Text, nullable=False)
+    question_category: Mapped[str | None] = mapped_column(String(50), nullable=True)
+
+    # User answer
+    answer_transcript: Mapped[str | None] = mapped_column(Text, nullable=True)
+    answer_duration_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    skipped: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    # Per-turn scores (filled during analysis)
+    clarity_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    relevance_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    structure_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    feedback: Mapped[str | None] = mapped_column(Text, nullable=True)
+    better_answer: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+    session: Mapped["InterviewSession"] = relationship(back_populates="turns")
+
+
+class InterviewAnalysis(Base):
+    __tablename__ = "interview_analyses"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    session_id: Mapped[int] = mapped_column(
+        ForeignKey("interview_sessions.id", ondelete="CASCADE"),
+        unique=True,
+        nullable=False,
+    )
+
+    # Global scores (0-100)
+    overall_score: Mapped[int] = mapped_column(Integer, nullable=False)
+    communication_score: Mapped[int] = mapped_column(Integer, nullable=False)
+    technical_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    behavioral_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    confidence_score: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    # Structured feedback (JSON)
+    strengths: Mapped[str] = mapped_column(Text, nullable=False)
+    weaknesses: Mapped[str] = mapped_column(Text, nullable=False)
+    improvements: Mapped[str] = mapped_column(Text, nullable=False)
+
+    # Text fields
+    summary: Mapped[str] = mapped_column(Text, nullable=False)
+    filler_words_analysis: Mapped[str | None] = mapped_column(Text, nullable=True)
+    star_method_usage: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Full re-transcription
+    full_transcript: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+    session: Mapped["InterviewSession"] = relationship(back_populates="analysis")

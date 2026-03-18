@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.database import Base, engine
-from src.routers import users, profile, offers, cvs, templates, ai
+from src.routers import users, profile, offers, cvs, templates, ai, interview
 
 app = FastAPI(title="Internship Helper API")
 
@@ -22,3 +22,4 @@ app.include_router(offers.router)
 app.include_router(cvs.router)
 app.include_router(templates.router)
 app.include_router(ai.router)
+app.include_router(interview.router)

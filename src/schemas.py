@@ -407,3 +407,94 @@ class PitchAnalysisStoredResponse(BaseModel):
     overall_score: int
     summary: str
     created_at: datetime | None = None
+
+
+# ---------- Interview Simulation ----------
+
+
+class InterviewSessionCreate(BaseModel):
+    offer_id: int | None = None
+    interview_type: str = "hr"  # hr / technical / behavioral / pitch
+    difficulty: str = "junior"  # junior / intermediate / advanced
+    language: str = "en"  # en / fr
+    duration_minutes: int = 15
+    enable_hints: bool = False
+
+
+class InterviewTurnResponse(BaseModel):
+    id: int
+    turn_number: int
+    question_text: str
+    question_category: str | None = None
+    answer_transcript: str | None = None
+    answer_duration_seconds: int | None = None
+    skipped: bool = False
+    clarity_score: int | None = None
+    relevance_score: int | None = None
+    structure_score: int | None = None
+    feedback: str | None = None
+    better_answer: str | None = None
+
+
+class InterviewAnalysisResponse(BaseModel):
+    id: int
+    overall_score: int
+    communication_score: int
+    technical_score: int | None = None
+    behavioral_score: int | None = None
+    confidence_score: int
+    strengths: list[str]
+    weaknesses: list[str]
+    improvements: list[str]
+    summary: str
+    filler_words_analysis: str | None = None
+    star_method_usage: str | None = None
+    full_transcript: str | None = None
+    per_turn_feedback: list[InterviewTurnResponse] = []
+    created_at: datetime | None = None
+
+
+class InterviewSessionResponse(BaseModel):
+    id: int
+    session_id: str
+    offer_id: int | None = None
+    interview_type: str
+    difficulty: str
+    language: str
+    duration_minutes: int
+    enable_hints: bool = False
+    status: str
+    offer_title: str | None = None
+    company: str | None = None
+    started_at: datetime | None = None
+    ended_at: datetime | None = None
+    created_at: datetime | None = None
+
+
+class InterviewSessionDetailResponse(InterviewSessionResponse):
+    turns: list[InterviewTurnResponse] = []
+    analysis: InterviewAnalysisResponse | None = None
+
+
+class PredictQuestionsRequest(BaseModel):
+    interview_type: str = "hr"
+    difficulty: str = "junior"
+    language: str = "en"
+    count: int = 10
+
+
+class PredictedQuestion(BaseModel):
+    question: str
+    category: str
+    difficulty: str
+    tip: str
+
+
+class InterviewProgressResponse(BaseModel):
+    total_sessions: int
+    average_score: float | None = None
+    score_trend: list[int] = []
+    best_category: str | None = None
+    worst_category: str | None = None
+    total_practice_minutes: int = 0
+    sessions_this_week: int = 0

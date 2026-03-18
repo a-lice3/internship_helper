@@ -5,9 +5,10 @@ import OffersPage from "./pages/OffersPage";
 import CVsPage from "./pages/CVsPage";
 import TemplatesPage from "./pages/TemplatesPage";
 import AIPage from "./pages/AIPage";
+import InterviewPage from "./pages/InterviewPage";
 import "./App.css";
 
-type Tab = "profile" | "offers" | "cvs" | "templates" | "ai";
+type Tab = "profile" | "offers" | "cvs" | "templates" | "ai" | "interview";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "profile", label: "Profile" },
@@ -15,6 +16,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "cvs", label: "CVs" },
   { key: "templates", label: "Templates" },
   { key: "ai", label: "AI" },
+  { key: "interview", label: "Interview" },
 ];
 
 // Ecran de login/creation de compte - affiche avant la navigation
@@ -127,6 +129,7 @@ export default function App() {
         {tab === "cvs" && <CVsPage userId={user.id} />}
         {tab === "templates" && <TemplatesPage userId={user.id} />}
         {tab === "ai" && <AIPage userId={user.id} />}
+        {tab === "interview" && <InterviewPage userId={user.id} />}
       </main>
     </div>
   );
