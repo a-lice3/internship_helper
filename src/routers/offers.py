@@ -2,17 +2,26 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from src import crud, schemas
+from src.auth import get_current_user
 from src.database import get_db
+from src.models import User
 
 router = APIRouter(prefix="/users/{user_id}/offers", tags=["offers"])
 
 
+def _verify_owner(user_id: int, current_user: User) -> None:
+    if current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+
 @router.post("", response_model=schemas.InternshipOfferResponse)
 def create_offer(
-    user_id: int, offer: schemas.InternshipOfferCreate, db: Session = Depends(get_db)
+    user_id: int,
+    offer: schemas.InternshipOfferCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
-    if not crud.get_user(db, user_id):
-        raise HTTPException(status_code=404, detail="User not found")
+    _verify_owner(user_id, current_user)
     return crud.create_offer(db, user_id, offer)
 
 
@@ -23,15 +32,21 @@ def list_offers(
         None,
         description="Filter by status: applied, screened, interview, rejected, accepted",
     ),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    if not crud.get_user(db, user_id):
-        raise HTTPException(status_code=404, detail="User not found")
+    _verify_owner(user_id, current_user)
     return crud.get_offers(db, user_id, status=status)
 
 
 @router.get("/{offer_id}", response_model=schemas.InternshipOfferResponse)
-def get_offer(offer_id: int, db: Session = Depends(get_db)):
+def get_offer(
+    user_id: int,
+    offer_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    _verify_owner(user_id, current_user)
     offer = crud.get_offer(db, offer_id)
     if not offer:
         raise HTTPException(status_code=404, detail="Offer not found")
@@ -40,8 +55,13 @@ def get_offer(offer_id: int, db: Session = Depends(get_db)):
 
 @router.patch("/{offer_id}", response_model=schemas.InternshipOfferResponse)
 def update_offer(
-    offer_id: int, update: schemas.InternshipOfferUpdate, db: Session = Depends(get_db)
+    user_id: int,
+    offer_id: int,
+    update: schemas.InternshipOfferUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
+    _verify_owner(user_id, current_user)
     offer = crud.update_offer(db, offer_id, update)
     if not offer:
         raise HTTPException(status_code=404, detail="Offer not found")
@@ -49,7 +69,13 @@ def update_offer(
 
 
 @router.delete("/{offer_id}")
-def delete_offer(offer_id: int, db: Session = Depends(get_db)):
+def delete_offer(
+    user_id: int,
+    offer_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    _verify_owner(user_id, current_user)
     if not crud.delete_offer(db, offer_id):
         raise HTTPException(status_code=404, detail="Offer not found")
     return {"detail": "Offer deleted"}

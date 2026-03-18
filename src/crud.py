@@ -5,8 +5,12 @@ from src import models, schemas
 # ---------- User ----------
 
 
-def create_user(db: Session, user: schemas.UserCreate) -> models.User:
-    db_user = models.User(name=user.name, email=user.email)
+def create_user(
+    db: Session, user: schemas.UserCreate, hashed_password: str
+) -> models.User:
+    db_user = models.User(
+        name=user.name, email=user.email, hashed_password=hashed_password
+    )
     db.add(db_user)
     db.commit()
     db.refresh(db_user)

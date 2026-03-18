@@ -7,10 +7,13 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect
+from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 
 from src import crud, schemas
+from src.auth import get_current_user
+from src.config import JWT_SECRET_KEY, JWT_ALGORITHM
 from src.database import get_db, SessionLocal
 from src.interview_service import (
     build_interviewer_system_prompt,
@@ -21,10 +24,17 @@ from src.interview_service import (
     predict_questions,
     run_post_interview_analysis,
 )
+from src.models import User
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["interview"])
+
+
+def _verify_owner(user_id: int, current_user: User) -> None:
+    if current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
 
 # ---------------------------------------------------------------------------
 # REST Endpoints
@@ -38,11 +48,10 @@ router = APIRouter(tags=["interview"])
 def create_session(
     user_id: int,
     body: schemas.InterviewSessionCreate,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    user = crud.get_user(db, user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+    _verify_owner(user_id, current_user)
 
     offer_title = None
     company = None
@@ -74,9 +83,12 @@ def create_session(
     "/users/{user_id}/interview-sessions",
     response_model=list[schemas.InterviewSessionResponse],
 )
-def list_sessions(user_id: int, db: Session = Depends(get_db)):
-    if not crud.get_user(db, user_id):
-        raise HTTPException(status_code=404, detail="User not found")
+def list_sessions(
+    user_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    _verify_owner(user_id, current_user)
     sessions = crud.get_interview_sessions(db, user_id)
     return [_session_to_response(s) for s in sessions]
 
@@ -85,9 +97,13 @@ def list_sessions(user_id: int, db: Session = Depends(get_db)):
     "/users/{user_id}/interview-sessions/{session_id}",
     response_model=schemas.InterviewSessionDetailResponse,
 )
-def get_session(user_id: int, session_id: int, db: Session = Depends(get_db)):
-    if not crud.get_user(db, user_id):
-        raise HTTPException(status_code=404, detail="User not found")
+def get_session(
+    user_id: int,
+    session_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    _verify_owner(user_id, current_user)
     db_session = crud.get_interview_session_by_pk(db, session_id)
     if not db_session or db_session.user_id != user_id:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -95,7 +111,13 @@ def get_session(user_id: int, session_id: int, db: Session = Depends(get_db)):
 
 
 @router.delete("/users/{user_id}/interview-sessions/{session_id}")
-def delete_session(user_id: int, session_id: int, db: Session = Depends(get_db)):
+def delete_session(
+    user_id: int,
+    session_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    _verify_owner(user_id, current_user)
     db_session = crud.get_interview_session_by_pk(db, session_id)
     if not db_session or db_session.user_id != user_id:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -110,8 +132,14 @@ def delete_session(user_id: int, session_id: int, db: Session = Depends(get_db))
     "/users/{user_id}/interview-sessions/{session_id}/analyze",
     response_model=schemas.InterviewAnalysisResponse,
 )
-def analyze_session(user_id: int, session_id: int, db: Session = Depends(get_db)):
+def analyze_session(
+    user_id: int,
+    session_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     """Run post-interview analysis on a completed session."""
+    _verify_owner(user_id, current_user)
     db_session = crud.get_interview_session_by_pk(db, session_id)
     if not db_session or db_session.user_id != user_id:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -186,7 +214,13 @@ def analyze_session(user_id: int, session_id: int, db: Session = Depends(get_db)
     "/users/{user_id}/interview-sessions/{session_id}/analysis",
     response_model=schemas.InterviewAnalysisResponse,
 )
-def get_analysis(user_id: int, session_id: int, db: Session = Depends(get_db)):
+def get_analysis(
+    user_id: int,
+    session_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    _verify_owner(user_id, current_user)
     db_session = crud.get_interview_session_by_pk(db, session_id)
     if not db_session or db_session.user_id != user_id:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -208,10 +242,10 @@ def predict_questions_endpoint(
     user_id: int,
     offer_id: int,
     body: schemas.PredictQuestionsRequest,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    if not crud.get_user(db, user_id):
-        raise HTTPException(status_code=404, detail="User not found")
+    _verify_owner(user_id, current_user)
     offer = crud.get_offer(db, offer_id)
     if not offer:
         raise HTTPException(status_code=404, detail="Offer not found")
@@ -243,9 +277,12 @@ def predict_questions_endpoint(
     "/users/{user_id}/interview-progress",
     response_model=schemas.InterviewProgressResponse,
 )
-def interview_progress(user_id: int, db: Session = Depends(get_db)):
-    if not crud.get_user(db, user_id):
-        raise HTTPException(status_code=404, detail="User not found")
+def interview_progress(
+    user_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    _verify_owner(user_id, current_user)
 
     sessions = crud.get_interview_sessions(db, user_id)
     analyzed = [
@@ -312,19 +349,46 @@ def interview_progress(user_id: int, db: Session = Depends(get_db)):
 
 
 # ---------------------------------------------------------------------------
-# WebSocket Interview
+# WebSocket Interview (token passed as query parameter)
 # ---------------------------------------------------------------------------
+
+
+def _authenticate_ws_token(token: str, db: Session) -> User | None:
+    """Validate a JWT token and return the User, or None if invalid."""
+    try:
+        payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
+        user_id_str: str | None = payload.get("sub")
+        if user_id_str is None:
+            return None
+        user = db.query(User).filter(User.id == int(user_id_str)).first()
+        return user
+    except (JWTError, ValueError):
+        return None
 
 
 @router.websocket("/ws/interview/{session_id}")
 async def interview_websocket(
-    websocket: WebSocket, session_id: str, user_id: int | None = None
+    websocket: WebSocket,
+    session_id: str,
+    token: str = Query(...),
 ):
-    """WebSocket endpoint for live interview simulation."""
+    """WebSocket endpoint for live interview simulation.
+
+    The JWT token is passed as a query parameter: ws://host/ws/interview/{id}?token=xxx
+    """
     await websocket.accept()
 
     db = SessionLocal()
     try:
+        # Authenticate via token
+        user = _authenticate_ws_token(token, db)
+        if not user:
+            await websocket.send_json(
+                {"type": "error", "data": {"message": "Unauthorized"}}
+            )
+            await websocket.close()
+            return
+
         db_session = crud.get_interview_session(db, session_id)
         if not db_session:
             await websocket.send_json(
@@ -334,17 +398,9 @@ async def interview_websocket(
             return
 
         # Verify the connecting user owns this session
-        if user_id is None or db_session.user_id != user_id:
+        if db_session.user_id != user.id:
             await websocket.send_json(
                 {"type": "error", "data": {"message": "Unauthorized"}}
-            )
-            await websocket.close()
-            return
-
-        user = crud.get_user(db, db_session.user_id)
-        if not user:
-            await websocket.send_json(
-                {"type": "error", "data": {"message": "User not found"}}
             )
             await websocket.close()
             return

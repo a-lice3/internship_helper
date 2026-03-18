@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import * as api from "./api";
 import ProfilePage from "./pages/ProfilePage";
 import OffersPage from "./pages/OffersPage";
@@ -24,18 +24,21 @@ const TABS: { key: Tab; label: string; icon: string }[] = [
 function LoginScreen({ onLogin }: { onLogin: (user: api.User) => void }) {
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     try {
-      const user = await api.getUserByEmail(loginEmail);
-      onLogin(user);
+      const resp = await api.login(loginEmail, loginPassword);
+      api.setToken(resp.access_token);
+      onLogin(resp.user);
     } catch {
-      setError("No account found with this email.");
+      setError("Invalid email or password.");
     }
   };
 
@@ -43,15 +46,12 @@ function LoginScreen({ onLogin }: { onLogin: (user: api.User) => void }) {
     e.preventDefault();
     setError("");
     try {
-      const user = await api.createUser(name, email);
-      onLogin(user);
-    } catch {
-      try {
-        const user = await api.getUserByEmail(email);
-        onLogin(user);
-      } catch {
-        setError("Signup failed.");
-      }
+      const resp = await api.register(name, email, password);
+      api.setToken(resp.access_token);
+      onLogin(resp.user);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Signup failed.";
+      setError(msg);
     }
   };
 
@@ -82,6 +82,15 @@ function LoginScreen({ onLogin }: { onLogin: (user: api.User) => void }) {
                 onChange={(e) => setLoginEmail(e.target.value)}
               />
             </label>
+            <label>
+              Password
+              <input
+                type="password"
+                placeholder="Your password"
+                value={loginPassword}
+                onChange={(e) => setLoginPassword(e.target.value)}
+              />
+            </label>
             <button type="submit">Login</button>
           </form>
         ) : (
@@ -93,6 +102,15 @@ function LoginScreen({ onLogin }: { onLogin: (user: api.User) => void }) {
             <label>
               Email
               <input placeholder="you@example.com" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            </label>
+            <label>
+              Password
+              <input
+                type="password"
+                placeholder="Choose a password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
             </label>
             <button type="submit">Create account</button>
           </form>
@@ -109,6 +127,37 @@ function LoginScreen({ onLogin }: { onLogin: (user: api.User) => void }) {
 export default function App() {
   const [user, setUser] = useState<api.User | null>(null);
   const [tab, setTab] = useState<Tab>("offers");
+  const [loading, setLoading] = useState(true);
+
+  // Try to restore session from stored token on mount
+  useEffect(() => {
+    const token = api.getToken();
+    if (token) {
+      api.getMe()
+        .then((u) => setUser(u))
+        .catch(() => {
+          api.setToken(null); // Token expired or invalid
+        })
+        .finally(() => setLoading(false));
+    } else {
+      setLoading(false);
+    }
+  }, []);
+
+  const handleLogout = () => {
+    api.setToken(null);
+    setUser(null);
+  };
+
+  if (loading) {
+    return (
+      <div className="login-screen">
+        <div className="login-card">
+          <p>Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!user) {
     return <LoginScreen onLogin={setUser} />;
@@ -153,7 +202,7 @@ export default function App() {
           </div>
           <button
             className="btn-logout"
-            onClick={() => setUser(null)}
+            onClick={handleLogout}
             title="Logout"
           >
             {"\u2192"}

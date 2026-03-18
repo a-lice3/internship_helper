@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { getToken } from "../api";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -56,9 +57,10 @@ export function useInterview(sessionId: string | null, userId?: number) {
     setState((s) => ({ ...s, status: "connecting", error: null }));
 
     const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-    const userParam = userId != null ? `?user_id=${userId}` : "";
+    const token = getToken();
+    const tokenParam = token ? `?token=${encodeURIComponent(token)}` : "";
     const ws = new WebSocket(
-      `${protocol}://${window.location.hostname}:8000/ws/interview/${sessionId}${userParam}`
+      `${protocol}://${window.location.hostname}:8000/ws/interview/${sessionId}${tokenParam}`
     );
 
     ws.onopen = () => {
