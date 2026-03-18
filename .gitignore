@@ -35,8 +35,12 @@ htmlcov/
 # Node / React
 node_modules/
 dist/
+.vite/
 .eslintcache
 *.tsbuildinfo
+
+# Uploads (user files stored on disk)
+uploads/
 
 # OS
 .DS_Store
