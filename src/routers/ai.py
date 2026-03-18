@@ -195,7 +195,9 @@ def cover_letter_endpoint(
     experiences = crud.get_experiences(db, user_id)
     education = crud.get_education(db, user_id)
 
-    profile_summary = _build_profile_summary(current_user, skills, experiences, education)
+    profile_summary = _build_profile_summary(
+        current_user, skills, experiences, education
+    )
 
     letter = generate_cover_letter(
         profile_summary=profile_summary,

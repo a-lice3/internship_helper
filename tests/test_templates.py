@@ -26,9 +26,7 @@ def test_delete_template(client, sample_user, auth_header):
         headers=auth_header,
     ).json()
 
-    response = client.delete(
-        f"/users/{uid}/templates/{tpl['id']}", headers=auth_header
-    )
+    response = client.delete(f"/users/{uid}/templates/{tpl['id']}", headers=auth_header)
     assert response.status_code == 200
 
     response = client.get(f"/users/{uid}/templates", headers=auth_header)
@@ -147,8 +145,6 @@ def test_delete_template_with_file(client, sample_user, auth_header, tmp_path):
     fake_file.parent.mkdir(parents=True, exist_ok=True)
     fake_file.write_bytes(b"fake pdf")
 
-    response = client.delete(
-        f"/users/{uid}/templates/{tpl['id']}", headers=auth_header
-    )
+    response = client.delete(f"/users/{uid}/templates/{tpl['id']}", headers=auth_header)
     assert response.status_code == 200
     assert not fake_file.exists()
