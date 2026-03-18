@@ -3,15 +3,26 @@ from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from src import crud, schemas
+from src.auth import get_current_user
 from src.database import get_db
+from src.models import User
 
 router = APIRouter(prefix="/users/{user_id}/cvs", tags=["cvs"])
 
 
+def _verify_owner(user_id: int, current_user: User) -> None:
+    if current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+
 @router.post("", response_model=schemas.CVResponse)
-def upload_cv(user_id: int, cv: schemas.CVCreate, db: Session = Depends(get_db)):
-    if not crud.get_user(db, user_id):
-        raise HTTPException(status_code=404, detail="User not found")
+def upload_cv(
+    user_id: int,
+    cv: schemas.CVCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    _verify_owner(user_id, current_user)
     return crud.create_cv(db, user_id, cv)
 
 
@@ -22,11 +33,11 @@ def upload_cv_file(
     name: str = Form("Untitled CV"),
     company: str = Form(""),
     job_title: str = Form(""),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Upload a PDF, LaTeX (.tex), or .zip (LaTeX project) file as a CV."""
-    if not crud.get_user(db, user_id):
-        raise HTTPException(status_code=404, detail="User not found")
+    _verify_owner(user_id, current_user)
 
     filename = file.filename or ""
     is_pdf = filename.lower().endswith(".pdf")
@@ -98,15 +109,24 @@ def upload_cv_file(
 
 
 @router.get("", response_model=list[schemas.CVResponse])
-def list_cvs(user_id: int, db: Session = Depends(get_db)):
-    if not crud.get_user(db, user_id):
-        raise HTTPException(status_code=404, detail="User not found")
+def list_cvs(
+    user_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    _verify_owner(user_id, current_user)
     return crud.get_cvs(db, user_id)
 
 
 @router.get("/{cv_id}/download")
-def download_cv(cv_id: int, db: Session = Depends(get_db)):
+def download_cv(
+    user_id: int,
+    cv_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     """Download the original uploaded file for a CV."""
+    _verify_owner(user_id, current_user)
     cv = crud.get_cv(db, cv_id)
     if not cv:
         raise HTTPException(status_code=404, detail="CV not found")
@@ -127,8 +147,14 @@ def download_cv(cv_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/{cv_id}/compile-pdf")
-def compile_latex_to_pdf(user_id: int, cv_id: int, db: Session = Depends(get_db)):
+def compile_latex_to_pdf(
+    user_id: int,
+    cv_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     """Compile a LaTeX CV to PDF and return the file."""
+    _verify_owner(user_id, current_user)
     cv = crud.get_cv(db, cv_id)
     if not cv:
         raise HTTPException(status_code=404, detail="CV not found")
@@ -160,10 +186,13 @@ def compile_latex_to_pdf(user_id: int, cv_id: int, db: Session = Depends(get_db)
 
 @router.patch("/{cv_id}", response_model=schemas.CVResponse)
 def update_cv(
-    user_id: int, cv_id: int, body: schemas.CVUpdate, db: Session = Depends(get_db)
+    user_id: int,
+    cv_id: int,
+    body: schemas.CVUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
-    if not crud.get_user(db, user_id):
-        raise HTTPException(status_code=404, detail="User not found")
+    _verify_owner(user_id, current_user)
     cv = crud.update_cv(db, cv_id, body)
     if not cv:
         raise HTTPException(status_code=404, detail="CV not found")
@@ -175,12 +204,11 @@ def chat_edit_cv_endpoint(
     user_id: int,
     cv_id: int,
     body: schemas.ChatEditCVRequest,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Apply a chat instruction to edit a LaTeX CV."""
-    user = crud.get_user(db, user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+    _verify_owner(user_id, current_user)
 
     cv = crud.get_cv(db, cv_id)
     if not cv:
@@ -212,7 +240,7 @@ def chat_edit_cv_endpoint(
         user_message=body.message,
         conversation_history=body.conversation_history,
         support_files_content=support_files_content,
-        user_instructions=user.ai_instructions,
+        user_instructions=current_user.ai_instructions,
     )
 
     # Persist the change
@@ -222,7 +250,13 @@ def chat_edit_cv_endpoint(
 
 
 @router.delete("/{cv_id}")
-def delete_cv(user_id: int, cv_id: int, db: Session = Depends(get_db)):
+def delete_cv(
+    user_id: int,
+    cv_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    _verify_owner(user_id, current_user)
     if not crud.delete_cv(db, cv_id):
         raise HTTPException(status_code=404, detail="CV not found")
     return {"detail": "CV deleted"}

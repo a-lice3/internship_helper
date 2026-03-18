@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 from src import crud, schemas
+from src.auth import get_current_user
 from src.database import get_db
 from src.llm_service import (
     adapt_cv,
@@ -17,12 +18,21 @@ from src.llm_service import (
     parse_offer,
     transcribe_audio,
 )
+from src.models import User
 
 router = APIRouter(tags=["ai"])
 
 
+def _verify_owner(user_id: int, current_user: User) -> None:
+    if current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+
 @router.post("/ask", response_model=schemas.AskResponse)
-def ask(body: schemas.AskRequest):
+def ask(
+    body: schemas.AskRequest,
+    current_user: User = Depends(get_current_user),
+):
     answer = ask_mistral(body.question)
     return schemas.AskResponse(question=body.question, answer=answer)
 
@@ -35,11 +45,10 @@ def adapt_cv_endpoint(
     user_id: int,
     offer_id: int,
     body: schemas.AdaptCVRequest,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    user = crud.get_user(db, user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+    _verify_owner(user_id, current_user)
 
     offer = crud.get_offer(db, offer_id)
     if not offer:
@@ -54,7 +63,7 @@ def adapt_cv_endpoint(
         offer.title,
         offer.company,
         offer.description or "",
-        user_instructions=user.ai_instructions,
+        user_instructions=current_user.ai_instructions,
     )
 
     crud.create_adapted_cv(db, user_id, offer_id, offer.company, adapted_content)
@@ -77,11 +86,10 @@ def adapt_cv_endpoint(
 def skill_gap_endpoint(
     user_id: int,
     offer_id: int,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    user = crud.get_user(db, user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+    _verify_owner(user_id, current_user)
 
     offer = crud.get_offer(db, offer_id)
     if not offer:
@@ -95,7 +103,7 @@ def skill_gap_endpoint(
         offer.title,
         offer.company,
         offer.description or "",
-        user_instructions=user.ai_instructions,
+        user_instructions=current_user.ai_instructions,
     )
 
     db_obj = crud.create_skill_gap_analysis(
@@ -121,9 +129,12 @@ def skill_gap_endpoint(
     "/users/{user_id}/skill-gaps",
     response_model=list[schemas.SkillGapAnalysisResponse],
 )
-def list_skill_gaps(user_id: int, db: Session = Depends(get_db)):
-    if not crud.get_user(db, user_id):
-        raise HTTPException(status_code=404, detail="User not found")
+def list_skill_gaps(
+    user_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    _verify_owner(user_id, current_user)
     rows = crud.get_skill_gap_analyses(db, user_id)
     return [
         schemas.SkillGapAnalysisResponse(
@@ -141,7 +152,13 @@ def list_skill_gaps(user_id: int, db: Session = Depends(get_db)):
 
 
 @router.delete("/users/{user_id}/skill-gaps/{analysis_id}")
-def delete_skill_gap(user_id: int, analysis_id: int, db: Session = Depends(get_db)):
+def delete_skill_gap(
+    user_id: int,
+    analysis_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    _verify_owner(user_id, current_user)
     if not crud.delete_skill_gap_analysis(db, analysis_id):
         raise HTTPException(status_code=404, detail="Skill gap analysis not found")
     return {"detail": "Deleted"}
@@ -158,11 +175,10 @@ def cover_letter_endpoint(
     user_id: int,
     offer_id: int,
     body: schemas.GenerateCoverLetterRequest,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    user = crud.get_user(db, user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+    _verify_owner(user_id, current_user)
 
     offer = crud.get_offer(db, offer_id)
     if not offer:
@@ -179,7 +195,9 @@ def cover_letter_endpoint(
     experiences = crud.get_experiences(db, user_id)
     education = crud.get_education(db, user_id)
 
-    profile_summary = _build_profile_summary(user, skills, experiences, education)
+    profile_summary = _build_profile_summary(
+        current_user, skills, experiences, education
+    )
 
     letter = generate_cover_letter(
         profile_summary=profile_summary,
@@ -187,7 +205,7 @@ def cover_letter_endpoint(
         company=offer.company,
         offer_description=offer.description or "",
         template=template_content,
-        user_instructions=user.ai_instructions,
+        user_instructions=current_user.ai_instructions,
     )
 
     db_obj = crud.create_generated_cover_letter(
@@ -212,14 +230,23 @@ def cover_letter_endpoint(
     "/users/{user_id}/cover-letters",
     response_model=list[schemas.GeneratedCoverLetterResponse],
 )
-def list_cover_letters(user_id: int, db: Session = Depends(get_db)):
-    if not crud.get_user(db, user_id):
-        raise HTTPException(status_code=404, detail="User not found")
+def list_cover_letters(
+    user_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    _verify_owner(user_id, current_user)
     return crud.get_generated_cover_letters(db, user_id)
 
 
 @router.delete("/users/{user_id}/cover-letters/{letter_id}")
-def delete_cover_letter(user_id: int, letter_id: int, db: Session = Depends(get_db)):
+def delete_cover_letter(
+    user_id: int,
+    letter_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    _verify_owner(user_id, current_user)
     if not crud.delete_generated_cover_letter(db, letter_id):
         raise HTTPException(status_code=404, detail="Cover letter not found")
     return {"detail": "Deleted"}
@@ -236,11 +263,10 @@ def adapt_cv_latex_endpoint(
     user_id: int,
     offer_id: int,
     body: schemas.AdaptCVLatexRequest,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    user = crud.get_user(db, user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+    _verify_owner(user_id, current_user)
 
     offer = crud.get_offer(db, offer_id)
     if not offer:
@@ -277,7 +303,7 @@ def adapt_cv_latex_endpoint(
         offer.description or "",
         support_files_content=support_files_content,
         support_files_dir=cv.support_files_dir,
-        user_instructions=user.ai_instructions,
+        user_instructions=current_user.ai_instructions,
     )
 
     return schemas.AdaptCVLatexResponse(
@@ -293,7 +319,10 @@ def adapt_cv_latex_endpoint(
 
 
 @router.post("/parse-offer", response_model=schemas.ParseOfferResponse)
-def parse_offer_endpoint(body: schemas.ParseOfferRequest):
+def parse_offer_endpoint(
+    body: schemas.ParseOfferRequest,
+    current_user: User = Depends(get_current_user),
+):
     try:
         result = parse_offer(body.text)
     except Exception as exc:
@@ -315,11 +344,10 @@ def parse_offer_endpoint(body: schemas.ParseOfferRequest):
 )
 def auto_fill_profile_endpoint(
     user_id: int,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    user = crud.get_user(db, user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+    _verify_owner(user_id, current_user)
 
     cvs = crud.get_cvs(db, user_id)
     if not cvs:
@@ -344,12 +372,11 @@ def auto_fill_profile_endpoint(
 def auto_fill_profile_from_upload(
     user_id: int,
     file: UploadFile,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Upload a PDF CV and extract profile data from it (merge mode)."""
-    user = crud.get_user(db, user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+    _verify_owner(user_id, current_user)
 
     if not file.filename or not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are accepted")
@@ -497,12 +524,11 @@ def _build_pitch_response(
 def pitch_analysis_general(
     user_id: int,
     file: UploadFile,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Analyze an audio pitch (general, no offer context)."""
-    user = crud.get_user(db, user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+    _verify_owner(user_id, current_user)
 
     _validate_audio_file(file)
 
@@ -511,7 +537,7 @@ def pitch_analysis_general(
 
     analysis = analyze_pitch(
         transcription=transcription,
-        user_instructions=user.ai_instructions,
+        user_instructions=current_user.ai_instructions,
     )
 
     db_obj = crud.create_pitch_analysis(
@@ -544,12 +570,11 @@ def pitch_analysis_offer(
     user_id: int,
     offer_id: int,
     file: UploadFile,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Analyze an audio pitch in the context of a specific internship offer."""
-    user = crud.get_user(db, user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+    _verify_owner(user_id, current_user)
 
     offer = crud.get_offer(db, offer_id)
     if not offer:
@@ -565,7 +590,7 @@ def pitch_analysis_offer(
         offer_title=offer.title,
         company=offer.company,
         offer_description=offer.description or "",
-        user_instructions=user.ai_instructions,
+        user_instructions=current_user.ai_instructions,
     )
 
     db_obj = crud.create_pitch_analysis(
@@ -593,7 +618,10 @@ def pitch_analysis_offer(
 
 
 @router.post("/transcribe-audio")
-def transcribe_audio_endpoint(file: UploadFile):
+def transcribe_audio_endpoint(
+    file: UploadFile,
+    current_user: User = Depends(get_current_user),
+):
     """Transcribe an audio file using Voxtral. Returns plain text."""
     _validate_audio_file(file)
     audio_content = file.file.read()
@@ -605,9 +633,12 @@ def transcribe_audio_endpoint(file: UploadFile):
     "/users/{user_id}/pitch-analyses",
     response_model=list[schemas.PitchAnalysisStoredResponse],
 )
-def list_pitch_analyses(user_id: int, db: Session = Depends(get_db)):
-    if not crud.get_user(db, user_id):
-        raise HTTPException(status_code=404, detail="User not found")
+def list_pitch_analyses(
+    user_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    _verify_owner(user_id, current_user)
     rows = crud.get_pitch_analyses(db, user_id)
     return [
         schemas.PitchAnalysisStoredResponse(
@@ -630,8 +661,12 @@ def list_pitch_analyses(user_id: int, db: Session = Depends(get_db)):
 
 @router.delete("/users/{user_id}/pitch-analyses/{analysis_id}")
 def delete_pitch_analysis(
-    user_id: int, analysis_id: int, db: Session = Depends(get_db)
+    user_id: int,
+    analysis_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
+    _verify_owner(user_id, current_user)
     if not crud.delete_pitch_analysis(db, analysis_id):
         raise HTTPException(status_code=404, detail="Pitch analysis not found")
     return {"detail": "Deleted"}

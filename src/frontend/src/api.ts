@@ -1,5 +1,22 @@
 const BASE = "/api";
 
+// ---------- Token management ----------
+
+let authToken: string | null = localStorage.getItem("token");
+
+export function setToken(token: string | null): void {
+  authToken = token;
+  if (token) {
+    localStorage.setItem("token", token);
+  } else {
+    localStorage.removeItem("token");
+  }
+}
+
+export function getToken(): string | null {
+  return authToken;
+}
+
 // ---------- Types ----------
 
 export interface User {
@@ -7,6 +24,12 @@ export interface User {
   name: string;
   email: string;
   created_at: string | null;
+}
+
+export interface TokenResponse {
+  access_token: string;
+  token_type: string;
+  user: User;
 }
 
 export interface Skill {
@@ -144,9 +167,17 @@ export interface AutoFillResult {
 
 // ---------- Generic helpers ----------
 
+function authHeaders(): Record<string, string> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (authToken) {
+    headers["Authorization"] = `Bearer ${authToken}`;
+  }
+  return headers;
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
-    headers: { "Content-Type": "application/json" },
+    headers: authHeaders(),
     ...options,
   });
   if (!res.ok) {
@@ -156,13 +187,35 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   return res.json();
 }
 
-// ---------- Users ----------
-
-export const createUser = (name: string, email: string) =>
-  request<User>("/users", {
-    method: "POST",
-    body: JSON.stringify({ name, email }),
+/** fetch with auth header for FormData (no Content-Type — browser sets multipart boundary). */
+async function fetchWithAuth(url: string, options: RequestInit): Promise<Response> {
+  const headers: Record<string, string> = {};
+  if (authToken) {
+    headers["Authorization"] = `Bearer ${authToken}`;
+  }
+  return fetch(url, {
+    ...options,
+    headers: { ...headers, ...(options.headers as Record<string, string> || {}) },
   });
+}
+
+// ---------- Auth ----------
+
+export const register = (name: string, email: string, password: string) =>
+  request<TokenResponse>("/auth/register", {
+    method: "POST",
+    body: JSON.stringify({ name, email, password }),
+  });
+
+export const login = (email: string, password: string) =>
+  request<TokenResponse>("/auth/login", {
+    method: "POST",
+    body: JSON.stringify({ email, password }),
+  });
+
+export const getMe = () => request<User>("/auth/me");
+
+// ---------- Users ----------
 
 export const getUser = (id: number) => request<User>(`/users/${id}`);
 
@@ -339,7 +392,7 @@ export const uploadCVFile = async (uid: number, file: File, name: string, compan
   form.append("name", name);
   form.append("company", company);
   form.append("job_title", jobTitle);
-  const res = await fetch(`${BASE}/users/${uid}/cvs/upload`, {
+  const res = await fetchWithAuth(`${BASE}/users/${uid}/cvs/upload`, {
     method: "POST",
     body: form,
   });
@@ -433,7 +486,7 @@ export const saveCVWithLatex = (uid: number, data: {
   });
 
 export const compileCVPdf = async (uid: number, cvId: number): Promise<Blob> => {
-  const res = await fetch(`${BASE}/users/${uid}/cvs/${cvId}/compile-pdf`, {
+  const res = await fetchWithAuth(`${BASE}/users/${uid}/cvs/${cvId}/compile-pdf`, {
     method: "POST",
   });
   if (!res.ok) {
@@ -487,7 +540,7 @@ export interface StoredPitchAnalysis {
 export const analyzePitchGeneral = async (uid: number, file: File): Promise<PitchAnalysisResult> => {
   const fd = new FormData();
   fd.append("file", file);
-  const res = await fetch(`${BASE}/users/${uid}/pitch-analysis`, {
+  const res = await fetchWithAuth(`${BASE}/users/${uid}/pitch-analysis`, {
     method: "POST",
     body: fd,
   });
@@ -501,7 +554,7 @@ export const analyzePitchGeneral = async (uid: number, file: File): Promise<Pitc
 export const analyzePitchForOffer = async (uid: number, offerId: number, file: File): Promise<PitchAnalysisResult> => {
   const fd = new FormData();
   fd.append("file", file);
-  const res = await fetch(`${BASE}/users/${uid}/offers/${offerId}/pitch-analysis`, {
+  const res = await fetchWithAuth(`${BASE}/users/${uid}/offers/${offerId}/pitch-analysis`, {
     method: "POST",
     body: fd,
   });
@@ -523,7 +576,7 @@ export const deleteStoredPitchAnalysis = (uid: number, id: number) =>
 export const transcribeAudio = async (audioBlob: Blob): Promise<string> => {
   const fd = new FormData();
   fd.append("file", audioBlob, "recording.webm");
-  const res = await fetch(`${BASE}/transcribe-audio`, {
+  const res = await fetchWithAuth(`${BASE}/transcribe-audio`, {
     method: "POST",
     body: fd,
   });
@@ -658,7 +711,7 @@ export const getInterviewProgress = (uid: number) =>
 export const autoFillProfileFromUpload = async (uid: number, file: File): Promise<AutoFillResult> => {
   const form = new FormData();
   form.append("file", file);
-  const res = await fetch(`${BASE}/users/${uid}/auto-fill-profile/upload`, {
+  const res = await fetchWithAuth(`${BASE}/users/${uid}/auto-fill-profile/upload`, {
     method: "POST",
     body: form,
   });

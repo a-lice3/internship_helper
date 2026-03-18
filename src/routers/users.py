@@ -1,31 +1,33 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from src import crud, schemas
+from src import schemas
+from src.auth import get_current_user
 from src.database import get_db
+from src.models import User
 
 router = APIRouter(prefix="/users", tags=["users"])
 
 
-@router.post("", response_model=schemas.UserResponse)
-def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
-    existing = crud.get_user_by_email(db, user.email)
-    if existing:
-        raise HTTPException(status_code=400, detail="Email already registered")
-    return crud.create_user(db, user)
-
-
 @router.get("/by-email/{email}", response_model=schemas.UserResponse)
-def get_user_by_email(email: str, db: Session = Depends(get_db)):
-    user = crud.get_user_by_email(db, email)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    return user
+def get_user_by_email(
+    email: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get a user by email. Only the authenticated user can look up their own email."""
+    if current_user.email != email:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    return current_user
 
 
 @router.get("/{user_id}", response_model=schemas.UserResponse)
-def get_user(user_id: int, db: Session = Depends(get_db)):
-    user = crud.get_user(db, user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    return user
+def get_user(
+    user_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get a user by ID. Only the authenticated user can access their own data."""
+    if current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    return current_user

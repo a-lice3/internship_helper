@@ -40,7 +40,18 @@ def client():
 
 
 @pytest.fixture
-def sample_user(client):
-    """Create and return a test user."""
-    response = client.post("/users", json={"name": "Alice", "email": "alice@test.com"})
-    return response.json()
+def auth_header(client):
+    """Register a test user and return the Authorization header dict."""
+    resp = client.post(
+        "/auth/register",
+        json={"name": "Alice", "email": "alice@test.com", "password": "testpass123"},
+    )
+    token = resp.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture
+def sample_user(client, auth_header):
+    """Create and return a test user dict (already registered via auth_header)."""
+    resp = client.get("/auth/me", headers=auth_header)
+    return resp.json()
