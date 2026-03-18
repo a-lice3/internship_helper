@@ -211,9 +211,10 @@ export function useInterview(sessionId: string | null) {
         ? Math.round((Date.now() - recordingStartRef.current) / 1000)
         : undefined;
 
-      // Save turn locally
+      // Save turn locally and switch to thinking so the timer pauses
       setState((s) => ({
         ...s,
+        status: "thinking",
         turns: [
           ...s.turns,
           { question: s.currentQuestion, answer: transcript },
@@ -237,6 +238,7 @@ export function useInterview(sessionId: string | null) {
     if (!wsRef.current) return;
     setState((s) => ({
       ...s,
+      status: "thinking",
       turns: [
         ...s.turns,
         { question: s.currentQuestion, answer: "(skipped)" },
@@ -313,6 +315,10 @@ export function useInterview(sessionId: string | null) {
     };
   }, [stopRecording]);
 
+  const pauseTimer = useCallback(() => {
+    setState((s) => (s.status === "active" ? { ...s, status: "thinking" } : s));
+  }, []);
+
   return {
     state,
     connect,
@@ -322,5 +328,6 @@ export function useInterview(sessionId: string | null) {
     skipQuestion,
     endInterview,
     requestHint,
+    pauseTimer,
   };
 }
