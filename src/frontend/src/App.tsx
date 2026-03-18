@@ -8,18 +8,19 @@ import AIPage from "./pages/AIPage";
 import InterviewPage from "./pages/InterviewPage";
 import "./App.css";
 
-type Tab = "profile" | "offers" | "cvs" | "templates" | "ai" | "interview";
+type Tab = "offers" | "profile" | "cvs" | "templates" | "ai" | "interview";
 
-const TABS: { key: Tab; label: string }[] = [
-  { key: "profile", label: "Profile" },
-  { key: "offers", label: "Offers" },
-  { key: "cvs", label: "CVs" },
-  { key: "templates", label: "Templates" },
-  { key: "ai", label: "AI" },
-  { key: "interview", label: "Interview" },
+const TABS: { key: Tab; label: string; icon: string }[] = [
+  { key: "offers", label: "Offers", icon: "\uD83D\uDCCB" },
+  { key: "profile", label: "Profile", icon: "\uD83D\uDC64" },
+  { key: "cvs", label: "CVs", icon: "\uD83D\uDCC4" },
+  { key: "templates", label: "Templates", icon: "\uD83D\uDCDD" },
+  { key: "ai", label: "AI Assistant", icon: "\u2728" },
+  { key: "interview", label: "Interview", icon: "\uD83C\uDFA4" },
 ];
 
-// Ecran de login/creation de compte - affiche avant la navigation
+// ---------- Login ----------
+
 function LoginScreen({ onLogin }: { onLogin: (user: api.User) => void }) {
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [loginEmail, setLoginEmail] = useState("");
@@ -45,7 +46,6 @@ function LoginScreen({ onLogin }: { onLogin: (user: api.User) => void }) {
       const user = await api.createUser(name, email);
       onLogin(user);
     } catch {
-      // Email might already exist — try to log in instead
       try {
         const user = await api.getUserByEmail(email);
         onLogin(user);
@@ -57,75 +57,114 @@ function LoginScreen({ onLogin }: { onLogin: (user: api.User) => void }) {
 
   return (
     <div className="login-screen">
-      <h1>Internship Helper</h1>
-      <p className="subtitle">Manage your internship search with AI</p>
+      <div className="login-card">
+        <div className="login-icon">{"\u2728"}</div>
+        <h1>Internship Helper</h1>
+        <p className="subtitle">Your AI-powered internship search companion</p>
 
-      <div className="login-toggle">
-        <button className={mode === "login" ? "active" : ""} onClick={() => setMode("login")}>
-          Login
-        </button>
-        <button className={mode === "signup" ? "active" : ""} onClick={() => setMode("signup")}>
-          Sign up
-        </button>
+        <div className="login-toggle">
+          <button className={mode === "login" ? "active" : ""} onClick={() => setMode("login")}>
+            Login
+          </button>
+          <button className={mode === "signup" ? "active" : ""} onClick={() => setMode("signup")}>
+            Sign up
+          </button>
+        </div>
+
+        {mode === "login" ? (
+          <form onSubmit={handleLogin} className="login-form">
+            <label>
+              Email
+              <input
+                type="email"
+                placeholder="you@example.com"
+                value={loginEmail}
+                onChange={(e) => setLoginEmail(e.target.value)}
+              />
+            </label>
+            <button type="submit">Login</button>
+          </form>
+        ) : (
+          <form onSubmit={handleSignup} className="login-form">
+            <label>
+              Name
+              <input placeholder="Your name" value={name} onChange={(e) => setName(e.target.value)} />
+            </label>
+            <label>
+              Email
+              <input placeholder="you@example.com" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            </label>
+            <button type="submit">Create account</button>
+          </form>
+        )}
+
+        {error && <p className="error" style={{ marginTop: 12 }}>{error}</p>}
       </div>
-
-      {mode === "login" ? (
-        <form onSubmit={handleLogin} className="login-form">
-          <input
-            type="email"
-            placeholder="Your email"
-            value={loginEmail}
-            onChange={(e) => setLoginEmail(e.target.value)}
-          />
-          <button type="submit">Login</button>
-        </form>
-      ) : (
-        <form onSubmit={handleSignup} className="login-form">
-          <input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
-          <input placeholder="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-          <button type="submit">Create account</button>
-        </form>
-      )}
-
-      {error && <p className="error">{error}</p>}
     </div>
   );
 }
+
+// ---------- Main App ----------
 
 export default function App() {
   const [user, setUser] = useState<api.User | null>(null);
   const [tab, setTab] = useState<Tab>("offers");
 
-  // Pas connecte -> ecran de login
   if (!user) {
     return <LoginScreen onLogin={setUser} />;
   }
 
+  const initials = user.name
+    .split(" ")
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+
   return (
     <div className="app">
-      <header className="app-header">
-        <h1>Internship Helper</h1>
-        <span className="user-info">
-          {user.name}
-          <button className="btn-logout" onClick={() => setUser(null)}>Logout</button>
-        </span>
-      </header>
+      {/* Sidebar */}
+      <aside className="sidebar">
+        <div className="sidebar-brand">
+          <div className="sidebar-brand-icon">{"\u2728"}</div>
+          <div>
+            <h1>Intern Helper</h1>
+            <div className="brand-sub">AI-powered</div>
+          </div>
+        </div>
 
-      <nav className="tab-bar">
-        {TABS.map((t) => (
+        <nav className="sidebar-nav">
+          {TABS.map((t) => (
+            <button
+              key={t.key}
+              className={tab === t.key ? "active" : ""}
+              onClick={() => setTab(t.key)}
+            >
+              <span className="nav-icon">{t.icon}</span>
+              <span>{t.label}</span>
+            </button>
+          ))}
+        </nav>
+
+        <div className="sidebar-user">
+          <div className="sidebar-avatar">{initials}</div>
+          <div className="sidebar-user-info">
+            <div className="sidebar-user-name">{user.name}</div>
+          </div>
           <button
-            key={t.key}
-            className={tab === t.key ? "active" : ""}
-            onClick={() => setTab(t.key)}
+            className="btn-logout"
+            onClick={() => setUser(null)}
+            title="Logout"
           >
-            {t.label}
+            {"\u2192"}
           </button>
-        ))}
-      </nav>
+        </div>
+      </aside>
 
-      <main>
-        {tab === "profile" && <ProfilePage userId={user.id} />}
+      {/* Main content */}
+      <main className="main-content">
         {tab === "offers" && <OffersPage userId={user.id} />}
+        {tab === "profile" && <ProfilePage userId={user.id} />}
         {tab === "cvs" && <CVsPage userId={user.id} />}
         {tab === "templates" && <TemplatesPage userId={user.id} />}
         {tab === "ai" && <AIPage userId={user.id} />}

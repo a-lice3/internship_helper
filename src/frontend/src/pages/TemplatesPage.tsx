@@ -19,7 +19,6 @@ export default function TemplatesPage({ userId }: { userId: number }) {
     setContent("");
   };
 
-  // Upload PDF : on envoie en multipart/form-data (pas du JSON)
   const handleUploadPdf = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -36,7 +35,7 @@ export default function TemplatesPage({ userId }: { userId: number }) {
     }
     const tpl: api.Template = await res.json();
     setTemplates([...templates, tpl]);
-    e.target.value = ""; // reset file input
+    e.target.value = "";
   };
 
   const handleDelete = async (id: number) => {
@@ -46,25 +45,34 @@ export default function TemplatesPage({ userId }: { userId: number }) {
 
   return (
     <div className="page">
-      <h2>Cover Letter Templates</h2>
+      <div className="page-header">
+        <h2>Cover Letter Templates</h2>
+        <p className="page-desc">Save templates for AI-powered cover letter generation</p>
+      </div>
 
-      <div className="two-col">
-        <form onSubmit={handleAddText} className="form-vertical">
-          <h3>Add from text</h3>
-          <input placeholder="Template name" value={name} onChange={(e) => setName(e.target.value)} />
-          <textarea
-            placeholder="Dear hiring manager, ..."
-            rows={5}
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-          />
-          <button type="submit">Add template</button>
-        </form>
+      <div className="bento-grid-2" style={{ marginBottom: 24 }}>
+        <div className="glass-card">
+          <div className="glass-card-header"><h3>Add from text</h3></div>
+          <div className="glass-card-body">
+            <form onSubmit={handleAddText} className="form-vertical">
+              <input placeholder="Template name" value={name} onChange={(e) => setName(e.target.value)} />
+              <textarea
+                placeholder="Dear hiring manager, ..."
+                rows={5}
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+              />
+              <button type="submit">Add template</button>
+            </form>
+          </div>
+        </div>
 
-        <div className="form-vertical">
-          <h3>Upload PDF</h3>
-          <p className="hint">The text will be extracted automatically for AI use.</p>
-          <input type="file" accept=".pdf" onChange={handleUploadPdf} />
+        <div className="glass-card">
+          <div className="glass-card-header"><h3>Upload PDF</h3></div>
+          <div className="glass-card-body">
+            <p className="hint" style={{ marginBottom: 12 }}>The text will be extracted automatically for AI use.</p>
+            <input type="file" accept=".pdf" onChange={handleUploadPdf} />
+          </div>
         </div>
       </div>
 
@@ -88,42 +96,22 @@ export default function TemplatesPage({ userId }: { userId: number }) {
   );
 }
 
-/* ---------- Accordion component for templates ---------- */
-
 function TemplateAccordion({
-  name,
-  content,
-  isPdf,
-  createdAt,
-  onDelete,
+  name, content, isPdf, createdAt, onDelete,
 }: {
-  name: string;
-  content: string;
-  isPdf: boolean;
-  createdAt: string | null;
-  onDelete: () => void;
+  name: string; content: string; isPdf: boolean; createdAt: string | null; onDelete: () => void;
 }) {
   const [open, setOpen] = useState(false);
-
   const toggle = useCallback(() => setOpen((o) => !o), []);
 
   return (
-    <div className={`card accordion ${open ? "accordion-open" : ""}`}>
-      <div className="card-header accordion-header" onClick={toggle}>
+    <div className="glass-card" style={{ marginBottom: 8 }}>
+      <div className="glass-card-header accordion-header" onClick={toggle}>
         <span className="accordion-chevron">{open ? "\u25BC" : "\u25B6"}</span>
-        <strong>{name}</strong>
+        <strong style={{ flex: 1 }}>{name}</strong>
         {isPdf && <span className="tag">PDF</span>}
-        {createdAt && (
-          <span className="hint" style={{ marginLeft: "auto" }}>
-            {new Date(createdAt).toLocaleDateString()}
-          </span>
-        )}
-        <button
-          className="btn-delete"
-          onClick={(e) => { e.stopPropagation(); onDelete(); }}
-        >
-          x
-        </button>
+        {createdAt && <span className="hint" style={{ marginLeft: "auto" }}>{new Date(createdAt).toLocaleDateString()}</span>}
+        <button className="btn-delete" onClick={(e) => { e.stopPropagation(); onDelete(); }}>x</button>
       </div>
       {open && <pre className="card-body">{content}</pre>}
     </div>

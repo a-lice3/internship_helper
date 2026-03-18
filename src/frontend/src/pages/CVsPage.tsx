@@ -10,42 +10,33 @@ interface ChatMessage {
 export default function CVsPage({ userId }: { userId: number }) {
   const [cvs, setCvs] = useState<api.CV[]>([]);
 
-  // Upload form
   const [file, setFile] = useState<File | null>(null);
   const [cvName, setCvName] = useState("");
   const [company, setCompany] = useState("");
   const [jobTitle, setJobTitle] = useState("");
   const [uploading, setUploading] = useState(false);
 
-  // Editor state
   const [editingCV, setEditingCV] = useState<api.CV | null>(null);
   const [editedLatex, setEditedLatex] = useState("");
   const [saving, setSaving] = useState(false);
 
-  // PDF preview
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [compiling, setCompiling] = useState(false);
   const [compileError, setCompileError] = useState("");
 
-  // Chat state
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    api.getCVs(userId).then(setCvs);
-  }, [userId]);
+  useEffect(() => { api.getCVs(userId).then(setCvs); }, [userId]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages]);
 
-  // Cleanup PDF blob URL on unmount or change
   useEffect(() => {
-    return () => {
-      if (pdfUrl) URL.revokeObjectURL(pdfUrl);
-    };
+    return () => { if (pdfUrl) URL.revokeObjectURL(pdfUrl); };
   }, [pdfUrl]);
 
   const handleUpload = async (e: React.FormEvent) => {
@@ -55,15 +46,10 @@ export default function CVsPage({ userId }: { userId: number }) {
     try {
       const cv = await api.uploadCVFile(userId, file, cvName || file.name, company, jobTitle);
       setCvs([cv, ...cvs]);
-      setFile(null);
-      setCvName("");
-      setCompany("");
-      setJobTitle("");
+      setFile(null); setCvName(""); setCompany(""); setJobTitle("");
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : "Upload failed");
-    } finally {
-      setUploading(false);
-    }
+    } finally { setUploading(false); }
   };
 
   const handleDelete = async (id: number) => {
@@ -76,20 +62,15 @@ export default function CVsPage({ userId }: { userId: number }) {
   const openEditor = (cv: api.CV) => {
     setEditingCV(cv);
     setEditedLatex(cv.latex_content || "");
-    setChatMessages([]);
-    setChatInput("");
-    setPdfUrl(null);
-    setCompileError("");
+    setChatMessages([]); setChatInput("");
+    setPdfUrl(null); setCompileError("");
   };
 
   const closeEditor = () => {
     if (pdfUrl) URL.revokeObjectURL(pdfUrl);
-    setEditingCV(null);
-    setEditedLatex("");
-    setChatMessages([]);
-    setChatInput("");
-    setPdfUrl(null);
-    setCompileError("");
+    setEditingCV(null); setEditedLatex("");
+    setChatMessages([]); setChatInput("");
+    setPdfUrl(null); setCompileError("");
   };
 
   const handleSaveLatex = async () => {
@@ -101,26 +82,20 @@ export default function CVsPage({ userId }: { userId: number }) {
       setEditingCV(updated);
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : "Save failed");
-    } finally {
-      setSaving(false);
-    }
+    } finally { setSaving(false); }
   };
 
   const handleRefreshPdf = async () => {
     if (!editingCV) return;
-    setCompiling(true);
-    setCompileError("");
+    setCompiling(true); setCompileError("");
     try {
-      // Save current latex first
       await api.updateCV(userId, editingCV.id, { latex_content: editedLatex });
       const blob = await api.compileCVPdf(userId, editingCV.id);
       if (pdfUrl) URL.revokeObjectURL(pdfUrl);
       setPdfUrl(URL.createObjectURL(blob));
     } catch (err: unknown) {
       setCompileError(err instanceof Error ? err.message : "Compilation failed");
-    } finally {
-      setCompiling(false);
-    }
+    } finally { setCompiling(false); }
   };
 
   const handleDownloadPdf = () => {
@@ -135,35 +110,24 @@ export default function CVsPage({ userId }: { userId: number }) {
     const newMessages: ChatMessage[] = [...chatMessages, { role: "user", content: userMsg }];
     setChatMessages(newMessages);
     setChatLoading(true);
-
     try {
       const history = chatMessages.map((m) => ({ role: m.role, content: m.content }));
       const result = await api.chatEditCV(userId, editingCV.id, userMsg, history.length > 0 ? history : undefined);
       setEditedLatex(result.updated_latex);
-
       const updatedCV = { ...editingCV, latex_content: result.updated_latex };
       setEditingCV(updatedCV);
       setCvs(cvs.map((c) => (c.id === updatedCV.id ? updatedCV : c)));
-
       setChatMessages([...newMessages, { role: "assistant", content: "Done! The LaTeX has been updated." }]);
     } catch (err: unknown) {
-      setChatMessages([
-        ...newMessages,
-        { role: "assistant", content: `Error: ${err instanceof Error ? err.message : "Something went wrong"}` },
-      ]);
-    } finally {
-      setChatLoading(false);
-    }
+      setChatMessages([...newMessages, { role: "assistant", content: `Error: ${err instanceof Error ? err.message : "Something went wrong"}` }]);
+    } finally { setChatLoading(false); }
   };
 
   const handleChatKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleChatSend();
-    }
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleChatSend(); }
   };
 
-  // ---------- Editor view ----------
+  // Editor view
   if (editingCV) {
     return (
       <div className="cv-editor-page">
@@ -177,69 +141,42 @@ export default function CVsPage({ userId }: { userId: number }) {
             <button onClick={handleRefreshPdf} disabled={compiling} className="btn-download">
               {compiling ? "Compiling..." : "Refresh PDF"}
             </button>
-            {pdfUrl && (
-              <button onClick={handleDownloadPdf} className="btn-download">
-                Download PDF
-              </button>
-            )}
+            {pdfUrl && <button onClick={handleDownloadPdf} className="btn-download">Download PDF</button>}
           </div>
         </div>
 
         <div className="cv-editor-body">
-          {/* Top row: LaTeX + PDF side by side */}
           <div className="cv-editor-top">
             <div className="cv-editor-left">
               <div className="cv-editor-label">LaTeX Source</div>
-              <textarea
-                className="cv-latex-textarea"
-                value={editedLatex}
-                onChange={(e) => setEditedLatex(e.target.value)}
-                spellCheck={false}
-              />
+              <textarea className="cv-latex-textarea" value={editedLatex} onChange={(e) => setEditedLatex(e.target.value)} spellCheck={false} />
             </div>
-
             <div className="cv-pdf-panel">
               <div className="cv-editor-label cv-pdf-label-bar">
                 <span>PDF Preview</span>
-                <button
-                  onClick={handleRefreshPdf}
-                  disabled={compiling}
-                  className="cv-pdf-refresh-btn"
-                  title="Compile & refresh"
-                >
+                <button onClick={handleRefreshPdf} disabled={compiling} className="cv-pdf-refresh-btn" title="Compile & refresh">
                   {compiling ? "..." : "\u21BB"}
                 </button>
               </div>
               <div className="cv-pdf-viewer">
                 {compileError && <p className="error" style={{ padding: 12 }}>{compileError}</p>}
                 {!pdfUrl && !compileError && !compiling && (
-                  <div className="cv-pdf-placeholder">
-                    <p>Click <strong>Refresh PDF</strong> to compile</p>
-                  </div>
+                  <div className="cv-pdf-placeholder"><p>Click <strong>Refresh PDF</strong> to compile</p></div>
                 )}
                 {compiling && !pdfUrl && (
-                  <div className="cv-pdf-placeholder">
-                    <p>Compiling...</p>
-                  </div>
+                  <div className="cv-pdf-placeholder"><p>Compiling...</p></div>
                 )}
-                {pdfUrl && (
-                  <iframe
-                    src={pdfUrl}
-                    className="cv-pdf-iframe"
-                    title="PDF Preview"
-                  />
-                )}
+                {pdfUrl && <iframe src={pdfUrl} className="cv-pdf-iframe" title="PDF Preview" />}
               </div>
             </div>
           </div>
 
-          {/* Bottom row: Chat bar */}
           <div className="cv-chat-bottom">
             <div className="cv-chat-messages cv-chat-messages-vertical">
               {chatMessages.length === 0 && (
                 <div className="cv-chat-welcome">
                   <span>Ask the AI to edit your CV &mdash;</span>
-                  <span className="hint">"Met un fond bleu", "Change font to Arial", "Reorder sections"...</span>
+                  <span className="hint">"Change font to Arial", "Reorder sections"...</span>
                 </div>
               )}
               {chatMessages.map((msg, i) => (
@@ -257,21 +194,8 @@ export default function CVsPage({ userId }: { userId: number }) {
               <div ref={chatEndRef} />
             </div>
             <div className="cv-chat-input-row">
-              <textarea
-                className="cv-chat-input"
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                onKeyDown={handleChatKeyDown}
-                placeholder="Describe the change you want..."
-                rows={1}
-              />
-              <button
-                onClick={handleChatSend}
-                disabled={!chatInput.trim() || chatLoading}
-                className="cv-chat-send"
-              >
-                Send
-              </button>
+              <textarea className="cv-chat-input" value={chatInput} onChange={(e) => setChatInput(e.target.value)} onKeyDown={handleChatKeyDown} placeholder="Describe the change you want..." rows={1} />
+              <button onClick={handleChatSend} disabled={!chatInput.trim() || chatLoading} className="cv-chat-send">Send</button>
             </div>
           </div>
         </div>
@@ -279,103 +203,95 @@ export default function CVsPage({ userId }: { userId: number }) {
     );
   }
 
-  // ---------- CV list view ----------
+  // CV list view
   return (
     <div className="page">
-      <h2>CVs</h2>
+      <div className="page-header">
+        <h2>CVs</h2>
+        <p className="page-desc">Upload and manage your CVs</p>
+      </div>
 
-      <form onSubmit={handleUpload} className="inline-form" style={{ flexWrap: "wrap", marginBottom: "1.5rem" }}>
-        <input
-          type="file"
-          accept=".pdf,.tex,.zip"
-          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-        />
-        <input placeholder="CV name" value={cvName} onChange={(e) => setCvName(e.target.value)} />
-        <input placeholder="Company" value={company} onChange={(e) => setCompany(e.target.value)} />
-        <input placeholder="Job title" value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} />
-        <button type="submit" disabled={!file || uploading}>
-          {uploading ? "Uploading..." : "Upload CV"}
-        </button>
-      </form>
+      <div className="glass-card" style={{ marginBottom: 20 }}>
+        <div className="glass-card-body">
+          <form onSubmit={handleUpload} className="form-grid">
+            <label>
+              File
+              <input type="file" accept=".pdf,.tex,.zip" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+            </label>
+            <label>
+              CV name
+              <input placeholder="My CV" value={cvName} onChange={(e) => setCvName(e.target.value)} />
+            </label>
+            <label>
+              Company
+              <input placeholder="Company" value={company} onChange={(e) => setCompany(e.target.value)} />
+            </label>
+            <label>
+              Job title
+              <input placeholder="Job title" value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} />
+            </label>
+            <button type="submit" disabled={!file || uploading}>
+              {uploading ? "Uploading..." : "Upload CV"}
+            </button>
+          </form>
+        </div>
+      </div>
 
       {cvs.length === 0 ? (
         <p className="empty">No CVs yet. Upload a PDF, LaTeX (.tex), or zip file.</p>
       ) : (
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Company</th>
-              <th>Job Title</th>
-              <th>Type</th>
-              <th>Date</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {cvs.map((cv) => (
-              <tr key={cv.id}>
-                <td>{cv.name}</td>
-                <td>{cv.company || "-"}</td>
-                <td>{cv.job_title || "-"}</td>
-                <td>
-                  {cv.latex_content ? (
-                    <span className="tag">LaTeX</span>
-                  ) : cv.file_path ? (
-                    <span className="tag">PDF</span>
-                  ) : cv.is_adapted ? (
-                    <span className="tag tag-ai">AI-adapted</span>
-                  ) : (
-                    <span className="tag">Text</span>
-                  )}
-                </td>
-                <td>{cv.created_at ? new Date(cv.created_at).toLocaleDateString() : "-"}</td>
-                <td>
-                  <div className="actions-row">
-                    {cv.latex_content && (
-                      <button onClick={() => openEditor(cv)} className="btn-edit" title="Edit LaTeX">
-                        Edit
-                      </button>
+        <div className="card-list">
+          {cvs.map((cv) => (
+            <div key={cv.id} className="glass-card" style={{ padding: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 18px" }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <strong style={{ color: "var(--text-h)", fontSize: 14 }}>{cv.name}</strong>
+                    {cv.latex_content ? (
+                      <span className="tag">LaTeX</span>
+                    ) : cv.file_path ? (
+                      <span className="tag">PDF</span>
+                    ) : cv.is_adapted ? (
+                      <span className="tag tag-ai">AI-adapted</span>
+                    ) : (
+                      <span className="tag">Text</span>
                     )}
-                    {cv.file_path && (
-                      <a href={api.downloadCVUrl(userId, cv.id)} target="_blank" rel="noreferrer">
-                        Download
-                      </a>
-                    )}
-                    {cv.latex_content && (
-                      <a
-                        href="#"
-                        onClick={async (e) => {
-                          e.preventDefault();
-                          try {
-                            const res = await fetch(api.compileCVUrl(userId, cv.id), { method: "POST" });
-                            if (!res.ok) {
-                              const body = await res.json().catch(() => ({}));
-                              alert(body.detail || "Compilation failed");
-                              return;
-                            }
-                            const blob = await res.blob();
-                            const url = URL.createObjectURL(blob);
-                            const a = document.createElement("a");
-                            a.href = url;
-                            a.download = `${cv.name}.pdf`;
-                            a.click();
-                            URL.revokeObjectURL(url);
-                          } catch {
-                            alert("Compilation failed");
-                          }
-                        }}
-                      >
-                        Compile PDF
-                      </a>
-                    )}
-                    <button onClick={() => handleDelete(cv.id)} className="btn-delete" title="Delete">x</button>
                   </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                  <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2, display: "flex", gap: 12 }}>
+                    {cv.company && <span>{cv.company}</span>}
+                    {cv.job_title && <span>{cv.job_title}</span>}
+                    {cv.created_at && <span>{new Date(cv.created_at).toLocaleDateString()}</span>}
+                  </div>
+                </div>
+                <div className="actions-row">
+                  {cv.latex_content && <button onClick={() => openEditor(cv)} className="btn-ghost">Edit</button>}
+                  {cv.file_path && <a href={api.downloadCVUrl(userId, cv.id)} target="_blank" rel="noreferrer" style={{ fontSize: 12 }}>Download</a>}
+                  {cv.latex_content && (
+                    <a
+                      href="#"
+                      onClick={async (e) => {
+                        e.preventDefault();
+                        try {
+                          const res = await fetch(api.compileCVUrl(userId, cv.id), { method: "POST" });
+                          if (!res.ok) { const body = await res.json().catch(() => ({})); alert(body.detail || "Compilation failed"); return; }
+                          const blob = await res.blob();
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement("a");
+                          a.href = url; a.download = `${cv.name}.pdf`; a.click();
+                          URL.revokeObjectURL(url);
+                        } catch { alert("Compilation failed"); }
+                      }}
+                      style={{ fontSize: 12 }}
+                    >
+                      Compile PDF
+                    </a>
+                  )}
+                  <button onClick={() => handleDelete(cv.id)} className="btn-icon" title="Delete">x</button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );
