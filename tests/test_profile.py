@@ -2,7 +2,7 @@ def test_add_and_list_skills(client, sample_user):
     uid = sample_user["id"]
     response = client.post(
         f"/users/{uid}/skills",
-        json={"name": "Python", "category": "hard", "level": "advanced"},
+        json={"name": "Python", "category": "programming", "level": "advanced"},
     )
     assert response.status_code == 200
     assert response.json()["name"] == "Python"
@@ -15,7 +15,7 @@ def test_add_and_list_skills(client, sample_user):
 def test_delete_skill(client, sample_user):
     uid = sample_user["id"]
     skill = client.post(
-        f"/users/{uid}/skills", json={"name": "SQL", "category": "hard"}
+        f"/users/{uid}/skills", json={"name": "SQL", "category": "programming"}
     ).json()
 
     response = client.delete(f"/users/{uid}/skills/{skill['id']}")
@@ -25,10 +25,10 @@ def test_delete_skill(client, sample_user):
     assert len(response.json()) == 0
 
 
-def test_add_and_list_projects(client, sample_user):
+def test_add_and_list_experiences(client, sample_user):
     uid = sample_user["id"]
     response = client.post(
-        f"/users/{uid}/projects",
+        f"/users/{uid}/experiences",
         json={
             "title": "My App",
             "description": "A web app",
@@ -38,7 +38,7 @@ def test_add_and_list_projects(client, sample_user):
     assert response.status_code == 200
     assert response.json()["title"] == "My App"
 
-    response = client.get(f"/users/{uid}/projects")
+    response = client.get(f"/users/{uid}/experiences")
     assert len(response.json()) == 1
 
 
@@ -69,6 +69,6 @@ def test_add_and_list_languages(client, sample_user):
 
 def test_profile_user_not_found(client):
     response = client.post(
-        "/users/999/skills", json={"name": "Python", "category": "hard"}
+        "/users/999/skills", json={"name": "Python", "category": "programming"}
     )
     assert response.status_code == 404

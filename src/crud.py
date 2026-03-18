@@ -17,6 +17,10 @@ def get_user(db: Session, user_id: int) -> models.User | None:
     return db.query(models.User).filter(models.User.id == user_id).first()
 
 
+def get_user_by_email(db: Session, email: str) -> models.User | None:
+    return db.query(models.User).filter(models.User.email == email).first()
+
+
 # ---------- Skill ----------
 
 
@@ -37,6 +41,21 @@ def get_skills(db: Session, user_id: int) -> list[models.Skill]:
     return db.query(models.Skill).filter(models.Skill.user_id == user_id).all()
 
 
+def update_skill(
+    db: Session, skill_id: int, update: schemas.SkillUpdate
+) -> models.Skill | None:
+    skill = db.query(models.Skill).filter(models.Skill.id == skill_id).first()
+    if not skill:
+        return None
+    for field, value in update.model_dump(exclude_unset=True).items():
+        if field == "category" and value is not None:
+            value = models.SkillCategory(value)
+        setattr(skill, field, value)
+    db.commit()
+    db.refresh(skill)
+    return skill
+
+
 def delete_skill(db: Session, skill_id: int) -> bool:
     skill = db.query(models.Skill).filter(models.Skill.id == skill_id).first()
     if not skill:
@@ -46,34 +65,51 @@ def delete_skill(db: Session, skill_id: int) -> bool:
     return True
 
 
-# ---------- Project ----------
+# ---------- Experience ----------
 
 
-def create_project(
-    db: Session, user_id: int, project: schemas.ProjectCreate
-) -> models.Project:
-    db_project = models.Project(
+def create_experience(
+    db: Session, user_id: int, exp: schemas.ExperienceCreate
+) -> models.Experience:
+    db_exp = models.Experience(
         user_id=user_id,
-        title=project.title,
-        description=project.description,
-        technologies=project.technologies,
-        link=project.link,
+        title=exp.title,
+        description=exp.description,
+        technologies=exp.technologies,
+        client=exp.client,
+        start_date=exp.start_date,
+        end_date=exp.end_date,
     )
-    db.add(db_project)
+    db.add(db_exp)
     db.commit()
-    db.refresh(db_project)
-    return db_project
+    db.refresh(db_exp)
+    return db_exp
 
 
-def get_projects(db: Session, user_id: int) -> list[models.Project]:
-    return db.query(models.Project).filter(models.Project.user_id == user_id).all()
+def get_experiences(db: Session, user_id: int) -> list[models.Experience]:
+    return (
+        db.query(models.Experience).filter(models.Experience.user_id == user_id).all()
+    )
 
 
-def delete_project(db: Session, project_id: int) -> bool:
-    project = db.query(models.Project).filter(models.Project.id == project_id).first()
-    if not project:
+def update_experience(
+    db: Session, exp_id: int, update: schemas.ExperienceUpdate
+) -> models.Experience | None:
+    exp = db.query(models.Experience).filter(models.Experience.id == exp_id).first()
+    if not exp:
+        return None
+    for field, value in update.model_dump(exclude_unset=True).items():
+        setattr(exp, field, value)
+    db.commit()
+    db.refresh(exp)
+    return exp
+
+
+def delete_experience(db: Session, exp_id: int) -> bool:
+    exp = db.query(models.Experience).filter(models.Experience.id == exp_id).first()
+    if not exp:
         return False
-    db.delete(project)
+    db.delete(exp)
     db.commit()
     return True
 
@@ -89,6 +125,7 @@ def create_education(
         school=edu.school,
         degree=edu.degree,
         field=edu.field,
+        description=edu.description,
         start_date=edu.start_date,
         end_date=edu.end_date,
     )
@@ -100,6 +137,19 @@ def create_education(
 
 def get_education(db: Session, user_id: int) -> list[models.Education]:
     return db.query(models.Education).filter(models.Education.user_id == user_id).all()
+
+
+def update_education(
+    db: Session, edu_id: int, update: schemas.EducationUpdate
+) -> models.Education | None:
+    edu = db.query(models.Education).filter(models.Education.id == edu_id).first()
+    if not edu:
+        return None
+    for field, value in update.model_dump(exclude_unset=True).items():
+        setattr(edu, field, value)
+    db.commit()
+    db.refresh(edu)
+    return edu
 
 
 def delete_education(db: Session, edu_id: int) -> bool:
@@ -132,6 +182,21 @@ def get_languages(db: Session, user_id: int) -> list[models.Language]:
     return db.query(models.Language).filter(models.Language.user_id == user_id).all()
 
 
+def update_language(
+    db: Session, lang_id: int, update: schemas.LanguageUpdate
+) -> models.Language | None:
+    lang = db.query(models.Language).filter(models.Language.id == lang_id).first()
+    if not lang:
+        return None
+    for field, value in update.model_dump(exclude_unset=True).items():
+        if field == "level" and value is not None:
+            value = models.LanguageLevel(value)
+        setattr(lang, field, value)
+    db.commit()
+    db.refresh(lang)
+    return lang
+
+
 def delete_language(db: Session, lang_id: int) -> bool:
     lang = db.query(models.Language).filter(models.Language.id == lang_id).first()
     if not lang:
@@ -139,6 +204,76 @@ def delete_language(db: Session, lang_id: int) -> bool:
     db.delete(lang)
     db.commit()
     return True
+
+
+# ---------- Extracurricular ----------
+
+
+def create_extracurricular(
+    db: Session, user_id: int, extra: schemas.ExtracurricularCreate
+) -> models.Extracurricular:
+    db_extra = models.Extracurricular(
+        user_id=user_id,
+        name=extra.name,
+        description=extra.description,
+    )
+    db.add(db_extra)
+    db.commit()
+    db.refresh(db_extra)
+    return db_extra
+
+
+def get_extracurriculars(db: Session, user_id: int) -> list[models.Extracurricular]:
+    return (
+        db.query(models.Extracurricular)
+        .filter(models.Extracurricular.user_id == user_id)
+        .all()
+    )
+
+
+def update_extracurricular(
+    db: Session, extra_id: int, update: schemas.ExtracurricularUpdate
+) -> models.Extracurricular | None:
+    extra = (
+        db.query(models.Extracurricular)
+        .filter(models.Extracurricular.id == extra_id)
+        .first()
+    )
+    if not extra:
+        return None
+    for field, value in update.model_dump(exclude_unset=True).items():
+        setattr(extra, field, value)
+    db.commit()
+    db.refresh(extra)
+    return extra
+
+
+def delete_extracurricular(db: Session, extra_id: int) -> bool:
+    extra = (
+        db.query(models.Extracurricular)
+        .filter(models.Extracurricular.id == extra_id)
+        .first()
+    )
+    if not extra:
+        return False
+    db.delete(extra)
+    db.commit()
+    return True
+
+
+# ---------- Clear profile ----------
+
+
+def clear_profile(db: Session, user_id: int) -> None:
+    """Delete all profile data for a user."""
+    db.query(models.Skill).filter(models.Skill.user_id == user_id).delete()
+    db.query(models.Experience).filter(models.Experience.user_id == user_id).delete()
+    db.query(models.Education).filter(models.Education.user_id == user_id).delete()
+    db.query(models.Language).filter(models.Language.user_id == user_id).delete()
+    db.query(models.Extracurricular).filter(
+        models.Extracurricular.user_id == user_id
+    ).delete()
+    db.commit()
 
 
 # ---------- Cover Letter Template ----------
@@ -213,6 +348,8 @@ def delete_template(db: Session, template_id: int) -> bool:
 def create_offer(
     db: Session, user_id: int, offer: schemas.InternshipOfferCreate
 ) -> models.InternshipOffer:
+    from datetime import date as date_type
+
     db_offer = models.InternshipOffer(
         user_id=user_id,
         company=offer.company,
@@ -220,7 +357,7 @@ def create_offer(
         description=offer.description,
         link=offer.link,
         locations=offer.locations,
-        date_applied=offer.date_applied,
+        date_applied=offer.date_applied or date_type.today(),
         status=models.OfferStatus(offer.status),
     )
     db.add(db_offer)
@@ -270,14 +407,31 @@ def update_offer(
     return db_offer
 
 
+def delete_offer(db: Session, offer_id: int) -> bool:
+    offer = (
+        db.query(models.InternshipOffer)
+        .filter(models.InternshipOffer.id == offer_id)
+        .first()
+    )
+    if not offer:
+        return False
+    db.delete(offer)
+    db.commit()
+    return True
+
+
 # ---------- CV ----------
 
 
 def create_cv(db: Session, user_id: int, cv: schemas.CVCreate) -> models.CV:
     db_cv = models.CV(
         user_id=user_id,
+        name=cv.name,
         content=cv.content,
+        latex_content=cv.latex_content,
+        support_files_dir=cv.support_files_dir,
         company=cv.company,
+        job_title=cv.job_title,
         offer_id=cv.offer_id,
     )
     db.add(db_cv)
@@ -299,6 +453,60 @@ def get_cv(db: Session, cv_id: int) -> models.CV | None:
     return db.query(models.CV).filter(models.CV.id == cv_id).first()
 
 
+def create_cv_from_file(
+    db: Session,
+    user_id: int,
+    name: str,
+    content: str,
+    file_path: str,
+    latex_content: str | None = None,
+    support_files_dir: str | None = None,
+    company: str | None = None,
+    job_title: str | None = None,
+    offer_id: int | None = None,
+) -> models.CV:
+    db_cv = models.CV(
+        user_id=user_id,
+        name=name,
+        content=content,
+        latex_content=latex_content,
+        file_path=file_path,
+        support_files_dir=support_files_dir,
+        company=company,
+        job_title=job_title,
+        offer_id=offer_id,
+    )
+    db.add(db_cv)
+    db.commit()
+    db.refresh(db_cv)
+    return db_cv
+
+
+def update_cv(db: Session, cv_id: int, update: schemas.CVUpdate) -> models.CV | None:
+    cv = db.query(models.CV).filter(models.CV.id == cv_id).first()
+    if not cv:
+        return None
+    for field, value in update.model_dump(exclude_unset=True).items():
+        setattr(cv, field, value)
+    db.commit()
+    db.refresh(cv)
+    return cv
+
+
+def delete_cv(db: Session, cv_id: int) -> bool:
+    cv = db.query(models.CV).filter(models.CV.id == cv_id).first()
+    if not cv:
+        return False
+    file_path = cv.file_path
+    db.delete(cv)
+    db.commit()
+    if file_path:
+        from src.file_service import delete_file
+
+        delete_file(file_path)
+    return True
+
+
 def create_adapted_cv(
     db: Session, user_id: int, offer_id: int, company: str, content: str
 ) -> models.CV:
@@ -313,3 +521,161 @@ def create_adapted_cv(
     db.commit()
     db.refresh(db_cv)
     return db_cv
+
+
+# ---------- Generated Cover Letter ----------
+
+
+def create_generated_cover_letter(
+    db: Session,
+    user_id: int,
+    offer_id: int,
+    template_id: int | None,
+    offer_title: str,
+    company: str,
+    content: str,
+) -> models.GeneratedCoverLetter:
+    obj = models.GeneratedCoverLetter(
+        user_id=user_id,
+        offer_id=offer_id,
+        template_id=template_id,
+        offer_title=offer_title,
+        company=company,
+        content=content,
+    )
+    db.add(obj)
+    db.commit()
+    db.refresh(obj)
+    return obj
+
+
+def get_generated_cover_letters(
+    db: Session, user_id: int
+) -> list[models.GeneratedCoverLetter]:
+    return (
+        db.query(models.GeneratedCoverLetter)
+        .filter(models.GeneratedCoverLetter.user_id == user_id)
+        .order_by(models.GeneratedCoverLetter.created_at.desc())
+        .all()
+    )
+
+
+def delete_generated_cover_letter(db: Session, letter_id: int) -> bool:
+    obj = (
+        db.query(models.GeneratedCoverLetter)
+        .filter(models.GeneratedCoverLetter.id == letter_id)
+        .first()
+    )
+    if not obj:
+        return False
+    db.delete(obj)
+    db.commit()
+    return True
+
+
+# ---------- Skill Gap Analysis ----------
+
+
+def create_skill_gap_analysis(
+    db: Session,
+    user_id: int,
+    offer_id: int,
+    offer_title: str,
+    company: str,
+    missing_hard_skills: str,
+    missing_soft_skills: str,
+    recommendations: str,
+) -> models.SkillGapAnalysis:
+    obj = models.SkillGapAnalysis(
+        user_id=user_id,
+        offer_id=offer_id,
+        offer_title=offer_title,
+        company=company,
+        missing_hard_skills=missing_hard_skills,
+        missing_soft_skills=missing_soft_skills,
+        recommendations=recommendations,
+    )
+    db.add(obj)
+    db.commit()
+    db.refresh(obj)
+    return obj
+
+
+def get_skill_gap_analyses(db: Session, user_id: int) -> list[models.SkillGapAnalysis]:
+    return (
+        db.query(models.SkillGapAnalysis)
+        .filter(models.SkillGapAnalysis.user_id == user_id)
+        .order_by(models.SkillGapAnalysis.created_at.desc())
+        .all()
+    )
+
+
+def delete_skill_gap_analysis(db: Session, analysis_id: int) -> bool:
+    obj = (
+        db.query(models.SkillGapAnalysis)
+        .filter(models.SkillGapAnalysis.id == analysis_id)
+        .first()
+    )
+    if not obj:
+        return False
+    db.delete(obj)
+    db.commit()
+    return True
+
+
+# ---------- Pitch Analysis ----------
+
+
+def create_pitch_analysis(
+    db: Session,
+    user_id: int,
+    offer_id: int | None,
+    offer_title: str | None,
+    company: str | None,
+    transcription: str,
+    structure_clarity: str,
+    strengths: str,
+    improvements: str,
+    offer_relevance: str | None,
+    overall_score: int,
+    summary: str,
+) -> models.PitchAnalysis:
+    obj = models.PitchAnalysis(
+        user_id=user_id,
+        offer_id=offer_id,
+        offer_title=offer_title,
+        company=company,
+        transcription=transcription,
+        structure_clarity=structure_clarity,
+        strengths=strengths,
+        improvements=improvements,
+        offer_relevance=offer_relevance,
+        overall_score=overall_score,
+        summary=summary,
+    )
+    db.add(obj)
+    db.commit()
+    db.refresh(obj)
+    return obj
+
+
+def get_pitch_analyses(db: Session, user_id: int) -> list[models.PitchAnalysis]:
+    return (
+        db.query(models.PitchAnalysis)
+        .filter(models.PitchAnalysis.user_id == user_id)
+        .order_by(models.PitchAnalysis.created_at.desc())
+        .all()
+    )
+
+
+def delete_pitch_analysis(db: Session, analysis_id: int) -> bool:
+    obj = (
+        db.query(models.PitchAnalysis)
+        .filter(models.PitchAnalysis.id == analysis_id)
+        .first()
+    )
+    if not obj:
+        return False
+    db.delete(obj)
+    db.commit()
+    return True

@@ -46,3 +46,10 @@ def update_offer(
     if not offer:
         raise HTTPException(status_code=404, detail="Offer not found")
     return offer
+
+
+@router.delete("/{offer_id}")
+def delete_offer(offer_id: int, db: Session = Depends(get_db)):
+    if not crud.delete_offer(db, offer_id):
+        raise HTTPException(status_code=404, detail="Offer not found")
+    return {"detail": "Offer deleted"}

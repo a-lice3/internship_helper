@@ -35,10 +35,11 @@ class LanguageLevel(str, enum.Enum):
 
 
 class SkillCategory(str, enum.Enum):
-    hard = "hard"
+    programming = "programming"
+    libraries = "libraries"
     soft = "soft"
-    tool = "tool"
-    language = "language"
+    tools = "tools"
+    other = "other"
 
 
 # ---------- Models ----------
@@ -52,19 +53,23 @@ class User(Base):
     email: Mapped[str] = mapped_column(
         String(255), unique=True, index=True, nullable=False
     )
+    ai_instructions: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
     # Relationships
     skills: Mapped[list["Skill"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
-    projects: Mapped[list["Project"]] = relationship(
+    experiences: Mapped[list["Experience"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
     education: Mapped[list["Education"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
     languages: Mapped[list["Language"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+    extracurriculars: Mapped[list["Extracurricular"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
     cover_letter_templates: Mapped[list["CoverLetterTemplate"]] = relationship(
@@ -76,6 +81,15 @@ class User(Base):
     cvs: Mapped[list["CV"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
+    generated_cover_letters: Mapped[list["GeneratedCoverLetter"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+    skill_gap_analyses: Mapped[list["SkillGapAnalysis"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+    pitch_analyses: Mapped[list["PitchAnalysis"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
 
 
 class Skill(Base):
@@ -85,24 +99,26 @@ class Skill(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     category: Mapped[SkillCategory] = mapped_column(
-        Enum(SkillCategory), nullable=False, default=SkillCategory.hard
+        Enum(SkillCategory), nullable=False, default=SkillCategory.programming
     )
     level: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
     user: Mapped["User"] = relationship(back_populates="skills")
 
 
-class Project(Base):
-    __tablename__ = "projects"
+class Experience(Base):
+    __tablename__ = "experiences"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     technologies: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    link: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    client: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    start_date: Mapped[str | None] = mapped_column(String(7), nullable=True)  # YYYY-MM
+    end_date: Mapped[str | None] = mapped_column(String(7), nullable=True)  # YYYY-MM
 
-    user: Mapped["User"] = relationship(back_populates="projects")
+    user: Mapped["User"] = relationship(back_populates="experiences")
 
 
 class Education(Base):
@@ -113,8 +129,9 @@ class Education(Base):
     school: Mapped[str] = mapped_column(String(200), nullable=False)
     degree: Mapped[str] = mapped_column(String(200), nullable=False)
     field: Mapped[str | None] = mapped_column(String(200), nullable=True)
-    start_date: Mapped[date | None] = mapped_column(Date, nullable=True)
-    end_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    start_date: Mapped[str | None] = mapped_column(String(7), nullable=True)  # YYYY-MM
+    end_date: Mapped[str | None] = mapped_column(String(7), nullable=True)  # YYYY-MM
 
     user: Mapped["User"] = relationship(back_populates="education")
 
@@ -128,6 +145,17 @@ class Language(Base):
     level: Mapped[LanguageLevel] = mapped_column(Enum(LanguageLevel), nullable=False)
 
     user: Mapped["User"] = relationship(back_populates="languages")
+
+
+class Extracurricular(Base):
+    __tablename__ = "extracurriculars"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    user: Mapped["User"] = relationship(back_populates="extracurriculars")
 
 
 class CoverLetterTemplate(Base):
@@ -173,10 +201,80 @@ class CV(Base):
     offer_id: Mapped[int | None] = mapped_column(
         ForeignKey("internship_offers.id"), nullable=True
     )
+    name: Mapped[str] = mapped_column(
+        String(200), nullable=False, default="Untitled CV"
+    )
     company: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    job_title: Mapped[str | None] = mapped_column(String(300), nullable=True)
     content: Mapped[str] = mapped_column(Text, nullable=False)
+    latex_content: Mapped[str | None] = mapped_column(Text, nullable=True)
+    file_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    support_files_dir: Mapped[str | None] = mapped_column(String(500), nullable=True)
     is_adapted: Mapped[bool] = mapped_column(default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
     user: Mapped["User"] = relationship(back_populates="cvs")
     offer: Mapped["InternshipOffer | None"] = relationship(back_populates="cvs")
+
+
+class GeneratedCoverLetter(Base):
+    __tablename__ = "generated_cover_letters"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    offer_id: Mapped[int] = mapped_column(
+        ForeignKey("internship_offers.id"), nullable=False
+    )
+    template_id: Mapped[int | None] = mapped_column(
+        ForeignKey("cover_letter_templates.id", ondelete="SET NULL"), nullable=True
+    )
+    offer_title: Mapped[str] = mapped_column(String(300), nullable=False)
+    company: Mapped[str] = mapped_column(String(200), nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+    user: Mapped["User"] = relationship(back_populates="generated_cover_letters")
+    offer: Mapped["InternshipOffer"] = relationship()
+    template: Mapped["CoverLetterTemplate | None"] = relationship()
+
+
+class SkillGapAnalysis(Base):
+    __tablename__ = "skill_gap_analyses"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    offer_id: Mapped[int] = mapped_column(
+        ForeignKey("internship_offers.id"), nullable=False
+    )
+    offer_title: Mapped[str] = mapped_column(String(300), nullable=False)
+    company: Mapped[str] = mapped_column(String(200), nullable=False)
+    missing_hard_skills: Mapped[str] = mapped_column(Text, nullable=False)  # JSON
+    missing_soft_skills: Mapped[str] = mapped_column(Text, nullable=False)  # JSON
+    recommendations: Mapped[str] = mapped_column(Text, nullable=False)  # JSON
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+    user: Mapped["User"] = relationship(back_populates="skill_gap_analyses")
+    offer: Mapped["InternshipOffer"] = relationship()
+
+
+class PitchAnalysis(Base):
+    __tablename__ = "pitch_analyses"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    offer_id: Mapped[int | None] = mapped_column(
+        ForeignKey("internship_offers.id", ondelete="SET NULL"), nullable=True
+    )
+    offer_title: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    company: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    transcription: Mapped[str] = mapped_column(Text, nullable=False)
+    structure_clarity: Mapped[str] = mapped_column(Text, nullable=False)
+    strengths: Mapped[str] = mapped_column(Text, nullable=False)  # JSON
+    improvements: Mapped[str] = mapped_column(Text, nullable=False)  # JSON
+    offer_relevance: Mapped[str | None] = mapped_column(Text, nullable=True)
+    overall_score: Mapped[int] = mapped_column(Integer, nullable=False)
+    summary: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+    user: Mapped["User"] = relationship(back_populates="pitch_analyses")
+    offer: Mapped["InternshipOffer | None"] = relationship()

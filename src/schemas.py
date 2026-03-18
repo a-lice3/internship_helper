@@ -13,7 +13,19 @@ class UserResponse(BaseModel):
     id: int
     name: str
     email: str
+    ai_instructions: str | None = None
     created_at: datetime | None = None
+
+
+# ---------- AI Instructions ----------
+
+
+class AIInstructionsUpdate(BaseModel):
+    ai_instructions: str
+
+
+class AIInstructionsResponse(BaseModel):
+    ai_instructions: str | None = None
 
 
 # ---------- Skill ----------
@@ -21,7 +33,13 @@ class UserResponse(BaseModel):
 
 class SkillCreate(BaseModel):
     name: str
-    category: str = "hard"  # hard / soft / tool / language
+    category: str = "programming"  # programming / libraries / soft / tools / other
+    level: str | None = None
+
+
+class SkillUpdate(BaseModel):
+    name: str | None = None
+    category: str | None = None
     level: str | None = None
 
 
@@ -32,22 +50,35 @@ class SkillResponse(BaseModel):
     level: str | None = None
 
 
-# ---------- Project ----------
+# ---------- Experience ----------
 
 
-class ProjectCreate(BaseModel):
+class ExperienceCreate(BaseModel):
     title: str
     description: str | None = None
     technologies: str | None = None
-    link: str | None = None
+    client: str | None = None
+    start_date: str | None = None  # YYYY-MM
+    end_date: str | None = None  # YYYY-MM
 
 
-class ProjectResponse(BaseModel):
+class ExperienceUpdate(BaseModel):
+    title: str | None = None
+    description: str | None = None
+    technologies: str | None = None
+    client: str | None = None
+    start_date: str | None = None  # YYYY-MM
+    end_date: str | None = None  # YYYY-MM
+
+
+class ExperienceResponse(BaseModel):
     id: int
     title: str
     description: str | None = None
     technologies: str | None = None
-    link: str | None = None
+    client: str | None = None
+    start_date: str | None = None  # YYYY-MM
+    end_date: str | None = None  # YYYY-MM
 
 
 # ---------- Education ----------
@@ -57,8 +88,18 @@ class EducationCreate(BaseModel):
     school: str
     degree: str
     field: str | None = None
-    start_date: date | None = None
-    end_date: date | None = None
+    description: str | None = None
+    start_date: str | None = None  # YYYY-MM
+    end_date: str | None = None  # YYYY-MM
+
+
+class EducationUpdate(BaseModel):
+    school: str | None = None
+    degree: str | None = None
+    field: str | None = None
+    description: str | None = None
+    start_date: str | None = None  # YYYY-MM
+    end_date: str | None = None  # YYYY-MM
 
 
 class EducationResponse(BaseModel):
@@ -66,8 +107,9 @@ class EducationResponse(BaseModel):
     school: str
     degree: str
     field: str | None = None
-    start_date: date | None = None
-    end_date: date | None = None
+    description: str | None = None
+    start_date: str | None = None  # YYYY-MM
+    end_date: str | None = None  # YYYY-MM
 
 
 # ---------- Language ----------
@@ -78,10 +120,34 @@ class LanguageCreate(BaseModel):
     level: str  # beginner / intermediate / advanced / fluent / native
 
 
+class LanguageUpdate(BaseModel):
+    language: str | None = None
+    level: str | None = None
+
+
 class LanguageResponse(BaseModel):
     id: int
     language: str
     level: str
+
+
+# ---------- Extracurricular ----------
+
+
+class ExtracurricularCreate(BaseModel):
+    name: str
+    description: str | None = None
+
+
+class ExtracurricularUpdate(BaseModel):
+    name: str | None = None
+    description: str | None = None
+
+
+class ExtracurricularResponse(BaseModel):
+    id: int
+    name: str
+    description: str | None = None
 
 
 # ---------- Cover Letter Template ----------
@@ -114,6 +180,8 @@ class InternshipOfferCreate(BaseModel):
 
 
 class InternshipOfferUpdate(BaseModel):
+    company: str | None = None
+    title: str | None = None
     status: str | None = None
     date_applied: date | None = None
     link: str | None = None
@@ -137,15 +205,24 @@ class InternshipOfferResponse(BaseModel):
 
 
 class CVCreate(BaseModel):
+    name: str = "Untitled CV"
     content: str
+    latex_content: str | None = None
+    support_files_dir: str | None = None
     company: str | None = None
+    job_title: str | None = None
     offer_id: int | None = None
 
 
 class CVResponse(BaseModel):
     id: int
+    name: str
     content: str
+    latex_content: str | None = None
+    file_path: str | None = None
+    support_files_dir: str | None = None
     company: str | None = None
+    job_title: str | None = None
     offer_id: int | None = None
     is_adapted: bool
     created_at: datetime | None = None
@@ -181,6 +258,9 @@ class AdaptCVResponse(BaseModel):
 
 
 class SkillGapResponse(BaseModel):
+    """Returned by the generation endpoint (includes DB id)."""
+
+    id: int
     offer_title: str
     company: str
     missing_hard_skills: list[str]
@@ -196,6 +276,134 @@ class GenerateCoverLetterRequest(BaseModel):
 
 
 class GenerateCoverLetterResponse(BaseModel):
+    """Returned by the generation endpoint (includes DB id)."""
+
+    id: int
     offer_title: str
     company: str
     cover_letter: str
+
+
+# ---------- AI: Parse Offer ----------
+
+
+class ParseOfferRequest(BaseModel):
+    text: str  # raw pasted job description
+
+
+class ParseOfferResponse(BaseModel):
+    company: str
+    title: str
+    locations: str | None = None
+    description: str | None = None
+
+
+# ---------- AI: Auto-fill Profile from CV ----------
+
+
+class AutoFillProfileResponse(BaseModel):
+    skills: list[SkillCreate]
+    experiences: list[ExperienceCreate]
+    education: list[EducationCreate]
+    languages: list[LanguageCreate]
+    extracurriculars: list[ExtracurricularCreate]
+
+
+# ---------- Generated Cover Letter (persisted) ----------
+
+
+class GeneratedCoverLetterResponse(BaseModel):
+    id: int
+    offer_id: int
+    template_id: int | None = None
+    offer_title: str
+    company: str
+    content: str
+    created_at: datetime | None = None
+
+
+# ---------- Skill Gap Analysis (persisted) ----------
+
+
+class SkillGapAnalysisResponse(BaseModel):
+    id: int
+    offer_id: int
+    offer_title: str
+    company: str
+    missing_hard_skills: list[str]
+    missing_soft_skills: list[str]
+    recommendations: list[str]
+    created_at: datetime | None = None
+
+
+# ---------- AI: Adapt CV LaTeX ----------
+
+
+class AdaptCVLatexRequest(BaseModel):
+    cv_id: int
+
+
+class AdaptCVLatexResponse(BaseModel):
+    original_latex: str
+    adapted_latex: str
+    offer_title: str
+    company: str
+    support_files_dir: str | None = None
+
+
+# ---------- CV: Update ----------
+
+
+class CVUpdate(BaseModel):
+    name: str | None = None
+    latex_content: str | None = None
+    company: str | None = None
+    job_title: str | None = None
+
+
+# ---------- CV: Chat Edit ----------
+
+
+class ChatEditCVRequest(BaseModel):
+    message: str
+    conversation_history: list[dict[str, str]] | None = None
+
+
+class ChatEditCVResponse(BaseModel):
+    updated_latex: str
+
+
+# ---------- AI: Pitch Analysis ----------
+
+
+class PitchAnalysisResponse(BaseModel):
+    """Returned by the generation endpoint (includes DB id)."""
+
+    id: int
+    offer_title: str | None = None
+    company: str | None = None
+    transcription: str
+    structure_clarity: str
+    strengths: list[str]
+    improvements: list[str]
+    offer_relevance: str | None = None
+    overall_score: int
+    summary: str
+
+
+# ---------- Pitch Analysis (persisted) ----------
+
+
+class PitchAnalysisStoredResponse(BaseModel):
+    id: int
+    offer_id: int | None = None
+    offer_title: str | None = None
+    company: str | None = None
+    transcription: str
+    structure_clarity: str
+    strengths: list[str]
+    improvements: list[str]
+    offer_relevance: str | None = None
+    overall_score: int
+    summary: str
+    created_at: datetime | None = None
