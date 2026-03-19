@@ -195,5 +195,5 @@
 - [ ] User authentication (JWT or session-based)
 - [ ] Tests for AI endpoints (mock Mistral calls)
 - [ ] Tests for interview WebSocket
-- [ ] Dockerfile + docker-compose
+- [x] Dockerfile + docker-compose (backend, frontend, PostgreSQL with healthcheck, auto-migrations)
 - [ ] Security hardening (see security branch)
