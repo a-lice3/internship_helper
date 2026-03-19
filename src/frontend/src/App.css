@@ -70,7 +70,8 @@
   flex: 1;
 }
 
-.sidebar-nav button {
+.sidebar-nav button,
+.sidebar-nav a {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -85,25 +86,30 @@
   transition: all 0.2s var(--ease);
   text-align: left;
   white-space: nowrap;
+  text-decoration: none;
 }
 
-.sidebar-nav button:hover {
+.sidebar-nav button:hover,
+.sidebar-nav a:hover {
   background: var(--accent-light);
   color: var(--text-h);
 }
 
-.sidebar-nav button.active {
+.sidebar-nav button.active,
+.sidebar-nav a.active {
   background: var(--accent-light);
   color: var(--accent);
   font-weight: 600;
 }
 
-.sidebar-nav button .nav-icon {
+.sidebar-nav button .nav-icon,
+.sidebar-nav a .nav-icon {
   font-size: 17px;
   width: 22px;
   text-align: center;
   flex-shrink: 0;
 }
+
 
 .sidebar-user {
   padding: 12px 8px;
@@ -837,7 +843,7 @@ button:disabled {
   align-items: center;
 }
 
-/* ---------- Tab bar (sub-navigation) ---------- */
+/* ---------- Tab bar (in-page view toggle, e.g. InterviewPage) ---------- */
 
 .tab-bar {
   display: flex;
@@ -869,6 +875,46 @@ button:disabled {
   color: var(--accent);
   box-shadow: var(--shadow-sm);
   font-weight: 600;
+}
+
+/* ---------- Pill sub-navigation (route-based, e.g. Candidatures / Profil) ---------- */
+
+.pill-nav {
+  display: flex;
+  gap: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 4px;
+  width: fit-content;
+  margin-bottom: 24px;
+}
+
+.pill-nav .pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 20px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s var(--ease);
+  border: none;
+  background: none;
+}
+
+.pill-nav .pill:hover {
+  color: var(--text-h);
+  background: var(--accent-light);
+}
+
+.pill-nav .pill.active {
+  background: var(--gradient-accent);
+  color: #fff;
+  font-weight: 600;
+  box-shadow: var(--shadow-accent);
 }
 
 /* ---------- Accordion ---------- */
@@ -1504,6 +1550,7 @@ button:disabled {
   .sidebar-brand h1,
   .sidebar-brand .brand-sub,
   .sidebar-nav button span:not(.nav-icon),
+  .sidebar-nav a span:not(.nav-icon),
   .sidebar-user-info {
     display: none;
   }
@@ -1513,7 +1560,8 @@ button:disabled {
     padding: 0 0 16px;
   }
 
-  .sidebar-nav button {
+  .sidebar-nav button,
+  .sidebar-nav a {
     justify-content: center;
     padding: 10px;
   }

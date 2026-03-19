@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { NavLink } from "react-router-dom";
 import * as api from "../api";
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -83,11 +84,17 @@ export default function SearchPage({ userId }: { userId: number }) {
   return (
     <div className="page">
       <div className="page-header">
-        <h2>Search Internships</h2>
+        <h2>Candidatures</h2>
         <p className="page-desc">
           Describe what you're looking for and AI will find matching offers
         </p>
       </div>
+
+      <nav className="pill-nav">
+        <NavLink to="/offers" end className={({ isActive }) => `pill${isActive ? " active" : ""}`}>Mes offres</NavLink>
+        <NavLink to="/offers/search" className={({ isActive }) => `pill${isActive ? " active" : ""}`}>Recherche</NavLink>
+        <NavLink to="/offers/calendar" className={({ isActive }) => `pill${isActive ? " active" : ""}`}>Calendrier</NavLink>
+      </nav>
 
       {/* Chat input */}
       <div className="glass-card" style={{ marginBottom: 20 }}>
@@ -158,7 +165,7 @@ export default function SearchPage({ userId }: { userId: number }) {
           fontSize: 12,
           color: "var(--text-muted)",
         }}>
-          {parsedQuery.keywords && (
+          {Boolean(parsedQuery.keywords) && (
             <span style={{
               padding: "2px 8px", borderRadius: 4,
               background: "var(--bg-card)", border: "1px solid var(--border)"
@@ -166,7 +173,7 @@ export default function SearchPage({ userId }: { userId: number }) {
               Keywords: {String(parsedQuery.keywords)}
             </span>
           )}
-          {parsedQuery.location && (
+          {Boolean(parsedQuery.location) && (
             <span style={{
               padding: "2px 8px", borderRadius: 4,
               background: "var(--bg-card)", border: "1px solid var(--border)"
@@ -174,7 +181,7 @@ export default function SearchPage({ userId }: { userId: number }) {
               Location: {String(parsedQuery.location)}
             </span>
           )}
-          {parsedQuery.country && (
+          {Boolean(parsedQuery.country) && (
             <span style={{
               padding: "2px 8px", borderRadius: 4,
               background: "var(--bg-card)", border: "1px solid var(--border)"

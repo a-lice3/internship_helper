@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { NavLink } from "react-router-dom";
 import * as api from "../api";
 
 export default function TemplatesPage({ userId }: { userId: number }) {
@@ -46,9 +47,15 @@ export default function TemplatesPage({ userId }: { userId: number }) {
   return (
     <div className="page">
       <div className="page-header">
-        <h2>Cover Letter Templates</h2>
+        <h2>Mon Profil</h2>
         <p className="page-desc">Save templates for AI-powered cover letter generation</p>
       </div>
+
+      <nav className="pill-nav">
+        <NavLink to="/profile" end className={({ isActive }) => `pill${isActive ? " active" : ""}`}>Profil</NavLink>
+        <NavLink to="/profile/cvs" className={({ isActive }) => `pill${isActive ? " active" : ""}`}>CVs</NavLink>
+        <NavLink to="/profile/templates" className={({ isActive }) => `pill${isActive ? " active" : ""}`}>Templates</NavLink>
+      </nav>
 
       <div className="bento-grid-2" style={{ marginBottom: 24 }}>
         <div className="glass-card">

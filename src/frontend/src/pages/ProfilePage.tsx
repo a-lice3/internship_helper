@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { NavLink } from "react-router-dom";
 import * as api from "../api";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -39,10 +40,6 @@ export default function ProfilePage({ userId }: { userId: number }) {
   const [extraName, setExtraName] = useState("");
   const [extraDesc, setExtraDesc] = useState("");
 
-  const [aiInstructions, setAiInstructions] = useState("");
-  const [aiInstructionsSaved, setAiInstructionsSaved] = useState("");
-  const [savingInstructions, setSavingInstructions] = useState(false);
-
   const [filling, setFilling] = useState(false);
   const [cvList, setCvList] = useState<api.CV[]>([]);
   const [selectedCvId, setSelectedCvId] = useState<number | "">("");
@@ -56,29 +53,10 @@ export default function ProfilePage({ userId }: { userId: number }) {
     api.getEducation(userId).then(setEducation);
     api.getLanguages(userId).then(setLanguages);
     api.getExtracurriculars(userId).then(setExtras);
-    api.getAIInstructions(userId).then((res) => {
-      const val = res.ai_instructions ?? "";
-      setAiInstructions(val);
-      setAiInstructionsSaved(val);
-    });
     api.getCVs(userId).then(setCvList);
   };
 
   useEffect(loadAll, [userId]);
-
-  const handleSaveInstructions = async () => {
-    setSavingInstructions(true);
-    try {
-      await api.updateAIInstructions(userId, aiInstructions);
-      setAiInstructionsSaved(aiInstructions);
-    } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Failed to save instructions");
-    } finally {
-      setSavingInstructions(false);
-    }
-  };
-
-  const instructionsChanged = aiInstructions !== aiInstructionsSaved;
 
   const startEdit = (type: string, id: number, data: Record<string, string>) => {
     setEditing({ type, id });
@@ -104,21 +82,6 @@ export default function ProfilePage({ userId }: { userId: number }) {
     setEducation([]);
     setLanguages([]);
     setExtras([]);
-  };
-
-  const handleUploadCV = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setFilling(true);
-    try {
-      await api.autoFillProfileFromUpload(userId, file);
-      loadAll();
-    } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Auto-fill failed");
-    } finally {
-      setFilling(false);
-      e.target.value = "";
-    }
   };
 
   const handleAutoFillFromCV = async () => {
@@ -250,7 +213,7 @@ export default function ProfilePage({ userId }: { userId: number }) {
     <div className="page">
       <div className="page-header" style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <div style={{ flex: 1 }}>
-          <h2>Profile</h2>
+          <h2>Mon Profil</h2>
           <p className="page-desc">Manage your skills, experience, and education</p>
         </div>
         {cvList.length > 0 && (
@@ -275,39 +238,17 @@ export default function ProfilePage({ userId }: { userId: number }) {
             </button>
           </div>
         )}
-        <label className="btn-autofill" style={{ cursor: filling ? "wait" : "pointer" }}>
-          {filling ? "Extracting..." : "Upload new CV"}
-          <input type="file" accept=".pdf" onChange={handleUploadCV} disabled={filling} style={{ display: "none" }} />
-        </label>
         <button className="btn-clear-profile" onClick={handleClearProfile}>Clear all</button>
       </div>
 
+      <nav className="pill-nav">
+        <NavLink to="/profile" end className={({ isActive }) => `pill${isActive ? " active" : ""}`}>Profil</NavLink>
+        <NavLink to="/profile/cvs" className={({ isActive }) => `pill${isActive ? " active" : ""}`}>CVs</NavLink>
+        <NavLink to="/profile/templates" className={({ isActive }) => `pill${isActive ? " active" : ""}`}>Templates</NavLink>
+      </nav>
+
       {/* Bento grid for profile sections */}
       <div className="bento-grid-2">
-
-        {/* AI Instructions — full width */}
-        <div className="bento-span-2">
-          <Section title="AI Instructions">
-            <p className="hint" style={{ marginBottom: 8 }}>
-              Custom instructions sent to the AI for every generation (CV, cover letter, skill gap).
-            </p>
-            <textarea
-              value={aiInstructions}
-              onChange={(e) => setAiInstructions(e.target.value)}
-              placeholder="e.g. Do not modify the Education section, Always mention Python first..."
-              rows={4}
-              style={{ width: "100%" }}
-            />
-            <div style={{ display: "flex", gap: 8, marginTop: 8, alignItems: "center" }}>
-              <button type="button" onClick={handleSaveInstructions} disabled={!instructionsChanged || savingInstructions} className="btn-primary" style={{ boxShadow: "none" }}>
-                {savingInstructions ? "Saving..." : "Save"}
-              </button>
-              {!instructionsChanged && aiInstructionsSaved && (
-                <span className="hint">Saved</span>
-              )}
-            </div>
-          </Section>
-        </div>
 
         {/* Skills */}
         <Section title="Skills">
