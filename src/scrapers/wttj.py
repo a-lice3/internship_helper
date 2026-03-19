@@ -5,13 +5,12 @@ import re
 
 import httpx
 
+from src.config import ALGOLIA_APP_ID, ALGOLIA_API_KEY
 from src.scrapers.base import OfferSource, RawOffer
 
 logger = logging.getLogger(__name__)
 
-ALGOLIA_URL = "https://CSEKHVMS53-dsn.algolia.net/1/indexes/*/queries"
-ALGOLIA_APP_ID = "CSEKHVMS53"
-ALGOLIA_API_KEY = "4bd8f6215d0cc52b26430765769e65a0"
+ALGOLIA_URL = f"https://{ALGOLIA_APP_ID}-dsn.algolia.net/1/indexes/*/queries"
 
 # Major city coordinates for geo-filtering (avoids geocoding API calls)
 CITY_COORDS: dict[str, tuple[float, float]] = {
