@@ -708,6 +708,68 @@ export const getInterviewProgress = (uid: number) =>
 
 // ---------- Auto-fill Profile (upload) ----------
 
+// ---------- Offer Search / Scraping ----------
+
+export interface ScrapedOffer {
+  id: number;
+  source: string;
+  source_id: string;
+  company: string;
+  title: string;
+  description: string | null;
+  locations: string | null;
+  link: string | null;
+  contract_type: string | null;
+  salary: string | null;
+  published_at: string | null;
+  match_score: number | null;
+  match_reasons: string[];
+  saved: boolean;
+  created_at: string | null;
+}
+
+export interface OfferSearchResponse {
+  results: ScrapedOffer[];
+  total: number;
+  sources_used: string[];
+  parsed_query?: Record<string, unknown> | null;
+}
+
+export const searchOffers = (uid: number, data: {
+  keywords: string;
+  location?: string;
+  country?: string;
+  radius_km?: number;
+  sources?: string[];
+  max_results?: number;
+}) =>
+  request<OfferSearchResponse>(`/users/${uid}/search-offers`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+
+export const getScrapedOffers = (uid: number) =>
+  request<ScrapedOffer[]>(`/users/${uid}/scraped-offers`);
+
+export const saveScrapedOffer = (uid: number, offerId: number) =>
+  request<{ detail: string; offer_id: number }>(`/users/${uid}/scraped-offers/${offerId}/save`, {
+    method: "POST",
+  });
+
+export const deleteScrapedOffer = (uid: number, offerId: number) =>
+  request<void>(`/users/${uid}/scraped-offers/${offerId}`, { method: "DELETE" });
+
+export const clearScrapedOffers = (uid: number) =>
+  request<void>(`/users/${uid}/scraped-offers`, { method: "DELETE" });
+
+export const chatSearchOffers = (uid: number, message: string, maxResults?: number) =>
+  request<OfferSearchResponse>(`/users/${uid}/chat-search`, {
+    method: "POST",
+    body: JSON.stringify({ message, max_results: maxResults ?? 20 }),
+  });
+
+// ---------- Auto-fill Profile (upload) ----------
+
 export const autoFillProfileFromUpload = async (uid: number, file: File): Promise<AutoFillResult> => {
   const form = new FormData();
   form.append("file", file);

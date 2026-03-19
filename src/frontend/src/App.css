@@ -694,6 +694,7 @@ button:disabled {
 }
 
 /* Status colors */
+.status-bookmarked { color: #6b7280; }
 .status-applied { color: var(--accent); }
 .status-screened { color: var(--warning); }
 .status-interview { color: #8b5cf6; }
@@ -708,6 +709,7 @@ button:disabled {
   margin-right: 6px;
 }
 
+.status-dot.bookmarked { background: #6b7280; }
 .status-dot.applied { background: var(--accent); }
 .status-dot.screened { background: var(--warning); }
 .status-dot.interview { background: #8b5cf6; }

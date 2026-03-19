@@ -197,7 +197,7 @@ class InternshipOfferCreate(BaseModel):
     link: str | None = None
     locations: str | None = None
     date_applied: date | None = None
-    status: str = "applied"
+    status: str = "bookmarked"
 
 
 class InternshipOfferUpdate(BaseModel):
@@ -519,3 +519,48 @@ class InterviewProgressResponse(BaseModel):
     worst_category: str | None = None
     total_practice_minutes: int = 0
     sessions_this_week: int = 0
+
+
+# ---------- Offer Search / Scraping ----------
+
+
+class OfferSearchRequest(BaseModel):
+    keywords: str
+    location: str | None = None
+    country: str = "France"
+    radius_km: int = 30
+    sources: list[str] = ["francetravail", "wttj"]
+    max_results: int = 20  # 1-30
+
+    def model_post_init(self, __context: object) -> None:
+        self.max_results = max(1, min(self.max_results, 30))
+
+
+class ChatSearchRequest(BaseModel):
+    message: str
+    max_results: int = 20  # 1-30
+
+
+class ScrapedOfferResponse(BaseModel):
+    id: int
+    source: str
+    source_id: str
+    company: str
+    title: str
+    description: str | None = None
+    locations: str | None = None
+    link: str | None = None
+    contract_type: str | None = None
+    salary: str | None = None
+    published_at: str | None = None
+    match_score: float | None = None
+    match_reasons: list[str] = []
+    saved: bool = False
+    created_at: datetime | None = None
+
+
+class OfferSearchResponse(BaseModel):
+    results: list[ScrapedOfferResponse]
+    total: int
+    sources_used: list[str]
+    parsed_query: dict | None = None  # what Mistral extracted from the chat message

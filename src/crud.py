@@ -904,3 +904,100 @@ def get_interview_analysis(
         .filter(models.InterviewAnalysis.session_id == session_pk)
         .first()
     )
+
+
+# ---------- Scraped Offers ----------
+
+
+def create_scraped_offer(
+    db: Session,
+    user_id: int,
+    source: str,
+    source_id: str,
+    company: str,
+    title: str,
+    description: str | None,
+    locations: str | None,
+    link: str | None,
+    contract_type: str | None,
+    salary: str | None,
+    published_at: str | None,
+    match_score: float | None,
+    match_reasons: str | None,
+) -> models.ScrapedOffer:
+    obj = models.ScrapedOffer(
+        user_id=user_id,
+        source=source,
+        source_id=source_id,
+        company=company,
+        title=title,
+        description=description,
+        locations=locations,
+        link=link,
+        contract_type=contract_type,
+        salary=salary,
+        published_at=published_at,
+        match_score=match_score,
+        match_reasons=match_reasons,
+    )
+    db.add(obj)
+    db.commit()
+    db.refresh(obj)
+    return obj
+
+
+def get_scraped_offers(db: Session, user_id: int) -> list[models.ScrapedOffer]:
+    return (
+        db.query(models.ScrapedOffer)
+        .filter(models.ScrapedOffer.user_id == user_id)
+        .order_by(models.ScrapedOffer.match_score.desc().nullslast())
+        .all()
+    )
+
+
+def get_scraped_offer(db: Session, offer_id: int) -> models.ScrapedOffer | None:
+    return (
+        db.query(models.ScrapedOffer).filter(models.ScrapedOffer.id == offer_id).first()
+    )
+
+
+def delete_scraped_offer(db: Session, offer_id: int) -> bool:
+    obj = (
+        db.query(models.ScrapedOffer).filter(models.ScrapedOffer.id == offer_id).first()
+    )
+    if not obj:
+        return False
+    db.delete(obj)
+    db.commit()
+    return True
+
+
+def clear_scraped_offers(db: Session, user_id: int) -> int:
+    """Delete all scraped offers for a user. Returns count deleted."""
+    count = (
+        db.query(models.ScrapedOffer)
+        .filter(models.ScrapedOffer.user_id == user_id)
+        .delete()
+    )
+    db.commit()
+    return count
+
+
+def save_scraped_offer_to_tracker(
+    db: Session, scraped_offer: models.ScrapedOffer, user_id: int
+) -> models.InternshipOffer:
+    """Copy a scraped offer into the user's internship offer tracker."""
+    db_offer = models.InternshipOffer(
+        user_id=user_id,
+        company=scraped_offer.company,
+        title=scraped_offer.title,
+        description=scraped_offer.description,
+        link=scraped_offer.link,
+        locations=scraped_offer.locations,
+        status=models.OfferStatus.bookmarked,
+    )
+    db.add(db_offer)
+    scraped_offer.saved = True
+    db.commit()
+    db.refresh(db_offer)
+    return db_offer

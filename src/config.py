@@ -20,6 +20,10 @@ if not MISTRAL_API_KEY and not TESTING:
 
 UPLOAD_DIR = Path(os.getenv("UPLOAD_DIR", "uploads"))
 
+# France Travail API
+FRANCE_TRAVAIL_CLIENT_ID = os.getenv("FRANCE_TRAVAIL_CLIENT_ID", "")
+FRANCE_TRAVAIL_CLIENT_SECRET = os.getenv("FRANCE_TRAVAIL_CLIENT_SECRET", "")
+
 # JWT settings
 JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "change-me-in-production")
 JWT_ALGORITHM = "HS256"
