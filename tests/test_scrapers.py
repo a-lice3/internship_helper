@@ -110,6 +110,8 @@ def test_wttj_respects_max_results(mock_post):
 # ---------- France Travail ----------
 
 
+@patch("src.scrapers.francetravail.FRANCE_TRAVAIL_CLIENT_SECRET", "fake-secret")
+@patch("src.scrapers.francetravail.FRANCE_TRAVAIL_CLIENT_ID", "fake-id")
 @patch("src.scrapers.francetravail.httpx.get")
 @patch("src.scrapers.francetravail.httpx.post")
 def test_ft_parses_resultats(mock_post, mock_get):
@@ -153,6 +155,8 @@ def test_ft_parses_resultats(mock_post, mock_get):
     assert offers[0].salary == "1000€/mois"
 
 
+@patch("src.scrapers.francetravail.FRANCE_TRAVAIL_CLIENT_SECRET", "fake-secret")
+@patch("src.scrapers.francetravail.FRANCE_TRAVAIL_CLIENT_ID", "fake-id")
 @patch("src.scrapers.francetravail.httpx.get")
 @patch("src.scrapers.francetravail.httpx.post")
 def test_ft_empty_body_returns_empty(mock_post, mock_get):
@@ -171,6 +175,8 @@ def test_ft_empty_body_returns_empty(mock_post, mock_get):
     assert offers == []
 
 
+@patch("src.scrapers.francetravail.FRANCE_TRAVAIL_CLIENT_SECRET", "fake-secret")
+@patch("src.scrapers.francetravail.FRANCE_TRAVAIL_CLIENT_ID", "fake-id")
 @patch("src.scrapers.francetravail.httpx.get")
 @patch("src.scrapers.francetravail.httpx.post")
 def test_ft_http_error_returns_empty(mock_post, mock_get):
