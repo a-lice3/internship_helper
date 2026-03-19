@@ -189,11 +189,58 @@
 
 ---
 
-## Phase 17 — Next Steps (TODO)
+## Phase 19 — Offer Search & Scraping [DONE]
 
-- [x] ~~Alembic migrations (proper schema versioning)~~ (Phase 18)
-- [ ] User authentication (JWT or session-based)
+- [x] Abstract scraper base (`scrapers/base.py`: OfferSource, RawOffer)
+- [x] France Travail scraper (OAuth2 authentication, token caching)
+- [x] WTTJ scraper (Algolia search API)
+- [x] The Muse scraper
+- [x] Search router (`routers/search.py`) with endpoints for each source
+- [x] ScrapedOffer model for persistence
+- [x] AI smart matching: score scraped offers against user profile
+- [x] SearchPage frontend
+
+---
+
+## Phase 20 — Dashboard, Calendar, Reminders & Notes [DONE]
+
+- [x] Dashboard endpoint (`routers/dashboard.py`): stats, offers by status, upcoming reminders, activity feed
+- [x] DashboardPage frontend (stats cards, progress bars)
+- [x] Reminder model (deadline, follow-up, interview, custom types)
+- [x] Reminder CRUD endpoints (`routers/reminders.py`)
+- [x] RemindersPage frontend
+- [x] OfferNote model
+- [x] Offer notes CRUD endpoints (`routers/notes.py`)
+- [x] CalendarPage frontend (visual calendar of deadlines/interviews)
+- [x] OfferDetailPage frontend (full offer view with notes and AI actions)
+- [x] SettingsPage frontend
+
+---
+
+## Phase 21 — Authentication [DONE]
+
+- [x] JWT authentication (`src/auth.py`: password hashing, token creation/verification)
+- [x] Auth router (`routers/auth.py`): register, login, current user
+- [x] `bookmarked` status added to OfferStatus enum
+
+---
+
+## Phase 22 — UI Reorganisation [DONE]
+
+- [x] React Router navigation (sidebar instead of tabs)
+- [x] Frontend restructured with 12 pages
+
+---
+
+## Phase 23 — Security & CI [DONE]
+
+- [x] Docker & API credentials securisation
+- [x] France Travail API key handling in CI
+
+---
+
+## Next Steps (TODO)
+
 - [ ] Tests for AI endpoints (mock Mistral calls)
 - [ ] Tests for interview WebSocket
-- [x] Dockerfile + docker-compose (backend, frontend, PostgreSQL with healthcheck, auto-migrations)
 - [ ] Security hardening (see security branch)

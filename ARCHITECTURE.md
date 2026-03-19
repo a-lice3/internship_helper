@@ -23,35 +23,50 @@ PostgreSQL          Mistral API
 src/
 ├── main.py                # FastAPI app, CORS, router registration
 ├── config.py              # Environment variables (DATABASE_URL, MISTRAL_API_KEY, UPLOAD_DIR, JWT)
-├── auth.py                # JWT authentication (get_current_user dependency)
+├── auth.py                # JWT authentication (password hashing, token creation/verification, get_current_user)
 ├── database.py            # SQLAlchemy engine, Base, session, get_db()
-├── models.py              # SQLAlchemy ORM models (15 tables)
+├── models.py              # SQLAlchemy ORM models (18 tables)
 ├── schemas.py             # Pydantic request/response schemas
 ├── crud.py                # Database read/write operations
 ├── llm_service.py         # Mistral chat/transcription wrapper
 ├── interview_service.py   # Interview simulation prompts & analysis pipeline
 ├── file_service.py        # File upload, PDF extraction, LaTeX compilation
-└── routers/
-    ├── auth.py            # Authentication endpoints (register, login)
-    ├── users.py           # User CRUD
-    ├── profile.py         # Skills, experiences, education, languages, extracurriculars, AI instructions
-    ├── offers.py          # Internship offers CRUD + status filter
-    ├── cvs.py             # CV CRUD, file upload (PDF/TeX/ZIP), LaTeX compilation, chat edit
-    ├── templates.py       # Cover letter templates (text + PDF upload)
-    ├── ai.py              # AI endpoints: adapt CV, skill gap, cover letter, parse offer, auto-fill profile, pitch analysis
-    └── interview.py       # Interview simulation: sessions, WebSocket, analysis, question prediction, progress
+├── routers/
+│   ├── auth.py            # Authentication endpoints (register, login, current user)
+│   ├── users.py           # User CRUD
+│   ├── profile.py         # Skills, experiences, education, languages, extracurriculars, AI instructions
+│   ├── offers.py          # Internship offers CRUD + status filter
+│   ├── cvs.py             # CV CRUD, file upload (PDF/TeX/ZIP), LaTeX compilation, chat edit
+│   ├── templates.py       # Cover letter templates (text + PDF upload)
+│   ├── ai.py              # AI endpoints: adapt CV, skill gap, cover letter, parse offer, auto-fill profile, pitch analysis
+│   ├── interview.py       # Interview simulation: sessions, WebSocket, analysis, question prediction, progress
+│   ├── search.py          # Offer search/scraping from external sources + smart matching
+│   ├── dashboard.py       # Dashboard stats endpoint
+│   ├── reminders.py       # Reminder CRUD
+│   └── notes.py           # Offer notes CRUD
+└── scrapers/
+    ├── base.py            # Abstract OfferSource, RawOffer dataclass
+    ├── francetravail.py   # France Travail API (OAuth2 + token caching)
+    ├── wttj.py            # WTTJ / Algolia search
+    └── themuse.py         # The Muse API
 
 src/frontend/              # React + TypeScript (Vite)
 ├── src/
-│   ├── App.tsx            # Main app with routing
+│   ├── App.tsx            # Main app with routing + sidebar navigation
 │   ├── api.ts             # API client (REST + WebSocket)
 │   ├── pages/
-│   │   ├── ProfilePage.tsx
-│   │   ├── OffersPage.tsx
-│   │   ├── CVsPage.tsx
-│   │   ├── TemplatesPage.tsx
-│   │   ├── AIPage.tsx
-│   │   └── InterviewPage.tsx
+│   │   ├── DashboardPage.tsx      # Stats, activity feed, reminders
+│   │   ├── OffersPage.tsx         # Offer list with status filtering
+│   │   ├── OfferDetailPage.tsx    # Full offer view + notes + AI actions
+│   │   ├── SearchPage.tsx         # External offer search + smart matching
+│   │   ├── ProfilePage.tsx        # Profile management
+│   │   ├── CVsPage.tsx            # CV management
+│   │   ├── TemplatesPage.tsx      # Cover letter templates
+│   │   ├── AIPage.tsx             # AI features hub
+│   │   ├── InterviewPage.tsx      # Mock interviews
+│   │   ├── CalendarPage.tsx       # Calendar view of deadlines/interviews
+│   │   ├── RemindersPage.tsx      # Reminders management
+│   │   └── SettingsPage.tsx       # User settings
 │   └── hooks/
 │       ├── useInterview.ts
 │       └── useSpeechRecognition.ts
@@ -62,7 +77,12 @@ tests/
 ├── test_profile.py
 ├── test_offers.py
 ├── test_cvs.py
-└── test_templates.py
+├── test_templates.py
+├── test_dashboard.py
+├── test_notes.py
+├── test_reminders.py
+├── test_scrapers.py
+└── test_search.py
 ```
 
 ### Separation of Concerns
@@ -73,10 +93,12 @@ tests/
 | Validation | `schemas.py` | Request/response data shapes (Pydantic) |
 | AI logic | `llm_service.py`, `interview_service.py` | Mistral API calls, prompt engineering |
 | File handling | `file_service.py` | Upload, PDF extraction, LaTeX compilation |
+| Scraping | `scrapers/*.py` | External offer sources (France Travail, WTTJ, The Muse) |
+| Auth | `auth.py` | JWT token management, password hashing, authentication dependency |
 | Data access | `crud.py` | Database queries |
 | Models | `models.py`, `database.py` | ORM table definitions |
 | Config | `config.py` | Environment variables |
-| Frontend | `src/frontend/` | React SPA (Vite + TypeScript) |
+| Frontend | `src/frontend/` | React SPA (Vite + TypeScript + React Router) |
 
 ---
 
@@ -106,7 +128,7 @@ cover_letter_templates
 
 internship_offers
 ├── id, user_id (FK), company, title, description, link, locations
-├── date_applied, status (enum: applied/screened/interview/rejected/accepted), created_at
+├── date_applied, status (enum: bookmarked/applied/screened/interview/rejected/accepted), created_at
 
 cvs
 ├── id, user_id (FK), offer_id (FK, nullable)
@@ -145,11 +167,32 @@ interview_analyses
 ├── overall_score, communication_score, technical_score, behavioral_score, confidence_score
 ├── strengths (JSON), weaknesses (JSON), improvements (JSON)
 ├── summary, filler_words_analysis, star_method_usage, full_transcript, created_at
+
+scraped_offers
+├── id, user_id (FK), source, source_id
+├── company, title, description, link, locations (JSON)
+├── relevance_score, raw_data (JSON), created_at
+
+reminders
+├── id, user_id (FK), offer_id (FK, nullable)
+├── reminder_type (enum: deadline/follow_up/interview/custom), title, description
+├── due_at, is_done, created_at
+
+offer_notes
+├── id, user_id (FK), offer_id (FK)
+├── content, created_at, updated_at
 ```
 
 ---
 
 ## API Endpoints
+
+### Authentication
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/auth/register` | Register new user |
+| POST | `/auth/login` | Login (returns JWT token) |
+| GET | `/auth/me` | Get current user from token |
 
 ### Users
 | Method | Path | Description |
@@ -237,6 +280,34 @@ interview_analyses
 | GET | `/users/{id}/interview-progress` | Overall interview progress stats |
 | WS | `/ws/interview/{session_id}?user_id=` | Live interview WebSocket |
 
+### Offer Search
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/search/francetravail` | Search France Travail offers |
+| POST | `/search/wttj` | Search WTTJ offers |
+| POST | `/search/themuse` | Search The Muse offers |
+| POST | `/users/{id}/match-offers` | AI smart matching (profile vs scraped offers) |
+
+### Dashboard
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/users/{id}/dashboard` | Dashboard stats (offers, interviews, reminders, activity) |
+
+### Reminders
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/users/{id}/reminders` | Create reminder |
+| GET | `/users/{id}/reminders` | List reminders |
+| PATCH | `/users/{id}/reminders/{reminder_id}` | Update reminder |
+| DELETE | `/users/{id}/reminders/{reminder_id}` | Delete reminder |
+
+### Offer Notes
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/users/{id}/offers/{offer_id}/notes` | Add note to offer |
+| GET | `/users/{id}/offers/{offer_id}/notes` | List notes for offer |
+| DELETE | `/users/{id}/offers/{offer_id}/notes/{note_id}` | Delete note |
+
 ---
 
 ## AI Features (Mistral)
@@ -265,7 +336,7 @@ Audio transcription uses the Voxtral model (`voxtral-mini-2602`).
 - Tests use **SQLite in-memory** (no PostgreSQL needed)
 - FastAPI's `dependency_overrides` swaps `get_db` for a test session
 - Shared fixtures in `tests/conftest.py`
-- Located in `tests/` (5 test files)
+- Located in `tests/` (11 test files: users, profile, offers, CVs, templates, dashboard, notes, reminders, scrapers, search)
 
 ---
 
