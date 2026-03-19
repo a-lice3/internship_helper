@@ -11,8 +11,8 @@ const REMINDER_TYPES = ["deadline", "follow_up", "interview", "custom"];
 
 const EVENT_COLORS: Record<string, string> = {
   application: "var(--accent)",
-  reminder: "#f59e0b",
-  interview: "#8b5cf6",
+  reminder: "var(--warning)",
+  interview: "var(--violet)",
 };
 
 function getDaysInMonth(year: number, month: number): number {
@@ -244,7 +244,7 @@ export default function CalendarPage({ userId }: { userId: number }) {
                       borderRadius: 8,
                       cursor: "pointer",
                       border: isSelected ? "2px solid var(--accent)" : isToday ? "2px solid var(--accent-light)" : "1px solid transparent",
-                      background: isSelected ? "var(--accent-light)" : isToday ? "rgba(99, 102, 241, 0.04)" : "transparent",
+                      background: isSelected ? "var(--accent-light)" : isToday ? "var(--accent-light)" : "transparent",
                       transition: "all 0.15s",
                     }}
                   >

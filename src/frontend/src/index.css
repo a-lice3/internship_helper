@@ -1,56 +1,47 @@
 /* ========== AI-Native Design System ========== */
 
 :root {
-  /* Core palette */
-  --text: #64748b;
-  --text-h: #0f172a;
-  --text-muted: #94a3b8;
-  --bg: #f0f2f7;
-  --bg-mesh: linear-gradient(135deg, #e8eaf6 0%, #f0f2f7 40%, #e3f2fd 70%, #ede7f6 100%);
-  --surface: rgba(255, 255, 255, 0.72);
-  --surface-solid: #ffffff;
-  --surface-hover: rgba(255, 255, 255, 0.88);
-  --border: rgba(148, 163, 184, 0.18);
-  --border-strong: rgba(148, 163, 184, 0.32);
+  /* Core palette — Solarized Light / warm beige */
+  --text: #657b83;
+  --text-h: #073642;
+  --text-muted: #93a1a1;
+  --bg: #fdf6e3;
+  --bg-mesh: linear-gradient(135deg, #fdf6e3 0%, #faf0d7 40%, #fdf6e3 70%, #f5eedc 100%);
+  --surface: rgba(253, 246, 227, 0.80);
+  --surface-solid: #fefbf4;
+  --border: rgba(101, 123, 131, 0.12);
+  --border-strong: rgba(101, 123, 131, 0.22);
 
-  /* Accent – indigo/violet gradient */
-  --accent: #6366f1;
-  --accent-hover: #4f46e5;
-  --accent-light: rgba(99, 102, 241, 0.10);
-  --accent-glow: rgba(99, 102, 241, 0.24);
-  --gradient-accent: linear-gradient(135deg, #6366f1, #8b5cf6);
-  --gradient-accent-hover: linear-gradient(135deg, #4f46e5, #7c3aed);
+  /* Accent – solarized cyan/teal */
+  --accent: #2aa198;
+  --accent-hover: #1a8a82;
+  --accent-light: rgba(42, 161, 152, 0.10);
+  --violet: #6c71c4;
 
-  /* Semantic */
-  --danger: #ef4444;
-  --danger-light: rgba(239, 68, 68, 0.10);
-  --success: #10b981;
-  --success-light: rgba(16, 185, 129, 0.10);
-  --warning: #f59e0b;
-  --warning-light: rgba(245, 158, 11, 0.10);
-  --info: #3b82f6;
-  --info-light: rgba(59, 130, 246, 0.10);
+  /* Semantic — solarized palette */
+  --danger: #dc322f;
+  --danger-light: rgba(220, 50, 47, 0.08);
+  --success: #859900;
+  --success-light: rgba(133, 153, 0, 0.08);
+  --warning: #cb4b16;
+  --warning-light: rgba(203, 75, 22, 0.08);
+  --info: #268bd2;
+  --info-light: rgba(38, 139, 210, 0.08);
 
   /* Tags */
-  --tag-bg: rgba(99, 102, 241, 0.10);
-  --tag-text: #4f46e5;
-
-  /* Glass */
-  --glass-blur: 16px;
-  --glass-bg: rgba(255, 255, 255, 0.60);
-  --glass-border: rgba(255, 255, 255, 0.40);
+  --tag-bg: rgba(42, 161, 152, 0.10);
+  --tag-text: #2aa198;
 
   /* Shape */
-  --radius-sm: 8px;
-  --radius: 14px;
-  --radius-lg: 20px;
-  --radius-xl: 24px;
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
 
-  /* Shadows */
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
-  --shadow: 0 4px 16px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04);
-  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
-  --shadow-accent: 0 4px 20px rgba(99, 102, 241, 0.20);
+  /* Shadows — subtle warm */
+  --shadow-sm: 0 1px 2px rgba(101, 123, 131, 0.06);
+  --shadow: 0 2px 8px rgba(101, 123, 131, 0.08);
+  --shadow-lg: 0 4px 16px rgba(101, 123, 131, 0.10);
 
   /* Typography */
   --sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -58,39 +49,6 @@
 
   /* Transition */
   --ease: cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #94a3b8;
-    --text-h: #f1f5f9;
-    --text-muted: #64748b;
-    --bg: #0c0f1a;
-    --bg-mesh: linear-gradient(135deg, #0c0f1a 0%, #111827 40%, #0f172a 70%, #1a1033 100%);
-    --surface: rgba(30, 41, 59, 0.72);
-    --surface-solid: #1e293b;
-    --surface-hover: rgba(30, 41, 59, 0.88);
-    --border: rgba(148, 163, 184, 0.12);
-    --border-strong: rgba(148, 163, 184, 0.22);
-    --accent: #818cf8;
-    --accent-hover: #6366f1;
-    --accent-light: rgba(129, 140, 248, 0.12);
-    --accent-glow: rgba(129, 140, 248, 0.20);
-    --gradient-accent: linear-gradient(135deg, #818cf8, #a78bfa);
-    --gradient-accent-hover: linear-gradient(135deg, #6366f1, #8b5cf6);
-    --tag-bg: rgba(129, 140, 248, 0.15);
-    --tag-text: #a5b4fc;
-    --glass-bg: rgba(15, 23, 42, 0.60);
-    --glass-border: rgba(51, 65, 85, 0.40);
-    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.2);
-    --shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
-    --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.4);
-    --shadow-accent: 0 4px 20px rgba(129, 140, 248, 0.15);
-    --danger-light: rgba(239, 68, 68, 0.15);
-    --success-light: rgba(16, 185, 129, 0.15);
-    --warning-light: rgba(245, 158, 11, 0.15);
-    --info-light: rgba(59, 130, 246, 0.15);
-  }
 }
 
 /* ========== Reset ========== */

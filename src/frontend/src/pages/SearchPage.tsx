@@ -69,9 +69,9 @@ export default function SearchPage({ userId }: { userId: number }) {
 
   const scoreColor = (score: number | null) => {
     if (score === null) return "var(--text-muted)";
-    if (score >= 75) return "#22c55e";
-    if (score >= 50) return "#f59e0b";
-    return "#ef4444";
+    if (score >= 75) return "var(--success)";
+    if (score >= 50) return "var(--warning)";
+    return "var(--danger)";
   };
 
   const sourceLabel = (src: string) => {
@@ -208,7 +208,7 @@ export default function SearchPage({ userId }: { userId: number }) {
 
       {/* Error */}
       {error && (
-        <div className="glass-card" style={{ marginBottom: 16, borderColor: "#ef4444" }}>
+        <div className="glass-card" style={{ marginBottom: 16, borderColor: "var(--danger)" }}>
           <div className="glass-card-body">
             <p className="error">{error}</p>
           </div>
