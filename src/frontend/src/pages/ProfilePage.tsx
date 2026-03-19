@@ -44,6 +44,8 @@ export default function ProfilePage({ userId }: { userId: number }) {
   const [savingInstructions, setSavingInstructions] = useState(false);
 
   const [filling, setFilling] = useState(false);
+  const [cvList, setCvList] = useState<api.CV[]>([]);
+  const [selectedCvId, setSelectedCvId] = useState<number | "">("");
 
   const [editing, setEditing] = useState<{ type: string; id: number } | null>(null);
   const [editData, setEditData] = useState<Record<string, string>>({});
@@ -59,6 +61,7 @@ export default function ProfilePage({ userId }: { userId: number }) {
       setAiInstructions(val);
       setAiInstructionsSaved(val);
     });
+    api.getCVs(userId).then(setCvList);
   };
 
   useEffect(loadAll, [userId]);
@@ -95,7 +98,6 @@ export default function ProfilePage({ userId }: { userId: number }) {
     setEditData((prev) => ({ ...prev, [key]: value }));
 
   const handleClearProfile = async () => {
-    if (!confirm("Delete all profile data (skills, experiences, education, languages, extracurriculars)?")) return;
     await api.clearProfile(userId);
     setSkills([]);
     setExperiences([]);
@@ -116,6 +118,19 @@ export default function ProfilePage({ userId }: { userId: number }) {
     } finally {
       setFilling(false);
       e.target.value = "";
+    }
+  };
+
+  const handleAutoFillFromCV = async () => {
+    if (selectedCvId === "") return;
+    setFilling(true);
+    try {
+      await api.autoFillProfile(userId, selectedCvId);
+      loadAll();
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Auto-fill failed");
+    } finally {
+      setFilling(false);
     }
   };
 
@@ -233,13 +248,35 @@ export default function ProfilePage({ userId }: { userId: number }) {
 
   return (
     <div className="page">
-      <div className="page-header" style={{ display: "flex", alignItems: "center", gap: 12 }}>
+      <div className="page-header" style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <div style={{ flex: 1 }}>
           <h2>Profile</h2>
           <p className="page-desc">Manage your skills, experience, and education</p>
         </div>
+        {cvList.length > 0 && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <select
+              value={selectedCvId}
+              onChange={(e) => setSelectedCvId(e.target.value ? Number(e.target.value) : "")}
+              style={{ minWidth: 160 }}
+            >
+              <option value="">Select a CV...</option>
+              {cvList.map((cv) => (
+                <option key={cv.id} value={cv.id}>{cv.name}</option>
+              ))}
+            </select>
+            <button
+              className="btn-autofill"
+              onClick={handleAutoFillFromCV}
+              disabled={filling || selectedCvId === ""}
+              style={{ cursor: filling ? "wait" : "pointer" }}
+            >
+              {filling ? "Extracting..." : "Auto-fill from CV"}
+            </button>
+          </div>
+        )}
         <label className="btn-autofill" style={{ cursor: filling ? "wait" : "pointer" }}>
-          {filling ? "Extracting..." : "Upload CV to auto-fill"}
+          {filling ? "Extracting..." : "Upload new CV"}
           <input type="file" accept=".pdf" onChange={handleUploadCV} disabled={filling} style={{ display: "none" }} />
         </label>
         <button className="btn-clear-profile" onClick={handleClearProfile}>Clear all</button>

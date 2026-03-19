@@ -45,6 +45,13 @@ class SkillCategory(str, enum.Enum):
     other = "other"
 
 
+class ReminderType(str, enum.Enum):
+    deadline = "deadline"
+    follow_up = "follow_up"
+    interview = "interview"
+    custom = "custom"
+
+
 class InterviewType(str, enum.Enum):
     hr = "hr"
     technical = "technical"
@@ -118,6 +125,12 @@ class User(Base):
         back_populates="user", cascade="all, delete-orphan"
     )
     scraped_offers: Mapped[list["ScrapedOffer"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+    reminders: Mapped[list["Reminder"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+    offer_notes: Mapped[list["OfferNote"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
 
@@ -219,6 +232,9 @@ class InternshipOffer(Base):
 
     user: Mapped["User"] = relationship(back_populates="offers")
     cvs: Mapped[list["CV"]] = relationship(
+        back_populates="offer", cascade="all, delete-orphan"
+    )
+    notes: Mapped[list["OfferNote"]] = relationship(
         back_populates="offer", cascade="all, delete-orphan"
     )
 
@@ -456,3 +472,42 @@ class ScrapedOffer(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
     user: Mapped["User"] = relationship(back_populates="scraped_offers")
+
+
+class Reminder(Base):
+    __tablename__ = "reminders"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    offer_id: Mapped[int | None] = mapped_column(
+        ForeignKey("internship_offers.id", ondelete="CASCADE"), nullable=True
+    )
+    reminder_type: Mapped[ReminderType] = mapped_column(
+        Enum(ReminderType), nullable=False, default=ReminderType.custom
+    )
+    title: Mapped[str] = mapped_column(String(300), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    due_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    is_done: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+    user: Mapped["User"] = relationship(back_populates="reminders")
+    offer: Mapped["InternshipOffer | None"] = relationship()
+
+
+class OfferNote(Base):
+    __tablename__ = "offer_notes"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    offer_id: Mapped[int] = mapped_column(
+        ForeignKey("internship_offers.id", ondelete="CASCADE"), nullable=False
+    )
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now()
+    )
+
+    user: Mapped["User"] = relationship(back_populates="offer_notes")
+    offer: Mapped["InternshipOffer"] = relationship(back_populates="notes")

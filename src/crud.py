@@ -1,3 +1,6 @@
+from datetime import datetime, timedelta
+
+from sqlalchemy import func as sqlfunc
 from sqlalchemy.orm import Session
 
 from src import models, schemas
@@ -1001,3 +1004,327 @@ def save_scraped_offer_to_tracker(
     db.commit()
     db.refresh(db_offer)
     return db_offer
+
+
+# ---------- Reminder ----------
+
+
+def create_reminder(
+    db: Session, user_id: int, reminder: schemas.ReminderCreate
+) -> models.Reminder:
+    db_reminder = models.Reminder(
+        user_id=user_id,
+        offer_id=reminder.offer_id,
+        reminder_type=models.ReminderType(reminder.reminder_type),
+        title=reminder.title,
+        description=reminder.description,
+        due_at=reminder.due_at,
+    )
+    db.add(db_reminder)
+    db.commit()
+    db.refresh(db_reminder)
+    return db_reminder
+
+
+def get_reminders(
+    db: Session, user_id: int, include_done: bool = False
+) -> list[models.Reminder]:
+    query = db.query(models.Reminder).filter(models.Reminder.user_id == user_id)
+    if not include_done:
+        query = query.filter(models.Reminder.is_done == False)  # noqa: E712
+    return query.order_by(models.Reminder.due_at.asc()).all()
+
+
+def get_upcoming_reminders(
+    db: Session, user_id: int, limit: int = 5
+) -> list[models.Reminder]:
+    now = datetime.utcnow()
+    return (
+        db.query(models.Reminder)
+        .filter(
+            models.Reminder.user_id == user_id,
+            models.Reminder.is_done == False,  # noqa: E712
+            models.Reminder.due_at >= now,
+        )
+        .order_by(models.Reminder.due_at.asc())
+        .limit(limit)
+        .all()
+    )
+
+
+def get_reminder(db: Session, reminder_id: int) -> models.Reminder | None:
+    return db.query(models.Reminder).filter(models.Reminder.id == reminder_id).first()
+
+
+def update_reminder(
+    db: Session, reminder_id: int, update: schemas.ReminderUpdate
+) -> models.Reminder | None:
+    reminder = (
+        db.query(models.Reminder).filter(models.Reminder.id == reminder_id).first()
+    )
+    if not reminder:
+        return None
+    for field, value in update.model_dump(exclude_unset=True).items():
+        if field == "reminder_type" and value is not None:
+            value = models.ReminderType(value)
+        setattr(reminder, field, value)
+    db.commit()
+    db.refresh(reminder)
+    return reminder
+
+
+def delete_reminder(db: Session, reminder_id: int) -> bool:
+    reminder = (
+        db.query(models.Reminder).filter(models.Reminder.id == reminder_id).first()
+    )
+    if not reminder:
+        return False
+    db.delete(reminder)
+    db.commit()
+    return True
+
+
+# ---------- Offer Note ----------
+
+
+def create_offer_note(
+    db: Session, user_id: int, offer_id: int, note: schemas.OfferNoteCreate
+) -> models.OfferNote:
+    db_note = models.OfferNote(
+        user_id=user_id,
+        offer_id=offer_id,
+        content=note.content,
+    )
+    db.add(db_note)
+    db.commit()
+    db.refresh(db_note)
+    return db_note
+
+
+def get_offer_notes(db: Session, offer_id: int) -> list[models.OfferNote]:
+    return (
+        db.query(models.OfferNote)
+        .filter(models.OfferNote.offer_id == offer_id)
+        .order_by(models.OfferNote.created_at.desc())
+        .all()
+    )
+
+
+def get_offer_note(db: Session, note_id: int) -> models.OfferNote | None:
+    return db.query(models.OfferNote).filter(models.OfferNote.id == note_id).first()
+
+
+def update_offer_note(
+    db: Session, note_id: int, update: schemas.OfferNoteUpdate
+) -> models.OfferNote | None:
+    note = db.query(models.OfferNote).filter(models.OfferNote.id == note_id).first()
+    if not note:
+        return None
+    note.content = update.content
+    db.commit()
+    db.refresh(note)
+    return note
+
+
+def delete_offer_note(db: Session, note_id: int) -> bool:
+    note = db.query(models.OfferNote).filter(models.OfferNote.id == note_id).first()
+    if not note:
+        return False
+    db.delete(note)
+    db.commit()
+    return True
+
+
+# ---------- Dashboard ----------
+
+
+def get_offers_by_status_counts(db: Session, user_id: int) -> dict[str, int]:
+    rows = (
+        db.query(models.InternshipOffer.status, sqlfunc.count())
+        .filter(models.InternshipOffer.user_id == user_id)
+        .group_by(models.InternshipOffer.status)
+        .all()
+    )
+    return {status.value: count for status, count in rows}
+
+
+def get_average_interview_score(db: Session, user_id: int) -> float | None:
+    result = (
+        db.query(sqlfunc.avg(models.InterviewAnalysis.overall_score))
+        .join(models.InterviewSession)
+        .filter(models.InterviewSession.user_id == user_id)
+        .scalar()
+    )
+    return round(float(result), 1) if result else None
+
+
+def get_interview_sessions_count(db: Session, user_id: int) -> int:
+    return (
+        db.query(models.InterviewSession)
+        .filter(models.InterviewSession.user_id == user_id)
+        .count()
+    )
+
+
+def get_interview_sessions_this_week(db: Session, user_id: int) -> int:
+    week_ago = datetime.utcnow() - timedelta(days=7)
+    return (
+        db.query(models.InterviewSession)
+        .filter(
+            models.InterviewSession.user_id == user_id,
+            models.InterviewSession.created_at >= week_ago,
+        )
+        .count()
+    )
+
+
+def get_recent_activity(db: Session, user_id: int, limit: int = 10) -> list[dict]:
+    activities: list[dict] = []
+
+    # Recent offers
+    recent_offers = (
+        db.query(models.InternshipOffer)
+        .filter(models.InternshipOffer.user_id == user_id)
+        .order_by(models.InternshipOffer.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+    for o in recent_offers:
+        activities.append(
+            {
+                "type": "offer",
+                "title": f"{o.company} — {o.title}",
+                "status": o.status.value,
+                "date": o.created_at.isoformat() if o.created_at else None,
+            }
+        )
+
+    # Recent interview sessions
+    recent_sessions = (
+        db.query(models.InterviewSession)
+        .filter(models.InterviewSession.user_id == user_id)
+        .order_by(models.InterviewSession.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+    for s in recent_sessions:
+        activities.append(
+            {
+                "type": "interview",
+                "title": f"Interview: {s.offer_title or 'General'} ({s.interview_type.value})",
+                "status": s.status.value,
+                "date": s.created_at.isoformat() if s.created_at else None,
+            }
+        )
+
+    # Recent reminders
+    recent_reminders = (
+        db.query(models.Reminder)
+        .filter(models.Reminder.user_id == user_id)
+        .order_by(models.Reminder.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+    for r in recent_reminders:
+        activities.append(
+            {
+                "type": "reminder",
+                "title": r.title,
+                "status": "done" if r.is_done else "pending",
+                "date": r.created_at.isoformat() if r.created_at else None,
+            }
+        )
+
+    # Sort by date descending and return top N
+    activities.sort(key=lambda a: a.get("date") or "", reverse=True)
+    return activities[:limit]
+
+
+# ---------- Calendar ----------
+
+
+def get_calendar_events(
+    db: Session, user_id: int, start_date: datetime, end_date: datetime
+) -> list[dict]:
+    events: list[dict] = []
+
+    # Offers with date_applied in range
+    offers = (
+        db.query(models.InternshipOffer)
+        .filter(
+            models.InternshipOffer.user_id == user_id,
+            models.InternshipOffer.date_applied.isnot(None),
+            models.InternshipOffer.date_applied >= start_date.date(),
+            models.InternshipOffer.date_applied <= end_date.date(),
+        )
+        .all()
+    )
+    for o in offers:
+        if o.date_applied is None:
+            continue
+        events.append(
+            {
+                "id": f"offer_{o.id}",
+                "event_type": "application",
+                "title": f"{o.company} — {o.title}",
+                "date": datetime.combine(
+                    o.date_applied, datetime.min.time()
+                ).isoformat(),
+                "offer_id": o.id,
+                "company": o.company,
+                "metadata": {"status": o.status.value},
+            }
+        )
+
+    # Reminders in range
+    reminders = (
+        db.query(models.Reminder)
+        .filter(
+            models.Reminder.user_id == user_id,
+            models.Reminder.due_at >= start_date,
+            models.Reminder.due_at <= end_date,
+        )
+        .all()
+    )
+    for r in reminders:
+        events.append(
+            {
+                "id": f"reminder_{r.id}",
+                "event_type": "reminder",
+                "title": r.title,
+                "date": r.due_at.isoformat(),
+                "offer_id": r.offer_id,
+                "company": None,
+                "metadata": {
+                    "reminder_type": r.reminder_type.value,
+                    "is_done": r.is_done,
+                },
+            }
+        )
+
+    # Interview sessions in range
+    sessions = (
+        db.query(models.InterviewSession)
+        .filter(
+            models.InterviewSession.user_id == user_id,
+            models.InterviewSession.created_at >= start_date,
+            models.InterviewSession.created_at <= end_date,
+        )
+        .all()
+    )
+    for s in sessions:
+        dt = s.started_at or s.created_at
+        events.append(
+            {
+                "id": f"interview_{s.id}",
+                "event_type": "interview",
+                "title": f"Interview: {s.offer_title or 'General'}",
+                "date": dt.isoformat() if dt else None,
+                "offer_id": s.offer_id,
+                "company": s.company,
+                "metadata": {"status": s.status.value, "type": s.interview_type.value},
+            }
+        )
+
+    events.sort(key=lambda e: e.get("date") or "")
+    return events

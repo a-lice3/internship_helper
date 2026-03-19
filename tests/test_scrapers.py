@@ -15,6 +15,8 @@ def _wttj_algolia_response(hits: list[dict]) -> dict:
     return {"results": [{"hits": hits, "nbHits": len(hits)}]}
 
 
+@patch("src.scrapers.wttj.ALGOLIA_API_KEY", "fake-key")
+@patch("src.scrapers.wttj.ALGOLIA_APP_ID", "fake-app")
 @patch("src.scrapers.wttj.httpx.post")
 def test_wttj_parses_hits(mock_post):
     hit = {
@@ -45,6 +47,8 @@ def test_wttj_parses_hits(mock_post):
     assert "acme-corp" in offers[0].link
 
 
+@patch("src.scrapers.wttj.ALGOLIA_API_KEY", "fake-key")
+@patch("src.scrapers.wttj.ALGOLIA_APP_ID", "fake-app")
 @patch("src.scrapers.wttj.httpx.post")
 def test_wttj_empty_response(mock_post):
     mock_resp = MagicMock()
@@ -57,6 +61,8 @@ def test_wttj_empty_response(mock_post):
     assert offers == []
 
 
+@patch("src.scrapers.wttj.ALGOLIA_API_KEY", "fake-key")
+@patch("src.scrapers.wttj.ALGOLIA_APP_ID", "fake-app")
 @patch("src.scrapers.wttj.httpx.post")
 def test_wttj_http_error_returns_empty(mock_post):
     mock_post.side_effect = httpx.RequestError("timeout")
@@ -66,6 +72,8 @@ def test_wttj_http_error_returns_empty(mock_post):
     assert offers == []
 
 
+@patch("src.scrapers.wttj.ALGOLIA_API_KEY", "fake-key")
+@patch("src.scrapers.wttj.ALGOLIA_APP_ID", "fake-app")
 @patch("src.scrapers.wttj.httpx.post")
 def test_wttj_salary_string(mock_post):
     """salary can be a plain string instead of a dict."""
@@ -86,6 +94,8 @@ def test_wttj_salary_string(mock_post):
     assert offers[0].salary == "negotiable"
 
 
+@patch("src.scrapers.wttj.ALGOLIA_API_KEY", "fake-key")
+@patch("src.scrapers.wttj.ALGOLIA_APP_ID", "fake-app")
 @patch("src.scrapers.wttj.httpx.post")
 def test_wttj_respects_max_results(mock_post):
     hits = [
@@ -110,6 +120,8 @@ def test_wttj_respects_max_results(mock_post):
 # ---------- France Travail ----------
 
 
+@patch("src.scrapers.francetravail.FRANCE_TRAVAIL_CLIENT_SECRET", "fake-secret")
+@patch("src.scrapers.francetravail.FRANCE_TRAVAIL_CLIENT_ID", "fake-id")
 @patch("src.scrapers.francetravail.httpx.get")
 @patch("src.scrapers.francetravail.httpx.post")
 def test_ft_parses_resultats(mock_post, mock_get):
@@ -153,6 +165,8 @@ def test_ft_parses_resultats(mock_post, mock_get):
     assert offers[0].salary == "1000€/mois"
 
 
+@patch("src.scrapers.francetravail.FRANCE_TRAVAIL_CLIENT_SECRET", "fake-secret")
+@patch("src.scrapers.francetravail.FRANCE_TRAVAIL_CLIENT_ID", "fake-id")
 @patch("src.scrapers.francetravail.httpx.get")
 @patch("src.scrapers.francetravail.httpx.post")
 def test_ft_empty_body_returns_empty(mock_post, mock_get):
@@ -171,6 +185,8 @@ def test_ft_empty_body_returns_empty(mock_post, mock_get):
     assert offers == []
 
 
+@patch("src.scrapers.francetravail.FRANCE_TRAVAIL_CLIENT_SECRET", "fake-secret")
+@patch("src.scrapers.francetravail.FRANCE_TRAVAIL_CLIENT_ID", "fake-id")
 @patch("src.scrapers.francetravail.httpx.get")
 @patch("src.scrapers.francetravail.httpx.post")
 def test_ft_http_error_returns_empty(mock_post, mock_get):

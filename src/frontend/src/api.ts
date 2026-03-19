@@ -502,8 +502,8 @@ export const parseOffer = (text: string) =>
     body: JSON.stringify({ text }),
   });
 
-export const autoFillProfile = (uid: number) =>
-  request<AutoFillResult>(`/users/${uid}/auto-fill-profile`, {
+export const autoFillProfile = (uid: number, cvId?: number) =>
+  request<AutoFillResult>(`/users/${uid}/auto-fill-profile${cvId != null ? `?cv_id=${cvId}` : ""}`, {
     method: "POST",
   });
 
@@ -767,6 +767,97 @@ export const chatSearchOffers = (uid: number, message: string, maxResults?: numb
     method: "POST",
     body: JSON.stringify({ message, max_results: maxResults ?? 20 }),
   });
+
+// ---------- Reminders ----------
+
+export interface Reminder {
+  id: number;
+  offer_id: number | null;
+  reminder_type: string;
+  title: string;
+  description: string | null;
+  due_at: string;
+  is_done: boolean;
+  created_at: string | null;
+}
+
+export const getReminders = (uid: number, includeDone?: boolean) =>
+  request<Reminder[]>(`/users/${uid}/reminders?include_done=${includeDone ?? false}`);
+
+export const createReminder = (uid: number, data: {
+  offer_id?: number | null; reminder_type?: string;
+  title: string; description?: string; due_at: string;
+}) =>
+  request<Reminder>(`/users/${uid}/reminders`, { method: "POST", body: JSON.stringify(data) });
+
+export const updateReminder = (uid: number, id: number, data: {
+  title?: string; description?: string; due_at?: string;
+  reminder_type?: string; is_done?: boolean;
+}) =>
+  request<Reminder>(`/users/${uid}/reminders/${id}`, { method: "PATCH", body: JSON.stringify(data) });
+
+export const deleteReminder = (uid: number, id: number) =>
+  request<void>(`/users/${uid}/reminders/${id}`, { method: "DELETE" });
+
+// ---------- Offer Notes ----------
+
+export interface OfferNote {
+  id: number;
+  offer_id: number;
+  content: string;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export const getOfferNotes = (uid: number, offerId: number) =>
+  request<OfferNote[]>(`/users/${uid}/offers/${offerId}/notes`);
+
+export const createOfferNote = (uid: number, offerId: number, content: string) =>
+  request<OfferNote>(`/users/${uid}/offers/${offerId}/notes`, {
+    method: "POST", body: JSON.stringify({ content }),
+  });
+
+export const updateOfferNote = (uid: number, offerId: number, noteId: number, content: string) =>
+  request<OfferNote>(`/users/${uid}/offers/${offerId}/notes/${noteId}`, {
+    method: "PATCH", body: JSON.stringify({ content }),
+  });
+
+export const deleteOfferNote = (uid: number, offerId: number, noteId: number) =>
+  request<void>(`/users/${uid}/offers/${offerId}/notes/${noteId}`, { method: "DELETE" });
+
+// ---------- Dashboard ----------
+
+export interface DashboardStats {
+  offers_by_status: Record<string, number>;
+  total_offers: number;
+  average_interview_score: number | null;
+  upcoming_reminders: Reminder[];
+  recent_activity: Array<Record<string, unknown>>;
+  interview_sessions_count: number;
+  interview_sessions_this_week: number;
+}
+
+export const getDashboard = (uid: number) =>
+  request<DashboardStats>(`/users/${uid}/dashboard`);
+
+// ---------- Calendar ----------
+
+export interface CalendarEvent {
+  id: string;
+  event_type: string;
+  title: string;
+  date: string;
+  offer_id: number | null;
+  company: string | null;
+  metadata: Record<string, unknown> | null;
+}
+
+export interface CalendarResponse {
+  events: CalendarEvent[];
+}
+
+export const getCalendarEvents = (uid: number, start: string, end: string) =>
+  request<CalendarResponse>(`/users/${uid}/calendar?start=${start}&end=${end}`);
 
 // ---------- Auto-fill Profile (upload) ----------
 

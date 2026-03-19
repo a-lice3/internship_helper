@@ -11,6 +11,9 @@ from src.routers import (
     ai,
     interview,
     search,
+    reminders,
+    notes,
+    dashboard,
 )
 
 app = FastAPI(title="Internship Helper API")
@@ -32,3 +35,6 @@ app.include_router(templates.router)
 app.include_router(ai.router)
 app.include_router(interview.router)
 app.include_router(search.router)
+app.include_router(reminders.router)
+app.include_router(notes.router)
+app.include_router(dashboard.router)

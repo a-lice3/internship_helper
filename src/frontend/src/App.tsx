@@ -7,16 +7,20 @@ import TemplatesPage from "./pages/TemplatesPage";
 import AIPage from "./pages/AIPage";
 import InterviewPage from "./pages/InterviewPage";
 import SearchPage from "./pages/SearchPage";
+import DashboardPage from "./pages/DashboardPage";
+import CalendarPage from "./pages/CalendarPage";
 import "./App.css";
 
-type Tab = "offers" | "search" | "profile" | "cvs" | "templates" | "ai" | "interview";
+type Tab = "dashboard" | "offers" | "search" | "calendar" | "profile" | "cvs" | "templates" | "ai" | "interview";
 
 const TABS: { key: Tab; label: string; icon: string }[] = [
+  { key: "dashboard", label: "Dashboard", icon: "\uD83D\uDCCA" },
   { key: "offers", label: "Offers", icon: "\uD83D\uDCCB" },
-  { key: "search", label: "Search", icon: "\uD83D\uDD0D" },
+  { key: "search", label: "Search Offers", icon: "\uD83D\uDD0D" },
+  { key: "calendar", label: "Calendar & Reminders", icon: "\uD83D\uDCC5" },
   { key: "profile", label: "Profile", icon: "\uD83D\uDC64" },
   { key: "cvs", label: "CVs", icon: "\uD83D\uDCC4" },
-  { key: "templates", label: "Templates", icon: "\uD83D\uDCDD" },
+  { key: "templates", label: "Cover Letter", icon: "\uD83D\uDCDD" },
   { key: "ai", label: "AI Assistant", icon: "\u2728" },
   { key: "interview", label: "Interview", icon: "\uD83C\uDFA4" },
 ];
@@ -128,7 +132,7 @@ function LoginScreen({ onLogin }: { onLogin: (user: api.User) => void }) {
 
 export default function App() {
   const [user, setUser] = useState<api.User | null>(null);
-  const [tab, setTab] = useState<Tab>("offers");
+  const [tab, setTab] = useState<Tab>("dashboard");
   const [loading, setLoading] = useState(true);
 
   // Try to restore session from stored token on mount
@@ -214,8 +218,10 @@ export default function App() {
 
       {/* Main content */}
       <main className="main-content">
+        {tab === "dashboard" && <DashboardPage userId={user.id} />}
         {tab === "offers" && <OffersPage userId={user.id} />}
         {tab === "search" && <SearchPage userId={user.id} />}
+        {tab === "calendar" && <CalendarPage userId={user.id} />}
         {tab === "profile" && <ProfilePage userId={user.id} />}
         {tab === "cvs" && <CVsPage userId={user.id} />}
         {tab === "templates" && <TemplatesPage userId={user.id} />}
