@@ -26,9 +26,17 @@ services:
       JWT_SECRET_KEY: ${JWT_SECRET_KEY}
       FRANCE_TRAVAIL_CLIENT_ID: ${FRANCE_TRAVAIL_CLIENT_ID:-}
       FRANCE_TRAVAIL_CLIENT_SECRET: ${FRANCE_TRAVAIL_CLIENT_SECRET:-}
+      ALGOLIA_APP_ID: ${ALGOLIA_APP_ID:-}
+      ALGOLIA_API_KEY: ${ALGOLIA_API_KEY:-}
     depends_on:
       db:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8000/docs\")'"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
 
   frontend:
     build: src/frontend
@@ -37,7 +45,8 @@ services:
     environment:
       VITE_API_URL: http://backend:8000
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
 
 
 

@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import { NavLink } from "react-router-dom";
 import { saveAs } from "file-saver";
 import * as api from "../api";
 
@@ -206,9 +207,15 @@ export default function CVsPage({ userId }: { userId: number }) {
   return (
     <div className="page">
       <div className="page-header">
-        <h2>CVs</h2>
+        <h2>Mon Profil</h2>
         <p className="page-desc">Upload and manage your CVs</p>
       </div>
+
+      <nav className="pill-nav">
+        <NavLink to="/profile" end className={({ isActive }) => `pill${isActive ? " active" : ""}`}>Profil</NavLink>
+        <NavLink to="/profile/cvs" className={({ isActive }) => `pill${isActive ? " active" : ""}`}>CVs</NavLink>
+        <NavLink to="/profile/templates" className={({ isActive }) => `pill${isActive ? " active" : ""}`}>Templates</NavLink>
+      </nav>
 
       <div className="glass-card" style={{ marginBottom: 20 }}>
         <div className="glass-card-body">

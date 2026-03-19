@@ -180,6 +180,11 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     headers: authHeaders(),
     ...options,
   });
+  if (res.status === 401) {
+    setToken(null);
+    window.location.href = "/";
+    throw new Error("Session expired");
+  }
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(body.detail || `HTTP ${res.status}`);
@@ -350,6 +355,9 @@ export const getOffers = (uid: number, status?: string) => {
   const qs = status ? `?status=${status}` : "";
   return request<Offer[]>(`/users/${uid}/offers${qs}`);
 };
+
+export const getOffer = (uid: number, id: number) =>
+  request<Offer>(`/users/${uid}/offers/${id}`);
 
 export const createOffer = (uid: number, data: {
   company: string; title: string; description?: string;

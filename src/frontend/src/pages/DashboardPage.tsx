@@ -140,9 +140,9 @@ export default function DashboardPage({ userId }: { userId: number }) {
                       </div>
                     </div>
                   </div>
-                  {a.date && (
+                  {typeof a.date === "string" && (
                     <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                      {new Date(String(a.date)).toLocaleDateString()}
+                      {new Date(a.date).toLocaleDateString()}
                     </span>
                   )}
                 </li>

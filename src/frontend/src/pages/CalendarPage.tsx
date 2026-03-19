@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { NavLink } from "react-router-dom";
 import * as api from "../api";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -187,9 +188,15 @@ export default function CalendarPage({ userId }: { userId: number }) {
   return (
     <div className="page">
       <div className="page-header">
-        <h2>Calendar & Reminders</h2>
+        <h2>Candidatures</h2>
         <p className="page-desc">View your events and manage reminders in one place</p>
       </div>
+
+      <nav className="pill-nav">
+        <NavLink to="/offers" end className={({ isActive }) => `pill${isActive ? " active" : ""}`}>Mes offres</NavLink>
+        <NavLink to="/offers/search" className={({ isActive }) => `pill${isActive ? " active" : ""}`}>Recherche</NavLink>
+        <NavLink to="/offers/calendar" className={({ isActive }) => `pill${isActive ? " active" : ""}`}>Calendrier</NavLink>
+      </nav>
 
       {/* Navigation */}
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
