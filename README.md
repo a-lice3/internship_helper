@@ -70,6 +70,37 @@ A full-stack web application that helps students manage and optimize their inter
 
 ## Quick Start
 
+### Option 1 — Docker (recommended)
+
+The fastest way to get everything running. No need to install Python, Node, or PostgreSQL.
+
+**Prerequisites:** [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running.
+
+```bash
+# Clone
+git clone <repo-url>
+cd internship_helper
+
+# Create .env file with your secrets
+cp .env.example .env
+# Edit .env: add your MISTRAL_API_KEY and optionally a JWT_SECRET_KEY
+
+# Launch everything (backend + PostgreSQL + frontend)
+docker compose up --build
+```
+
+That's it. Database migrations run automatically on startup.
+
+- Backend API docs: http://localhost:8000/docs
+- Frontend: http://localhost:5173
+
+To stop: `Ctrl+C` or `docker compose down`
+To reset the database: `docker compose down -v` then `docker compose up --build`
+
+### Option 2 — Local development (without Docker)
+
+**Prerequisites:** Python 3.13, Node.js 22+, PostgreSQL 16 installed locally.
+
 ```bash
 # Clone and setup
 git clone <repo-url>
@@ -102,8 +133,8 @@ cd src/frontend
 npm run dev
 ```
 
-Backend API docs: http://localhost:8000/docs
-Frontend: http://localhost:5173
+- Backend API docs: http://localhost:8000/docs
+- Frontend: http://localhost:5173
 
 ## Run Tests
 
@@ -162,6 +193,9 @@ internship_helper/
 ├── tests/
 ├── requirements.txt
 ├── mypy.ini
+├── Dockerfile              # Backend Docker image
+├── docker-compose.yml      # Multi-service orchestration (backend + db + frontend)
+├── .dockerignore
 ├── .github/workflows/ci.yml
 └── CLAUDE.md
 ```

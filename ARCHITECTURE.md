@@ -269,9 +269,41 @@ Audio transcription uses the Voxtral model (`voxtral-mini-2602`).
 
 ---
 
+## Docker
+
+The project is fully containerized with Docker Compose (3 services).
+
+```
+docker compose up --build
+  │
+  ├── db        (postgres:16)        → port 5433 (host) / 5432 (internal)
+  ├── backend   (python:3.13-slim)   → port 8000
+  └── frontend  (node:22-slim)       → port 5173
+```
+
+### Files
+
+| File | Role |
+|------|------|
+| `Dockerfile` | Backend image: Python 3.13, pip install, auto-runs `alembic upgrade head` before uvicorn |
+| `src/frontend/Dockerfile` | Frontend image: Node 22, npm install, Vite dev server |
+| `docker-compose.yml` | Orchestrates all 3 services, PostgreSQL healthcheck, volume for DB persistence |
+| `.dockerignore` | Excludes `.venv`, `node_modules`, `.env`, `__pycache__`, etc. |
+
+### Key design decisions
+
+- **Auto-migrations**: the backend CMD runs `alembic upgrade head && uvicorn ...`, so the database is always up to date on startup
+- **Healthcheck**: the backend waits for PostgreSQL to be ready (`pg_isready`) before starting
+- **Volume `pgdata`**: persists database data across `docker compose down` / `up` cycles. Use `docker compose down -v` to reset
+- **Proxy flexibility**: `vite.config.ts` reads `VITE_API_URL` env var (defaults to `http://localhost:8000` for local dev, set to `http://backend:8000` in Docker)
+- **Secrets via `.env`**: `MISTRAL_API_KEY` and `JWT_SECRET_KEY` are read from `.env` by Docker Compose, never baked into images
+
+---
+
 ## Database Migrations (Alembic)
 
 - Schema changes are managed by **Alembic** (not `Base.metadata.create_all`)
 - Config in `alembic.ini` + `alembic/env.py` (imports `DATABASE_URL` and `Base.metadata` from src/)
 - Migration files in `alembic/versions/`
+- In Docker, migrations run automatically at container startup
 - See `ALEMBIC.md` for usage guide
