@@ -11,8 +11,31 @@ A full-stack web application that helps students manage and optimize their inter
 
 ### Application Tracking
 - Create and manage internship offers (company, title, description, link, locations)
-- Track application status: applied, screened, interview, rejected, accepted
+- Track application status: bookmarked, applied, screened, interview, rejected, accepted
+- Detailed offer view with notes, linked interviews, and AI actions
 - Parse job descriptions automatically from pasted text
+
+### Offer Search & Scraping
+- Search for internship offers from **3 external sources**:
+  - **France Travail** (ex-Pole Emploi) via official API with OAuth2
+  - **Welcome to the Jungle** (WTTJ) via Algolia search
+  - **The Muse** API
+- AI-powered **smart matching**: score scraped offers against your profile for relevance
+- Save interesting offers directly to your tracking list
+
+### Dashboard & Analytics
+- Overview stats: total offers, average interview score, interview count
+- Offers breakdown by status with visual progress bars
+- Upcoming reminders with type and due date
+- Recent activity feed (offers, interviews, reminders)
+
+### Calendar & Reminders
+- Visual calendar view of application deadlines and interview dates
+- Reminders: deadline, follow-up, interview, and custom types with due dates
+- Mark reminders as done
+
+### Offer Notes
+- Add notes to any offer to track thoughts, feedback, or follow-up info
 
 ### CV Management
 - Upload CVs in multiple formats: PDF, LaTeX (.tex), or LaTeX project (.zip)
@@ -56,15 +79,20 @@ A full-stack web application that helps students manage and optimize their inter
 
 ### AI
 - **Mistral API** (`mistralai` SDK v2.0.2)
-- Chat model: `mistral-small-2503` (CV adaptation, cover letters, interview questions, analysis)
+- Chat model: `mistral-small-2603` (CV adaptation, cover letters, interview questions, analysis)
 - Audio transcription: `voxtral-mini-2602` (pitch analysis, interview voice answers)
 
 ### Frontend
 - **React 19** with **TypeScript**, built with **Vite**
+- **React Router** for navigation
 - **docx** + **file-saver** for .docx export
 
+### Infrastructure
+- **Docker Compose** (3 services: PostgreSQL, backend, frontend)
+- **Alembic** for database migrations (auto-run on container startup)
+
 ### Quality & CI
-- **pytest** + **httpx** (tests with SQLite in-memory)
+- **pytest** + **httpx** (tests with SQLite in-memory, 11 test files)
 - **black** (formatting), **ruff** (linting), **mypy** (type checking)
 - **GitHub Actions** CI pipeline
 
@@ -157,40 +185,57 @@ internship_helper/
 ├── src/
 │   ├── main.py                # FastAPI app, router registration, CORS
 │   ├── config.py              # Environment variables
+│   ├── auth.py                # JWT authentication (password hashing, token creation/verification)
 │   ├── database.py            # SQLAlchemy engine & session
-│   ├── models.py              # 15 SQLAlchemy models
+│   ├── models.py              # 18 SQLAlchemy models
 │   ├── schemas.py             # 40+ Pydantic schemas
 │   ├── crud.py                # Database operations
 │   ├── llm_service.py         # Mistral AI functions (CV, cover letter, pitch, etc.)
 │   ├── interview_service.py   # Interview AI functions (questions, analysis, hints)
 │   ├── file_service.py        # PDF extraction, LaTeX compilation
 │   ├── routers/
+│   │   ├── auth.py            # Register, login, current user
 │   │   ├── users.py           # User CRUD
 │   │   ├── profile.py         # Skills, experiences, education, languages, extracurriculars
 │   │   ├── offers.py          # Internship offer management
 │   │   ├── cvs.py             # CV upload, edit, compile
 │   │   ├── templates.py       # Cover letter templates
 │   │   ├── ai.py              # AI endpoints (adapt, generate, analyze)
-│   │   └── interview.py       # Interview REST + WebSocket endpoints
+│   │   ├── interview.py       # Interview REST + WebSocket endpoints
+│   │   ├── search.py          # Offer search/scraping (France Travail, WTTJ, The Muse)
+│   │   ├── dashboard.py       # Dashboard stats
+│   │   ├── reminders.py       # Reminder CRUD
+│   │   └── notes.py           # Offer notes CRUD
+│   ├── scrapers/
+│   │   ├── base.py            # Abstract OfferSource, RawOffer dataclass
+│   │   ├── francetravail.py   # France Travail API (OAuth2 + token caching)
+│   │   ├── wttj.py            # WTTJ / Algolia search
+│   │   └── themuse.py         # The Muse API
 │   └── frontend/
 │       └── src/
-│           ├── App.tsx         # Login, tab navigation
-│           ├── api.ts          # API client
+│           ├── App.tsx         # Login, routing, sidebar navigation
+│           ├── api.ts          # API client (REST + WebSocket)
 │           ├── hooks/
 │           │   ├── useInterview.ts        # WebSocket interview state machine
 │           │   └── useSpeechRecognition.ts # Mic recording + Voxtral transcription
 │           └── pages/
-│               ├── ProfilePage.tsx
-│               ├── OffersPage.tsx
-│               ├── CVsPage.tsx
-│               ├── TemplatesPage.tsx
-│               ├── AIPage.tsx
-│               └── InterviewPage.tsx
+│               ├── DashboardPage.tsx      # Stats, activity feed
+│               ├── OffersPage.tsx         # Offer list with status filtering
+│               ├── OfferDetailPage.tsx    # Full offer view + notes + AI actions
+│               ├── SearchPage.tsx         # External offer search + smart matching
+│               ├── ProfilePage.tsx        # Profile management
+│               ├── CVsPage.tsx            # CV management
+│               ├── TemplatesPage.tsx      # Cover letter templates
+│               ├── AIPage.tsx             # AI features hub
+│               ├── InterviewPage.tsx      # Mock interviews
+│               ├── CalendarPage.tsx       # Calendar view
+│               ├── RemindersPage.tsx      # Reminders management
+│               └── SettingsPage.tsx       # User settings
 ├── alembic/                # Database migrations
 │   ├── env.py
 │   └── versions/
 ├── alembic.ini
-├── tests/
+├── tests/                  # 11 test files (pytest + httpx)
 ├── requirements.txt
 ├── mypy.ini
 ├── Dockerfile              # Backend Docker image
@@ -204,6 +249,7 @@ internship_helper/
 
 | Area | Examples |
 |------|----------|
+| **Auth** | `POST /auth/register`, `POST /auth/login`, `GET /auth/me` |
 | **Users** | `POST /users`, `GET /users/{id}`, `GET /users/by-email/{email}` |
 | **Profile** | Full CRUD for skills, experiences, education, languages, extracurriculars, AI instructions |
 | **Offers** | `POST/GET/PATCH/DELETE /users/{id}/offers`, status filtering |
@@ -211,6 +257,10 @@ internship_helper/
 | **Templates** | Create from text or PDF upload, list, delete |
 | **AI** | Adapt CV (text + LaTeX), skill gap analysis, cover letter generation, pitch analysis, offer parsing, profile auto-fill |
 | **Interview** | Create/list/delete sessions, view detail, run analysis, predict questions, progress stats, `WS /ws/interview/{id}` |
+| **Search** | `POST /search/francetravail`, `/search/wttj`, `/search/themuse`, smart matching |
+| **Dashboard** | `GET /users/{id}/dashboard` (stats, activity, reminders) |
+| **Reminders** | `POST/GET/DELETE /users/{id}/reminders`, mark as done |
+| **Notes** | `POST/GET/DELETE /users/{id}/offers/{offer_id}/notes` |
 
 Full interactive documentation available at `/docs` when the server is running.
 
