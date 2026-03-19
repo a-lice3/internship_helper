@@ -53,7 +53,6 @@ export default function CVsPage({ userId }: { userId: number }) {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("Delete this CV?")) return;
     await api.deleteCV(userId, id);
     setCvs(cvs.filter((c) => c.id !== id));
     if (editingCV?.id === id) closeEditor();

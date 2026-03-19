@@ -1,4 +1,6 @@
 from datetime import date, datetime
+from typing import Any
+
 from pydantic import BaseModel
 
 # ---------- Auth ----------
@@ -564,3 +566,82 @@ class OfferSearchResponse(BaseModel):
     total: int
     sources_used: list[str]
     parsed_query: dict | None = None  # what Mistral extracted from the chat message
+
+
+# ---------- Reminder ----------
+
+
+class ReminderCreate(BaseModel):
+    offer_id: int | None = None
+    reminder_type: str = "custom"  # deadline / follow_up / interview / custom
+    title: str
+    description: str | None = None
+    due_at: datetime
+
+
+class ReminderUpdate(BaseModel):
+    title: str | None = None
+    description: str | None = None
+    due_at: datetime | None = None
+    reminder_type: str | None = None
+    is_done: bool | None = None
+
+
+class ReminderResponse(BaseModel):
+    id: int
+    offer_id: int | None = None
+    reminder_type: str
+    title: str
+    description: str | None = None
+    due_at: datetime
+    is_done: bool
+    created_at: datetime | None = None
+
+
+# ---------- Offer Note ----------
+
+
+class OfferNoteCreate(BaseModel):
+    content: str
+
+
+class OfferNoteUpdate(BaseModel):
+    content: str
+
+
+class OfferNoteResponse(BaseModel):
+    id: int
+    offer_id: int
+    content: str
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+
+
+# ---------- Dashboard ----------
+
+
+class DashboardStats(BaseModel):
+    offers_by_status: dict[str, int]
+    total_offers: int
+    average_interview_score: float | None = None
+    upcoming_reminders: list[ReminderResponse] = []
+    recent_activity: list[dict[str, Any]] = []
+    interview_sessions_count: int = 0
+    interview_sessions_this_week: int = 0
+
+
+# ---------- Calendar ----------
+
+
+class CalendarEvent(BaseModel):
+    id: str  # "{type}_{id}" e.g. "reminder_42"
+    event_type: str  # "application" | "reminder" | "interview"
+    title: str
+    date: datetime
+    offer_id: int | None = None
+    company: str | None = None
+    metadata: dict[str, Any] | None = None
+
+
+class CalendarResponse(BaseModel):
+    events: list[CalendarEvent]

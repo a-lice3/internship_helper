@@ -344,16 +344,25 @@ def parse_offer_endpoint(
 )
 def auto_fill_profile_endpoint(
     user_id: int,
+    cv_id: int | None = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     _verify_owner(user_id, current_user)
 
-    cvs = crud.get_cvs(db, user_id)
-    if not cvs:
-        raise HTTPException(status_code=400, detail="No CV found. Upload a CV first.")
+    if cv_id is not None:
+        cv = crud.get_cv(db, cv_id)
+        if not cv or cv.user_id != user_id:
+            raise HTTPException(status_code=404, detail="CV not found.")
+    else:
+        cvs = crud.get_cvs(db, user_id)
+        if not cvs:
+            raise HTTPException(
+                status_code=400, detail="No CV found. Upload a CV first."
+            )
+        cv = cvs[0]
 
-    cv_text = cvs[0].content
+    cv_text = cv.content
 
     try:
         extracted = extract_profile_from_cv(cv_text)

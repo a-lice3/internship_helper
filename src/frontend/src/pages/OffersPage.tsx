@@ -25,6 +25,13 @@ export default function OffersPage({ userId }: { userId: number }) {
     locations: string; description: string; status: string; date_applied: string;
   }>({ company: "", title: "", link: "", locations: "", description: "", status: "bookmarked", date_applied: "" });
 
+  // Notes
+  const [notesOpenId, setNotesOpenId] = useState<number | null>(null);
+  const [notes, setNotes] = useState<api.OfferNote[]>([]);
+  const [newNote, setNewNote] = useState("");
+  const [editingNoteId, setEditingNoteId] = useState<number | null>(null);
+  const [editNoteContent, setEditNoteContent] = useState("");
+
   // Show/hide add form
   const [showAdd, setShowAdd] = useState(false);
 
@@ -101,9 +108,38 @@ export default function OffersPage({ userId }: { userId: number }) {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("Delete this offer?")) return;
     await api.deleteOffer(userId, id);
     setOffers(offers.filter((o) => o.id !== id));
+  };
+
+  // Notes helpers
+  const toggleNotes = async (offerId: number) => {
+    if (notesOpenId === offerId) {
+      setNotesOpenId(null);
+      return;
+    }
+    setNotesOpenId(offerId);
+    const n = await api.getOfferNotes(userId, offerId);
+    setNotes(n);
+  };
+
+  const handleAddNote = async (offerId: number) => {
+    if (!newNote.trim()) return;
+    const n = await api.createOfferNote(userId, offerId, newNote);
+    setNotes([n, ...notes]);
+    setNewNote("");
+  };
+
+  const handleDeleteNote = async (offerId: number, noteId: number) => {
+    await api.deleteOfferNote(userId, offerId, noteId);
+    setNotes(notes.filter((n) => n.id !== noteId));
+  };
+
+  const handleSaveNoteEdit = async (offerId: number) => {
+    if (editingNoteId === null) return;
+    const updated = await api.updateOfferNote(userId, offerId, editingNoteId, editNoteContent);
+    setNotes(notes.map((n) => (n.id === updated.id ? updated : n)));
+    setEditingNoteId(null);
   };
 
   // Stats
@@ -237,9 +273,82 @@ export default function OffersPage({ userId }: { userId: number }) {
                     {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
                   </select>
                   {o.link && <a href={o.link} target="_blank" rel="noreferrer" style={{ fontSize: 12 }}>Link</a>}
+                  <button onClick={() => toggleNotes(o.id)} className="btn-ghost" title="Notes" style={{ fontSize: 12 }}>
+                    Notes
+                  </button>
                   <button onClick={() => startEdit(o)} className="btn-ghost" title="Edit">Edit</button>
                   <button onClick={() => handleDelete(o.id)} className="btn-icon" title="Delete">x</button>
                 </div>
+
+                {/* Notes panel */}
+                {notesOpenId === o.id && (
+                  <div style={{ borderTop: "1px solid var(--border)", padding: "12px 18px" }}>
+                    {/* Add note */}
+                    <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+                      <input
+                        placeholder="Add a note..."
+                        value={newNote}
+                        onChange={(e) => setNewNote(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter") handleAddNote(o.id); }}
+                        style={{ flex: 1 }}
+                      />
+                      <button className="btn-secondary" onClick={() => handleAddNote(o.id)} style={{ padding: "6px 14px" }}>
+                        Add
+                      </button>
+                    </div>
+
+                    {/* Notes list */}
+                    {notes.length === 0 ? (
+                      <p style={{ color: "var(--text-muted)", fontSize: 13, fontStyle: "italic" }}>No notes yet</p>
+                    ) : (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        {notes.map((n) => (
+                          <div key={n.id} style={{ padding: "8px 12px", background: "var(--surface-solid)", borderRadius: 8, border: "1px solid var(--border)" }}>
+                            {editingNoteId === n.id ? (
+                              <div style={{ display: "flex", gap: 8 }}>
+                                <textarea
+                                  rows={2}
+                                  value={editNoteContent}
+                                  onChange={(e) => setEditNoteContent(e.target.value)}
+                                  style={{ flex: 1 }}
+                                />
+                                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                                  <button className="btn-ghost" onClick={() => handleSaveNoteEdit(o.id)} style={{ fontSize: 12 }}>Save</button>
+                                  <button className="btn-ghost" onClick={() => setEditingNoteId(null)} style={{ fontSize: 12 }}>Cancel</button>
+                                </div>
+                              </div>
+                            ) : (
+                              <>
+                                <div style={{ fontSize: 13, whiteSpace: "pre-wrap", marginBottom: 4 }}>{n.content}</div>
+                                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                                  <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
+                                    {n.created_at ? new Date(n.created_at).toLocaleString() : ""}
+                                  </span>
+                                  <div style={{ display: "flex", gap: 4 }}>
+                                    <button
+                                      className="btn-ghost"
+                                      onClick={() => { setEditingNoteId(n.id); setEditNoteContent(n.content); }}
+                                      style={{ fontSize: 11, padding: "2px 6px" }}
+                                    >
+                                      Edit
+                                    </button>
+                                    <button
+                                      className="btn-icon"
+                                      onClick={() => handleDeleteNote(o.id, n.id)}
+                                      style={{ fontSize: 11 }}
+                                    >
+                                      x
+                                    </button>
+                                  </div>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )
           )}
