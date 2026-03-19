@@ -85,6 +85,7 @@ cd ../..
 
 # Database
 createdb career_db
+alembic upgrade head       # apply all migrations
 
 # Environment
 export DATABASE_URL="postgresql://localhost/career_db"
@@ -151,6 +152,10 @@ internship_helper/
 │               ├── TemplatesPage.tsx
 │               ├── AIPage.tsx
 │               └── InterviewPage.tsx
+├── alembic/                # Database migrations
+│   ├── env.py
+│   └── versions/
+├── alembic.ini
 ├── tests/
 ├── requirements.txt
 ├── mypy.ini
@@ -180,4 +185,4 @@ Full interactive documentation available at `/docs` when the server is running.
 | Templates | PDF, plain text |
 | Audio (pitch & interview) | mp3, wav, webm, ogg, m4a, flac |
 
-See [TASKS.md](TASKS.md) for the roadmap and [ARCHITECTURE.md](ARCHITECTURE.md) for technical details.
+See [TASKS.md](TASKS.md) for the roadmap, [ARCHITECTURE.md](ARCHITECTURE.md) for technical details, and [ALEMBIC.md](ALEMBIC.md) for the database migration guide.
