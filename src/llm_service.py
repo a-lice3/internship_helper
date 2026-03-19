@@ -477,6 +477,130 @@ def analyze_pitch(
     }
 
 
+def extract_search_params(user_message: str) -> dict[str, str | int | list[str] | None]:
+    """Use Mistral to extract search parameters from a natural language message.
+
+    Returns a dict with keys: keywords, location, country, radius_km, sources.
+    """
+    system_prompt = (
+        "You are a helpful assistant that extracts job search parameters from natural language. "
+        "The user will describe what kind of internship they're looking for. "
+        "Extract the following and respond in JSON (no markdown):\n"
+        '- "keywords": string of search keywords (job title, skills, domain)\n'
+        '- "location": city name or null if not specified\n'
+        '- "country": country name (default "France" if not specified)\n'
+        '- "radius_km": search radius in km (default 30)\n'
+        '- "max_results": number of results to return (default 20, max 30)\n'
+        '- "sources": list of sources to use. Available: ["francetravail", "wttj", "themuse"]. '
+        'For France: use ["francetravail", "wttj"]. '
+        'For other countries: use ["wttj", "themuse"]. '
+        "themuse has the best international coverage.\n\n"
+        "Examples:\n"
+        '"je cherche un stage en data science a Paris" -> '
+        '{"keywords": "data science", "location": "Paris", "country": "France", "radius_km": 30, "sources": ["francetravail", "wttj"]}\n'
+        '"looking for a ML internship in London" -> '
+        '{"keywords": "machine learning", "location": "London", "country": "UK", "radius_km": 30, "sources": ["wttj", "themuse"]}\n'
+        '"internship in Dubai" -> '
+        '{"keywords": "internship", "location": "Dubai", "country": "UAE", "radius_km": 30, "sources": ["wttj", "themuse"]}\n'
+        '"stage frontend react" -> '
+        '{"keywords": "frontend react", "location": null, "country": "France", "radius_km": 30, "sources": ["francetravail", "wttj"]}\n'
+        "Return only valid JSON."
+    )
+
+    raw = _chat(system_prompt, user_message)
+    cleaned = _strip_markdown_fences(raw)
+
+    try:
+        result = json.loads(cleaned)
+    except json.JSONDecodeError:
+        # Fallback: use the whole message as keywords
+        return {
+            "keywords": user_message,
+            "location": "",
+            "country": "France",
+            "radius_km": 30,
+            "sources": ["francetravail", "wttj"],
+        }
+
+    country = result.get("country", "France")
+    sources = result.get("sources")
+    if not sources:
+        if country and country.strip().lower() not in ("france", "fr"):
+            sources = ["wttj", "themuse"]
+        else:
+            sources = ["francetravail", "wttj"]
+
+    max_results = result.get("max_results")
+    if isinstance(max_results, int):
+        max_results = max(1, min(max_results, 30))
+    else:
+        max_results = None  # will use default from ChatSearchRequest
+
+    return {
+        "keywords": result.get("keywords", user_message),
+        "location": result.get("location"),
+        "country": country,
+        "radius_km": result.get("radius_km", 30),
+        "max_results": max_results,
+        "sources": sources,
+    }
+
+
+def match_offers_to_profile(
+    profile_summary: str,
+    offers: list[dict[str, str | None]],
+) -> list[dict[str, object]]:
+    """Score how well each offer matches the user's profile.
+
+    Returns a list of {score, reasons} dicts in the same order as input offers.
+    """
+    system_prompt = (
+        "You are a career matching expert. "
+        "Given a candidate profile and a list of internship offers, "
+        "score each offer from 0 to 100 on how well it matches the candidate's profile. "
+        "For each offer, provide a match score and 2-3 short reasons explaining the score. "
+        "Respond in JSON as a list of objects with keys: "
+        '"index" (int, 0-based), "score" (int 0-100), "reasons" (list of strings). '
+        "Return only valid JSON, no markdown."
+    )
+
+    offers_text = ""
+    for i, offer in enumerate(offers):
+        offers_text += (
+            f"\n### Offer {i}\n"
+            f"Title: {offer.get('title', '')}\n"
+            f"Company: {offer.get('company', '')}\n"
+            f"Description: {(offer.get('description') or '')[:500]}\n"
+        )
+
+    user_prompt = (
+        f"## Candidate Profile\n{profile_summary}\n\n"
+        f"## Offers to Score\n{offers_text}"
+    )
+
+    raw = _chat(system_prompt, user_prompt)
+    cleaned = _strip_markdown_fences(raw)
+
+    try:
+        results = json.loads(cleaned)
+    except json.JSONDecodeError:
+        # Return neutral scores if parsing fails
+        return [{"score": 50, "reasons": []} for _ in offers]
+
+    # Normalize to the expected order
+    scored = [{"score": 50, "reasons": []} for _ in offers]
+    if isinstance(results, list):
+        for item in results:
+            idx = item.get("index", 0)
+            if 0 <= idx < len(offers):
+                scored[idx] = {
+                    "score": item.get("score", 50),
+                    "reasons": item.get("reasons", []),
+                }
+
+    return scored
+
+
 def _strip_markdown_fences(text: str) -> str:
     """Remove markdown code fences (```...```) that Mistral sometimes adds."""
     stripped = text.strip()

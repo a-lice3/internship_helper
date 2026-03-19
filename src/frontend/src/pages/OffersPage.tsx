@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import * as api from "../api";
 
-const STATUSES = ["applied", "screened", "interview", "rejected", "accepted"];
+const STATUSES = ["bookmarked", "applied", "screened", "interview", "rejected", "accepted"];
 
 export default function OffersPage({ userId }: { userId: number }) {
   const [offers, setOffers] = useState<api.Offer[]>([]);
@@ -23,7 +23,7 @@ export default function OffersPage({ userId }: { userId: number }) {
   const [editFields, setEditFields] = useState<{
     company: string; title: string; link: string;
     locations: string; description: string; status: string; date_applied: string;
-  }>({ company: "", title: "", link: "", locations: "", description: "", status: "applied", date_applied: "" });
+  }>({ company: "", title: "", link: "", locations: "", description: "", status: "bookmarked", date_applied: "" });
 
   // Show/hide add form
   const [showAdd, setShowAdd] = useState(false);
@@ -120,7 +120,7 @@ export default function OffersPage({ userId }: { userId: number }) {
       </div>
 
       {/* Stats bento row */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12, marginBottom: 20 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 12, marginBottom: 20 }}>
         {STATUSES.map((s) => (
           <div
             key={s}

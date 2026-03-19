@@ -6,12 +6,14 @@ import CVsPage from "./pages/CVsPage";
 import TemplatesPage from "./pages/TemplatesPage";
 import AIPage from "./pages/AIPage";
 import InterviewPage from "./pages/InterviewPage";
+import SearchPage from "./pages/SearchPage";
 import "./App.css";
 
-type Tab = "offers" | "profile" | "cvs" | "templates" | "ai" | "interview";
+type Tab = "offers" | "search" | "profile" | "cvs" | "templates" | "ai" | "interview";
 
 const TABS: { key: Tab; label: string; icon: string }[] = [
   { key: "offers", label: "Offers", icon: "\uD83D\uDCCB" },
+  { key: "search", label: "Search", icon: "\uD83D\uDD0D" },
   { key: "profile", label: "Profile", icon: "\uD83D\uDC64" },
   { key: "cvs", label: "CVs", icon: "\uD83D\uDCC4" },
   { key: "templates", label: "Templates", icon: "\uD83D\uDCDD" },
@@ -213,6 +215,7 @@ export default function App() {
       {/* Main content */}
       <main className="main-content">
         {tab === "offers" && <OffersPage userId={user.id} />}
+        {tab === "search" && <SearchPage userId={user.id} />}
         {tab === "profile" && <ProfilePage userId={user.id} />}
         {tab === "cvs" && <CVsPage userId={user.id} />}
         {tab === "templates" && <TemplatesPage userId={user.id} />}

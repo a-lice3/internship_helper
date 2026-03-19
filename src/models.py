@@ -6,6 +6,7 @@ from sqlalchemy import (
     Date,
     DateTime,
     Enum,
+    Float,
     ForeignKey,
     Integer,
     String,
@@ -20,6 +21,7 @@ from src.database import Base
 
 
 class OfferStatus(str, enum.Enum):
+    bookmarked = "bookmarked"
     applied = "applied"
     screened = "screened"
     interview = "interview"
@@ -115,6 +117,9 @@ class User(Base):
     interview_sessions: Mapped[list["InterviewSession"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
+    scraped_offers: Mapped[list["ScrapedOffer"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
 
 
 class Skill(Base):
@@ -208,7 +213,7 @@ class InternshipOffer(Base):
     locations: Mapped[str | None] = mapped_column(String(500), nullable=True)
     date_applied: Mapped[date | None] = mapped_column(Date, nullable=True)
     status: Mapped[OfferStatus] = mapped_column(
-        Enum(OfferStatus), nullable=False, default=OfferStatus.applied
+        Enum(OfferStatus), nullable=False, default=OfferStatus.bookmarked
     )
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
@@ -418,3 +423,36 @@ class InterviewAnalysis(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
     session: Mapped["InterviewSession"] = relationship(back_populates="analysis")
+
+
+class ScrapedOffer(Base):
+    __tablename__ = "scraped_offers"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+
+    # Source info
+    source: Mapped[str] = mapped_column(
+        String(50), nullable=False
+    )  # francetravail / wttj
+    source_id: Mapped[str] = mapped_column(String(200), nullable=False)  # external ID
+
+    # Offer data
+    company: Mapped[str] = mapped_column(String(300), nullable=False)
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    locations: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    link: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    contract_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    salary: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    published_at: Mapped[str | None] = mapped_column(String(30), nullable=True)
+
+    # Matching
+    match_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    match_reasons: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON
+
+    # Status
+    saved: Mapped[bool] = mapped_column(default=False)  # user saved to tracker
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+    user: Mapped["User"] = relationship(back_populates="scraped_offers")
