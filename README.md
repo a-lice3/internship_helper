@@ -85,11 +85,14 @@ cd ../..
 
 # Database
 createdb career_db
-alembic upgrade head       # apply all migrations
 
-# Environment
-export DATABASE_URL="postgresql://localhost/career_db"
-export MISTRAL_API_KEY="your-key-here"
+# Environment — create a .env file at the project root
+cp .env.example .env
+# Edit .env: add your MISTRAL_API_KEY and generate a JWT secret:
+python -c "import secrets; print(secrets.token_hex(32))"
+
+# Apply migrations
+alembic upgrade head
 
 # Run backend
 uvicorn src.main:app --reload
