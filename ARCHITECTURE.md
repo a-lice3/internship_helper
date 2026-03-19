@@ -22,15 +22,17 @@ PostgreSQL          Mistral API
 ```
 src/
 ├── main.py                # FastAPI app, CORS, router registration
-├── config.py              # Environment variables (DATABASE_URL, MISTRAL_API_KEY, UPLOAD_DIR)
+├── config.py              # Environment variables (DATABASE_URL, MISTRAL_API_KEY, UPLOAD_DIR, JWT)
+├── auth.py                # JWT authentication (get_current_user dependency)
 ├── database.py            # SQLAlchemy engine, Base, session, get_db()
-├── models.py              # SQLAlchemy ORM models (14 tables)
+├── models.py              # SQLAlchemy ORM models (15 tables)
 ├── schemas.py             # Pydantic request/response schemas
 ├── crud.py                # Database read/write operations
 ├── llm_service.py         # Mistral chat/transcription wrapper
 ├── interview_service.py   # Interview simulation prompts & analysis pipeline
 ├── file_service.py        # File upload, PDF extraction, LaTeX compilation
 └── routers/
+    ├── auth.py            # Authentication endpoints (register, login)
     ├── users.py           # User CRUD
     ├── profile.py         # Skills, experiences, education, languages, extracurriculars, AI instructions
     ├── offers.py          # Internship offers CRUD + status filter
@@ -264,3 +266,12 @@ Audio transcription uses the Voxtral model (`voxtral-mini-2602`).
 - FastAPI's `dependency_overrides` swaps `get_db` for a test session
 - Shared fixtures in `tests/conftest.py`
 - Located in `tests/` (5 test files)
+
+---
+
+## Database Migrations (Alembic)
+
+- Schema changes are managed by **Alembic** (not `Base.metadata.create_all`)
+- Config in `alembic.ini` + `alembic/env.py` (imports `DATABASE_URL` and `Base.metadata` from src/)
+- Migration files in `alembic/versions/`
+- See `ALEMBIC.md` for usage guide

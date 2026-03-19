@@ -17,7 +17,7 @@
 - [x] Install PostgreSQL locally
 - [x] Create `career_db` database
 - [x] Setup SQLAlchemy with DeclarativeBase (mypy compatible)
-- [x] Auto-create tables on startup (Base.metadata.create_all)
+- [x] ~~Auto-create tables on startup~~ → remplace par Alembic (Phase 18)
 - [x] Implement get_db() dependency
 
 ---
@@ -178,9 +178,20 @@
 
 ---
 
+## Phase 18 — Alembic Migrations [DONE]
+
+- [x] Install Alembic, initialiser avec `alembic init alembic`
+- [x] Configurer `alembic/env.py` (import Base.metadata + DATABASE_URL)
+- [x] Generer migration initiale (15 tables, 6 enums)
+- [x] `alembic stamp head` sur la base existante
+- [x] Supprimer `Base.metadata.create_all` de main.py
+- [x] Guide d'utilisation dans ALEMBIC.md
+
+---
+
 ## Phase 17 — Next Steps (TODO)
 
-- [ ] Alembic migrations (proper schema versioning)
+- [x] ~~Alembic migrations (proper schema versioning)~~ (Phase 18)
 - [ ] User authentication (JWT or session-based)
 - [ ] Tests for AI endpoints (mock Mistral calls)
 - [ ] Tests for interview WebSocket
