@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import * as api from "../api";
+import i18n from "../i18n";
 
 export default function SettingsPage({
   userId, userName, userEmail, onLogout,
 }: {
   userId: number; userName: string; userEmail: string; onLogout: () => void;
 }) {
+  const { t } = useTranslation();
   const [aiInstructions, setAiInstructions] = useState("");
   const [aiInstructionsSaved, setAiInstructionsSaved] = useState("");
   const [savingInstructions, setSavingInstructions] = useState(false);
@@ -24,7 +27,7 @@ export default function SettingsPage({
       await api.updateAIInstructions(userId, aiInstructions);
       setAiInstructionsSaved(aiInstructions);
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Failed to save instructions");
+      alert(err instanceof Error ? err.message : t("settings.failedSave"));
     } finally {
       setSavingInstructions(false);
     }
@@ -35,35 +38,55 @@ export default function SettingsPage({
   return (
     <div className="page">
       <div className="page-header">
-        <h2>Settings</h2>
-        <p className="page-desc">Account and AI configuration</p>
+        <h2>{t("settings.title")}</h2>
+        <p className="page-desc">{t("settings.description")}</p>
       </div>
 
       {/* Account */}
       <div className="glass-card" style={{ marginBottom: 20 }}>
-        <div className="glass-card-header"><h3>Account</h3></div>
+        <div className="glass-card-header"><h3>{t("settings.account")}</h3></div>
         <div className="glass-card-body">
           <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 14 }}>
-            <div><span style={{ color: "var(--text-muted)", width: 80, display: "inline-block" }}>Name:</span> <strong>{userName}</strong></div>
-            <div><span style={{ color: "var(--text-muted)", width: 80, display: "inline-block" }}>Email:</span> <strong>{userEmail}</strong></div>
+            <div><span style={{ color: "var(--text-muted)", width: 80, display: "inline-block" }}>{t("settings.nameLabel")}</span> <strong>{userName}</strong></div>
+            <div><span style={{ color: "var(--text-muted)", width: 80, display: "inline-block" }}>{t("settings.emailLabel")}</span> <strong>{userEmail}</strong></div>
           </div>
           <button onClick={onLogout} className="btn-danger" style={{ marginTop: 16 }}>
-            Logout
+            {t("settings.logout")}
           </button>
+        </div>
+      </div>
+
+      {/* Language */}
+      <div className="glass-card" style={{ marginBottom: 20 }}>
+        <div className="glass-card-header"><h3>{t("settings.languageLabel")}</h3></div>
+        <div className="glass-card-body">
+          <p className="hint" style={{ marginBottom: 8 }}>
+            {t("settings.languageHint")}
+          </p>
+          <select
+            value={["fr", "de", "es"].find((l) => i18n.language?.startsWith(l)) || "en"}
+            onChange={(e) => i18n.changeLanguage(e.target.value)}
+            style={{ width: "auto" }}
+          >
+            <option value="en">English</option>
+            <option value="fr">Français</option>
+            <option value="de">Deutsch</option>
+            <option value="es">Español</option>
+          </select>
         </div>
       </div>
 
       {/* AI Instructions */}
       <div className="glass-card">
-        <div className="glass-card-header"><h3>AI Instructions</h3></div>
+        <div className="glass-card-header"><h3>{t("settings.aiInstructions")}</h3></div>
         <div className="glass-card-body">
           <p className="hint" style={{ marginBottom: 8 }}>
-            Custom instructions sent to the AI for every generation (CV, cover letter, skill gap).
+            {t("settings.aiHint")}
           </p>
           <textarea
             value={aiInstructions}
             onChange={(e) => setAiInstructions(e.target.value)}
-            placeholder="e.g. Do not modify the Education section, Always mention Python first..."
+            placeholder={t("settings.aiPlaceholder")}
             rows={6}
             style={{ width: "100%" }}
           />
@@ -75,10 +98,10 @@ export default function SettingsPage({
               className="btn-primary"
               style={{ boxShadow: "none" }}
             >
-              {savingInstructions ? "Saving..." : "Save"}
+              {savingInstructions ? t("settings.saving") : t("settings.save")}
             </button>
             {!instructionsChanged && aiInstructionsSaved && (
-              <span className="hint">Saved</span>
+              <span className="hint">{t("settings.saved")}</span>
             )}
           </div>
         </div>

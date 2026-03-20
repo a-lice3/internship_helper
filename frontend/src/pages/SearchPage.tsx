@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { NavLink } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import * as api from "../api";
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -8,15 +9,8 @@ const SOURCE_LABELS: Record<string, string> = {
   themuse: "The Muse",
 };
 
-const SUGGESTIONS = [
-  "Je cherche un stage en data science a Paris",
-  "Stage frontend React a Lyon",
-  "Machine learning internship in London",
-  "Stage developpeur Python, remote en France",
-  "Stage en marketing digital a Bordeaux",
-];
-
 export default function SearchPage({ userId }: { userId: number }) {
+  const { t } = useTranslation();
   const [message, setMessage] = useState("");
   const [results, setResults] = useState<api.ScrapedOffer[]>([]);
   const [sourcesUsed, setSourcesUsed] = useState<string[]>([]);
@@ -40,7 +34,7 @@ export default function SearchPage({ userId }: { userId: number }) {
       setSourcesUsed(resp.sources_used);
       setParsedQuery(resp.parsed_query ?? null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Search failed");
+      setError(err instanceof Error ? err.message : t("searchPage.searchFailed"));
       setResults([]);
       setParsedQuery(null);
     } finally {
@@ -61,7 +55,7 @@ export default function SearchPage({ userId }: { userId: number }) {
         prev.map((r) => (r.id === offer.id ? { ...r, saved: true } : r))
       );
     } catch {
-      alert("Failed to save offer");
+      alert(t("searchPage.saveFailed"));
     } finally {
       setSavingId(null);
     }
@@ -81,18 +75,20 @@ export default function SearchPage({ userId }: { userId: number }) {
     return src;
   };
 
+  const suggestions = t("searchPage.suggestions", { returnObjects: true }) as string[];
+
   return (
     <div className="page">
       <div className="page-header">
-        <h2>Candidatures</h2>
+        <h2>{t("searchPage.title")}</h2>
         <p className="page-desc">
-          Describe what you're looking for and AI will find matching offers
+          {t("searchPage.description")}
         </p>
       </div>
 
       <nav className="pill-nav">
-        <NavLink to="/offers" end className={({ isActive }) => `pill${isActive ? " active" : ""}`}>Mes offres</NavLink>
-        <NavLink to="/offers/search" className={({ isActive }) => `pill${isActive ? " active" : ""}`}>Recherche</NavLink>
+        <NavLink to="/offers" end className={({ isActive }) => `pill${isActive ? " active" : ""}`}>{t("searchPage.myOffers")}</NavLink>
+        <NavLink to="/offers/search" className={({ isActive }) => `pill${isActive ? " active" : ""}`}>{t("searchPage.search")}</NavLink>
       </nav>
 
       {/* Chat input */}
@@ -101,7 +97,7 @@ export default function SearchPage({ userId }: { userId: number }) {
           <form onSubmit={handleSubmit}>
             <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
               <textarea
-                placeholder="Describe what you're looking for... (e.g. 'stage en data science a Paris')"
+                placeholder={t("searchPage.placeholder")}
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 onKeyDown={(e) => {
@@ -120,7 +116,7 @@ export default function SearchPage({ userId }: { userId: number }) {
                 disabled={loading || !message.trim()}
                 style={{ whiteSpace: "nowrap", alignSelf: "flex-end" }}
               >
-                {loading ? "Searching..." : "Search"}
+                {loading ? t("searchPage.searching") : t("searchPage.searchBtn")}
               </button>
             </div>
           </form>
@@ -128,9 +124,9 @@ export default function SearchPage({ userId }: { userId: number }) {
           {/* Suggestions (only before first search) */}
           {!searched && (
             <div style={{ marginTop: 12 }}>
-              <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Try:</span>
+              <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{t("searchPage.try")}</span>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
-                {SUGGESTIONS.map((s) => (
+                {suggestions.map((s) => (
                   <button
                     key={s}
                     onClick={() => doSearch(s)}
@@ -169,7 +165,7 @@ export default function SearchPage({ userId }: { userId: number }) {
               padding: "2px 8px", borderRadius: 4,
               background: "var(--bg-card)", border: "1px solid var(--border)"
             }}>
-              Keywords: {String(parsedQuery.keywords)}
+              {t("searchPage.keywords")} {String(parsedQuery.keywords)}
             </span>
           )}
           {Boolean(parsedQuery.location) && (
@@ -177,7 +173,7 @@ export default function SearchPage({ userId }: { userId: number }) {
               padding: "2px 8px", borderRadius: 4,
               background: "var(--bg-card)", border: "1px solid var(--border)"
             }}>
-              Location: {String(parsedQuery.location)}
+              {t("searchPage.location")} {String(parsedQuery.location)}
             </span>
           )}
           {Boolean(parsedQuery.country) && (
@@ -185,7 +181,7 @@ export default function SearchPage({ userId }: { userId: number }) {
               padding: "2px 8px", borderRadius: 4,
               background: "var(--bg-card)", border: "1px solid var(--border)"
             }}>
-              Country: {String(parsedQuery.country)}
+              {t("searchPage.country")} {String(parsedQuery.country)}
             </span>
           )}
           {sourcesUsed.length > 0 && (
@@ -193,14 +189,14 @@ export default function SearchPage({ userId }: { userId: number }) {
               padding: "2px 8px", borderRadius: 4,
               background: "var(--bg-card)", border: "1px solid var(--border)"
             }}>
-              Sources: {sourcesUsed.map((s) => SOURCE_LABELS[s] || s).join(", ")}
+              {t("searchPage.sources")} {sourcesUsed.map((s) => SOURCE_LABELS[s] || s).join(", ")}
             </span>
           )}
           <span style={{
             padding: "2px 8px", borderRadius: 4,
             background: "var(--bg-card)", border: "1px solid var(--border)"
           }}>
-            {results.length} result{results.length !== 1 ? "s" : ""}
+            {results.length === 1 ? t("searchPage.result", { count: results.length }) : t("searchPage.results", { count: results.length })}
           </span>
         </div>
       )}
@@ -217,8 +213,8 @@ export default function SearchPage({ userId }: { userId: number }) {
       {/* Loading */}
       {loading && (
         <div style={{ textAlign: "center", padding: 40, color: "var(--text-muted)" }}>
-          <p style={{ fontSize: 16 }}>Searching offers and matching to your profile...</p>
-          <p style={{ fontSize: 13 }}>This may take a few seconds</p>
+          <p style={{ fontSize: 16 }}>{t("searchPage.searchingOffers")}</p>
+          <p style={{ fontSize: 13 }}>{t("searchPage.mayTakeSeconds")}</p>
         </div>
       )}
 
@@ -263,7 +259,7 @@ export default function SearchPage({ userId }: { userId: number }) {
                   >
                     {offer.match_score !== null ? Math.round(offer.match_score) : "?"}
                   </span>
-                  <span style={{ fontSize: 9, color: "var(--text-muted)" }}>match</span>
+                  <span style={{ fontSize: 9, color: "var(--text-muted)" }}>{t("searchPage.match")}</span>
                 </div>
 
                 {/* Info */}
@@ -318,7 +314,7 @@ export default function SearchPage({ userId }: { userId: number }) {
                       onClick={(e) => e.stopPropagation()}
                       style={{ fontSize: 12 }}
                     >
-                      Link
+                      {t("offers.link")}
                     </a>
                   )}
                   <button
@@ -330,7 +326,7 @@ export default function SearchPage({ userId }: { userId: number }) {
                       handleSave(offer);
                     }}
                   >
-                    {offer.saved ? "Saved" : savingId === offer.id ? "..." : "Save"}
+                    {offer.saved ? t("searchPage.saved") : savingId === offer.id ? "..." : t("searchPage.save")}
                   </button>
                 </div>
               </div>
@@ -346,7 +342,7 @@ export default function SearchPage({ userId }: { userId: number }) {
                   {offer.match_reasons.length > 0 && (
                     <div style={{ marginTop: 10 }}>
                       <strong style={{ fontSize: 12, color: "var(--text-h)" }}>
-                        Why this matches your profile:
+                        {t("searchPage.whyMatch")}
                       </strong>
                       <ul style={{ margin: "4px 0 0 16px", fontSize: 12, color: "var(--text)" }}>
                         {offer.match_reasons.map((r, i) => (
@@ -358,7 +354,7 @@ export default function SearchPage({ userId }: { userId: number }) {
                   {offer.description && (
                     <div style={{ marginTop: 10 }}>
                       <strong style={{ fontSize: 12, color: "var(--text-h)" }}>
-                        Description:
+                        {t("searchPage.descriptionLabel")}
                       </strong>
                       <p
                         style={{
@@ -384,7 +380,7 @@ export default function SearchPage({ userId }: { userId: number }) {
       {/* Empty state */}
       {searched && !loading && results.length === 0 && !error && (
         <p className="empty">
-          No offers found. Try describing your search differently.
+          {t("searchPage.noResults")}
         </p>
       )}
     </div>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Routes, Route, Link, Navigate, useNavigate, useLocation } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import * as api from "./api";
 import DashboardPage from "./pages/DashboardPage";
 import OffersPage from "./pages/OffersPage";
@@ -13,12 +14,12 @@ import InterviewPage from "./pages/InterviewPage";
 import SettingsPage from "./pages/SettingsPage";
 import "./App.css";
 
-const NAV_SECTIONS = [
-  { to: "/dashboard", label: "Dashboard", icon: "\uD83D\uDCCA" },
-  { to: "/offers", label: "Candidatures", icon: "\uD83D\uDCCB" },
-  { to: "/profile", label: "Mon Profil", icon: "\uD83D\uDC64" },
-  { to: "/interview", label: "Interview", icon: "\uD83C\uDFA4" },
-  { to: "/settings", label: "Settings", icon: "\u2699\uFE0F" },
+const NAV_KEYS = [
+  { to: "/dashboard", labelKey: "nav.dashboard", icon: "\uD83D\uDCCA" },
+  { to: "/offers", labelKey: "nav.offers", icon: "\uD83D\uDCCB" },
+  { to: "/profile", labelKey: "nav.profile", icon: "\uD83D\uDC64" },
+  { to: "/interview", labelKey: "nav.interview", icon: "\uD83C\uDFA4" },
+  { to: "/settings", labelKey: "nav.settings", icon: "\u2699\uFE0F" },
 ];
 
 // ---------- Sidebar Link (matches prefix for nested routes) ----------
@@ -37,6 +38,7 @@ function SidebarLink({ to, icon, label }: { to: string; icon: string; label: str
 // ---------- Login ----------
 
 function LoginScreen({ onLogin }: { onLogin: (user: api.User) => void }) {
+  const { t } = useTranslation();
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
@@ -53,7 +55,7 @@ function LoginScreen({ onLogin }: { onLogin: (user: api.User) => void }) {
       api.setToken(resp.access_token);
       onLogin(resp.user);
     } catch {
-      setError("Invalid email or password.");
+      setError(t("login.invalidCredentials"));
     }
   };
 
@@ -65,7 +67,7 @@ function LoginScreen({ onLogin }: { onLogin: (user: api.User) => void }) {
       api.setToken(resp.access_token);
       onLogin(resp.user);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Signup failed.";
+      const msg = err instanceof Error ? err.message : t("login.signupFailed");
       setError(msg);
     }
   };
@@ -74,60 +76,60 @@ function LoginScreen({ onLogin }: { onLogin: (user: api.User) => void }) {
     <div className="login-screen">
       <div className="login-card">
         <div className="login-icon">{"\u2728"}</div>
-        <h1>Internship Helper</h1>
-        <p className="subtitle">Your AI-powered internship search companion</p>
+        <h1>{t("login.title")}</h1>
+        <p className="subtitle">{t("login.subtitle")}</p>
 
         <div className="login-toggle">
           <button className={mode === "login" ? "active" : ""} onClick={() => setMode("login")}>
-            Login
+            {t("login.login")}
           </button>
           <button className={mode === "signup" ? "active" : ""} onClick={() => setMode("signup")}>
-            Sign up
+            {t("login.signup")}
           </button>
         </div>
 
         {mode === "login" ? (
           <form onSubmit={handleLogin} className="login-form">
             <label>
-              Email
+              {t("login.email")}
               <input
                 type="email"
-                placeholder="you@example.com"
+                placeholder={t("login.emailPlaceholder")}
                 value={loginEmail}
                 onChange={(e) => setLoginEmail(e.target.value)}
               />
             </label>
             <label>
-              Password
+              {t("login.password")}
               <input
                 type="password"
-                placeholder="Your password"
+                placeholder={t("login.passwordPlaceholder")}
                 value={loginPassword}
                 onChange={(e) => setLoginPassword(e.target.value)}
               />
             </label>
-            <button type="submit">Login</button>
+            <button type="submit">{t("login.login")}</button>
           </form>
         ) : (
           <form onSubmit={handleSignup} className="login-form">
             <label>
-              Name
-              <input placeholder="Your name" value={name} onChange={(e) => setName(e.target.value)} />
+              {t("login.name")}
+              <input placeholder={t("login.namePlaceholder")} value={name} onChange={(e) => setName(e.target.value)} />
             </label>
             <label>
-              Email
-              <input placeholder="you@example.com" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+              {t("login.email")}
+              <input placeholder={t("login.emailPlaceholder")} type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
             </label>
             <label>
-              Password
+              {t("login.password")}
               <input
                 type="password"
-                placeholder="Choose a password"
+                placeholder={t("login.choosePassword")}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
             </label>
-            <button type="submit">Create account</button>
+            <button type="submit">{t("login.createAccount")}</button>
           </form>
         )}
 
@@ -140,6 +142,7 @@ function LoginScreen({ onLogin }: { onLogin: (user: api.User) => void }) {
 // ---------- Main App ----------
 
 export default function App() {
+  const { t } = useTranslation();
   const [user, setUser] = useState<api.User | null>(null);
   const [loading, setLoading] = useState(() => !!api.getToken());
   const navigate = useNavigate();
@@ -166,7 +169,7 @@ export default function App() {
     return (
       <div className="login-screen">
         <div className="login-card">
-          <p>Loading...</p>
+          <p>{t("app.loading")}</p>
         </div>
       </div>
     );
@@ -190,14 +193,14 @@ export default function App() {
         <div className="sidebar-brand">
           <div className="sidebar-brand-icon">{"\u2728"}</div>
           <div>
-            <h1>Intern Helper</h1>
-            <div className="brand-sub">AI-powered</div>
+            <h1>{t("app.title")}</h1>
+            <div className="brand-sub">{t("app.subtitle")}</div>
           </div>
         </div>
 
         <nav className="sidebar-nav">
-          {NAV_SECTIONS.map((item) => (
-            <SidebarLink key={item.to} to={item.to} icon={item.icon} label={item.label} />
+          {NAV_KEYS.map((item) => (
+            <SidebarLink key={item.to} to={item.to} icon={item.icon} label={t(item.labelKey)} />
           ))}
         </nav>
 
@@ -209,7 +212,7 @@ export default function App() {
           <button
             className="btn-logout"
             onClick={handleLogout}
-            title="Logout"
+            title={t("nav.logout")}
           >
             {"\u2192"}
           </button>

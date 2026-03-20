@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import * as api from "../api";
 import DateTimeInput from "../components/DateTimeInput";
-
-const REMINDER_TYPES = ["deadline", "follow_up", "interview", "custom"];
+import { getReminderTypeLabel, REMINDER_TYPES } from "../i18n/helpers";
 
 export default function RemindersPage({ userId }: { userId: number }) {
+  const { t } = useTranslation();
   const [reminders, setReminders] = useState<api.Reminder[]>([]);
   const [showDone, setShowDone] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
@@ -95,18 +96,18 @@ export default function RemindersPage({ userId }: { userId: number }) {
   return (
     <div className="page">
       <div className="page-header">
-        <h2>Reminders</h2>
-        <p className="page-desc">Track deadlines, follow-ups, and interviews</p>
+        <h2>{t("reminders.title")}</h2>
+        <p className="page-desc">{t("reminders.description")}</p>
       </div>
 
       {/* Actions */}
       <div style={{ display: "flex", gap: 8, marginBottom: 16, alignItems: "center" }}>
         <button className="btn-primary" onClick={() => setShowAdd(!showAdd)}>
-          {showAdd ? "Cancel" : "+ New reminder"}
+          {showAdd ? t("reminders.cancel") : t("reminders.newReminder")}
         </button>
         <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, cursor: "pointer", flexDirection: "row" }}>
           <input type="checkbox" checked={showDone} onChange={(e) => setShowDone(e.target.checked)} style={{ width: "auto" }} />
-          Show completed
+          {t("reminders.showCompleted")}
         </label>
       </div>
 
@@ -116,33 +117,33 @@ export default function RemindersPage({ userId }: { userId: number }) {
           <div className="glass-card-body">
             <form onSubmit={handleAdd} className="form-grid">
               <label>
-                Title *
-                <input placeholder="e.g. Follow up with Google" value={title} onChange={(e) => setTitle(e.target.value)} />
+                {t("reminders.titleField")}
+                <input placeholder={t("reminders.titlePlaceholder")} value={title} onChange={(e) => setTitle(e.target.value)} />
               </label>
               <label>
-                Type
+                {t("reminders.type")}
                 <select value={reminderType} onChange={(e) => setReminderType(e.target.value)}>
-                  {REMINDER_TYPES.map((t) => <option key={t} value={t}>{t.replace("_", " ")}</option>)}
+                  {REMINDER_TYPES.map((type) => <option key={type} value={type}>{getReminderTypeLabel(t, type)}</option>)}
                 </select>
               </label>
               <label>
-                Due date *
+                {t("reminders.dueDate")}
                 <DateTimeInput value={dueAt} onChange={setDueAt} />
               </label>
               <label>
-                Linked offer (optional)
+                {t("reminders.linkedOffer")}
                 <select value={offerId} onChange={(e) => setOfferId(e.target.value ? Number(e.target.value) : "")}>
-                  <option value="">— None —</option>
+                  <option value="">{t("reminders.none")}</option>
                   {offers.map((o) => <option key={o.id} value={o.id}>{o.company} — {o.title}</option>)}
                 </select>
               </label>
               <div style={{ gridColumn: "1 / -1" }}>
                 <label>
-                  Description (optional)
-                  <textarea rows={2} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Additional details..." />
+                  {t("reminders.descriptionField")}
+                  <textarea rows={2} value={description} onChange={(e) => setDescription(e.target.value)} placeholder={t("reminders.descriptionPlaceholder")} />
                 </label>
               </div>
-              <button type="submit">Add reminder</button>
+              <button type="submit">{t("reminders.addReminder")}</button>
             </form>
           </div>
         </div>
@@ -150,7 +151,7 @@ export default function RemindersPage({ userId }: { userId: number }) {
 
       {/* Upcoming reminders */}
       {upcoming.length === 0 && !showDone ? (
-        <p className="empty">No pending reminders. Create one to stay on track!</p>
+        <p className="empty">{t("reminders.noPending")}</p>
       ) : (
         <div className="card-list">
           {upcoming.map((r) =>
@@ -158,18 +159,18 @@ export default function RemindersPage({ userId }: { userId: number }) {
               <div key={r.id} className="glass-card">
                 <div className="glass-card-body">
                   <div className="form-grid">
-                    <label>Title <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} /></label>
-                    <label>Type
+                    <label>{t("reminders.title_label")} <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} /></label>
+                    <label>{t("reminders.type")}
                       <select value={editType} onChange={(e) => setEditType(e.target.value)}>
-                        {REMINDER_TYPES.map((t) => <option key={t} value={t}>{t.replace("_", " ")}</option>)}
+                        {REMINDER_TYPES.map((type) => <option key={type} value={type}>{getReminderTypeLabel(t, type)}</option>)}
                       </select>
                     </label>
-                    <label>Due date <DateTimeInput value={editDueAt} onChange={setEditDueAt} /></label>
-                    <label>Description <textarea rows={2} value={editDesc} onChange={(e) => setEditDesc(e.target.value)} /></label>
+                    <label>{t("reminders.dueDate")} <DateTimeInput value={editDueAt} onChange={setEditDueAt} /></label>
+                    <label>{t("reminders.descriptionField")} <textarea rows={2} value={editDesc} onChange={(e) => setEditDesc(e.target.value)} /></label>
                   </div>
                   <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-                    <button className="btn-primary" onClick={handleSaveEdit} style={{ boxShadow: "none" }}>Save</button>
-                    <button className="btn-cancel" onClick={() => setEditingId(null)}>Cancel</button>
+                    <button className="btn-primary" onClick={handleSaveEdit} style={{ boxShadow: "none" }}>{t("reminders.save")}</button>
+                    <button className="btn-cancel" onClick={() => setEditingId(null)}>{t("reminders.cancel_btn")}</button>
                   </div>
                 </div>
               </div>
@@ -179,7 +180,7 @@ export default function RemindersPage({ userId }: { userId: number }) {
                   <button
                     className={`reminder-toggle${r.is_done ? " done" : ""}`}
                     onClick={() => handleToggleDone(r)}
-                    title={r.is_done ? "Mark undone" : "Mark done"}
+                    title={r.is_done ? t("reminders.markUndone") : t("reminders.markDone")}
                   >{r.is_done ? "\u2713" : ""}</button>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -187,16 +188,16 @@ export default function RemindersPage({ userId }: { userId: number }) {
                         {r.title}
                       </strong>
                       <span className="badge" style={{ textTransform: "capitalize" }}>
-                        {r.reminder_type.replace("_", " ")}
+                        {getReminderTypeLabel(t, r.reminder_type)}
                       </span>
-                      {isOverdue(r) && <span style={{ fontSize: 11, color: "var(--danger)", fontWeight: 600 }}>OVERDUE</span>}
+                      {isOverdue(r) && <span style={{ fontSize: 11, color: "var(--danger)", fontWeight: 600 }}>{t("reminders.overdue")}</span>}
                     </div>
                     <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
                       {formatDate(r.due_at)}
                       {r.description && <span> — {r.description}</span>}
                     </div>
                   </div>
-                  <button onClick={() => startEdit(r)} className="btn-ghost" title="Edit">Edit</button>
+                  <button onClick={() => startEdit(r)} className="btn-ghost" title={t("reminders.edit")}>{t("reminders.edit")}</button>
                   <button onClick={() => handleDelete(r.id)} className="btn-icon" title="Delete">x</button>
                 </div>
               </div>
@@ -208,7 +209,7 @@ export default function RemindersPage({ userId }: { userId: number }) {
       {/* Done reminders */}
       {showDone && done.length > 0 && (
         <div style={{ marginTop: 24 }}>
-          <h3 style={{ fontSize: 15, marginBottom: 12, color: "var(--text-muted)" }}>Completed</h3>
+          <h3 style={{ fontSize: 15, marginBottom: 12, color: "var(--text-muted)" }}>{t("reminders.completed")}</h3>
           <div className="card-list">
             {done.map((r) => (
               <div key={r.id} className="glass-card" style={{ padding: 0, opacity: 0.6 }}>
@@ -216,7 +217,7 @@ export default function RemindersPage({ userId }: { userId: number }) {
                   <button
                     className="reminder-toggle done"
                     onClick={() => handleToggleDone(r)}
-                    title="Mark undone"
+                    title={t("reminders.markUndone")}
                   >{"\u2713"}</button>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ textDecoration: "line-through", fontSize: 14, color: "var(--text-muted)" }}>{r.title}</div>

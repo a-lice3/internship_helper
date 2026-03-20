@@ -1,24 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import * as api from "../api";
 import DateTimeInput from "../components/DateTimeInput";
-
-const STATUS_LABELS: Record<string, string> = {
-  bookmarked: "Bookmarked",
-  applied: "Applied",
-  screened: "Screened",
-  interview: "Interview",
-  rejected: "Rejected",
-  accepted: "Accepted",
-};
-
-const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-const MONTHS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-];
-
-const REMINDER_TYPES = ["deadline", "follow_up", "interview", "custom"];
+import { getMonths, getDays, getStatusLabels, getReminderTypeLabel, REMINDER_TYPES } from "../i18n/helpers";
 
 const EVENT_COLORS: Record<string, string> = {
   application: "var(--accent)",
@@ -39,6 +24,11 @@ function toDateKey(d: Date) {
 
 export default function DashboardPage({ userId }: { userId: number }) {
   const navigate = useNavigate();
+  const { t } = useTranslation();
+  const STATUS_LABELS = getStatusLabels(t);
+  const DAYS = getDays(t);
+  const MONTHS = getMonths(t);
+
   const [stats, setStats] = useState<api.DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -179,53 +169,53 @@ export default function DashboardPage({ userId }: { userId: number }) {
   // Non-reminder events for the selected day
   const selectedDayOtherEvents = selectedEvents.filter((ev) => ev.event_type !== "reminder");
 
-  if (loading) return <div className="page"><p>Loading dashboard...</p></div>;
-  if (!stats) return <div className="page"><p>Failed to load dashboard.</p></div>;
+  if (loading) return <div className="page"><p>{t("dashboard.loadingDashboard")}</p></div>;
+  if (!stats) return <div className="page"><p>{t("dashboard.failedToLoad")}</p></div>;
 
   const formatDate = (iso: string) => {
     const d = new Date(iso);
     const now = new Date();
     const diffMs = d.getTime() - now.getTime();
     const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-    if (diffDays === 0) return "Today";
-    if (diffDays === 1) return "Tomorrow";
-    if (diffDays > 0 && diffDays <= 7) return `In ${diffDays} days`;
+    if (diffDays === 0) return t("dashboard.today");
+    if (diffDays === 1) return t("dashboard.tomorrow");
+    if (diffDays > 0 && diffDays <= 7) return t("dashboard.inDays", { count: diffDays });
     return d.toLocaleDateString();
   };
 
   return (
     <div className="page">
       <div className="page-header">
-        <h2>Dashboard</h2>
-        <p className="page-desc">Overview of your internship search</p>
+        <h2>{t("dashboard.title")}</h2>
+        <p className="page-desc">{t("dashboard.description")}</p>
       </div>
 
       {/* Top stats row */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 24 }}>
         <div className="glass-card stat-card">
           <span className="stat-value">{stats.total_offers}</span>
-          <span className="stat-label">Total Offers</span>
+          <span className="stat-label">{t("dashboard.totalOffers")}</span>
         </div>
         <div className="glass-card stat-card">
           <span className="stat-value">
             {stats.average_interview_score != null ? stats.average_interview_score : "—"}
           </span>
-          <span className="stat-label">Avg Interview Score</span>
+          <span className="stat-label">{t("dashboard.avgScore")}</span>
         </div>
         <div className="glass-card stat-card">
           <span className="stat-value">{stats.interview_sessions_count}</span>
-          <span className="stat-label">Total Interviews</span>
+          <span className="stat-label">{t("dashboard.totalInterviews")}</span>
         </div>
         <div className="glass-card stat-card">
           <span className="stat-value">{stats.interview_sessions_this_week}</span>
-          <span className="stat-label">Interviews This Week</span>
+          <span className="stat-label">{t("dashboard.interviewsThisWeek")}</span>
         </div>
       </div>
 
       {/* Offers by status + Upcoming reminders */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 24 }}>
         <div className="glass-card">
-          <div className="glass-card-header"><h3>Offers by Status</h3></div>
+          <div className="glass-card-header"><h3>{t("dashboard.offersByStatus")}</h3></div>
           <div className="glass-card-body">
             {Object.keys(STATUS_LABELS).length > 0 ? (
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -245,17 +235,17 @@ export default function DashboardPage({ userId }: { userId: number }) {
                 })}
               </div>
             ) : (
-              <p className="empty">No offers yet</p>
+              <p className="empty">{t("dashboard.noOffers")}</p>
             )}
           </div>
         </div>
 
         {/* Upcoming reminders */}
         <div className="glass-card">
-          <div className="glass-card-header"><h3>Upcoming Reminders</h3></div>
+          <div className="glass-card-header"><h3>{t("dashboard.upcomingReminders")}</h3></div>
           <div className="glass-card-body">
             {stats.upcoming_reminders.length === 0 ? (
-              <p className="empty">No upcoming reminders</p>
+              <p className="empty">{t("dashboard.noUpcomingReminders")}</p>
             ) : (
               <ul className="item-list">
                 {stats.upcoming_reminders.map((r) => (
@@ -263,7 +253,7 @@ export default function DashboardPage({ userId }: { userId: number }) {
                     <div>
                       <div style={{ fontWeight: 500, color: "var(--text-h)" }}>{r.title}</div>
                       <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                        {r.reminder_type} {r.description ? `— ${r.description}` : ""}
+                        {getReminderTypeLabel(t, r.reminder_type)} {r.description ? `— ${r.description}` : ""}
                       </div>
                     </div>
                     <span className="badge">{formatDate(r.due_at)}</span>
@@ -279,12 +269,12 @@ export default function DashboardPage({ userId }: { userId: number }) {
       <div style={{ display: "grid", gridTemplateColumns: selectedDay ? "1fr 340px" : "1fr", gap: 16 }}>
         <div className="glass-card">
           <div className="glass-card-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <h3 style={{ margin: 0 }}>Calendar</h3>
+            <h3 style={{ margin: 0 }}>{t("dashboard.calendar")}</h3>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <button className="btn-ghost" onClick={prevMonth} style={{ padding: "2px 8px", fontSize: 14 }}>&lt;</button>
               <span style={{ fontWeight: 600, fontSize: 13, minWidth: 130, textAlign: "center" }}>{MONTHS[month]} {year}</span>
               <button className="btn-ghost" onClick={nextMonth} style={{ padding: "2px 8px", fontSize: 14 }}>&gt;</button>
-              <button className="btn-ghost" onClick={goToday} style={{ fontSize: 12, marginLeft: 4 }}>Today</button>
+              <button className="btn-ghost" onClick={goToday} style={{ fontSize: 12, marginLeft: 4 }}>{t("dashboard.today")}</button>
             </div>
           </div>
           <div className="glass-card-body" style={{ padding: 12 }}>
@@ -388,7 +378,7 @@ export default function DashboardPage({ userId }: { userId: number }) {
             {/* Other events (applications, interviews) */}
             {selectedDayOtherEvents.length > 0 && (
               <div className="glass-card">
-                <div className="glass-card-header"><h4 style={{ margin: 0, fontSize: 13 }}>Events</h4></div>
+                <div className="glass-card-header"><h4 style={{ margin: 0, fontSize: 13 }}>{t("dashboard.events")}</h4></div>
                 <div className="glass-card-body" style={{ padding: "8px 14px" }}>
                   <ul className="item-list" style={{ margin: 0 }}>
                     {selectedDayOtherEvents.map((ev) => (
@@ -415,21 +405,21 @@ export default function DashboardPage({ userId }: { userId: number }) {
             {/* Reminders for this day — only shown if there are reminders */}
             {selectedDayReminders.length > 0 && (
               <div className="glass-card">
-                <div className="glass-card-header"><h4 style={{ margin: 0, fontSize: 13 }}>Reminders</h4></div>
+                <div className="glass-card-header"><h4 style={{ margin: 0, fontSize: 13 }}>{t("dashboard.reminders")}</h4></div>
                 <div className="glass-card-body" style={{ padding: "8px 14px" }}>
                   <ul className="item-list" style={{ margin: 0 }}>
                     {selectedDayReminders.map((r) =>
                       editingId === r.id ? (
                         <li key={r.id} style={{ flexDirection: "column", gap: 8, padding: "8px 0", alignItems: "stretch" }}>
-                          <input placeholder="Title" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} style={{ fontSize: 13 }} />
+                          <input placeholder={t("dashboard.titlePlaceholder")} value={editTitle} onChange={(e) => setEditTitle(e.target.value)} style={{ fontSize: 13 }} />
                           <select value={editType} onChange={(e) => setEditType(e.target.value)} style={{ fontSize: 13 }}>
-                            {REMINDER_TYPES.map((t) => <option key={t} value={t}>{t.replace("_", " ")}</option>)}
+                            {REMINDER_TYPES.map((rt) => <option key={rt} value={rt}>{getReminderTypeLabel(t, rt)}</option>)}
                           </select>
                           <DateTimeInput value={editDueAt} onChange={setEditDueAt} style={{ fontSize: 13 }} />
-                          <textarea rows={2} value={editDesc} onChange={(e) => setEditDesc(e.target.value)} placeholder="Description" style={{ fontSize: 13 }} />
+                          <textarea rows={2} value={editDesc} onChange={(e) => setEditDesc(e.target.value)} placeholder={t("dashboard.descriptionPlaceholder")} style={{ fontSize: 13 }} />
                           <div style={{ display: "flex", gap: 8 }}>
-                            <button className="btn-primary" onClick={handleSaveEditReminder} style={{ boxShadow: "none", fontSize: 12 }}>Save</button>
-                            <button className="btn-cancel" onClick={() => setEditingId(null)} style={{ fontSize: 12 }}>Cancel</button>
+                            <button className="btn-primary" onClick={handleSaveEditReminder} style={{ boxShadow: "none", fontSize: 12 }}>{t("dashboard.save")}</button>
+                            <button className="btn-cancel" onClick={() => setEditingId(null)} style={{ fontSize: 12 }}>{t("dashboard.cancel")}</button>
                           </div>
                         </li>
                       ) : (
@@ -437,9 +427,9 @@ export default function DashboardPage({ userId }: { userId: number }) {
                           <button
                             className={`reminder-toggle${r.is_done ? " done" : ""}`}
                             onClick={() => handleToggleReminder(r)}
-                            title={r.is_done ? "Mark undone" : "Mark done"}
+                            title={r.is_done ? t("dashboard.markUndone") : t("dashboard.markDone")}
                           >{r.is_done ? "\u2713" : ""}</button>
-                          <div style={{ flex: 1, minWidth: 0, cursor: "pointer" }} onClick={() => startEditReminder(r)} title="Click to edit">
+                          <div style={{ flex: 1, minWidth: 0, cursor: "pointer" }} onClick={() => startEditReminder(r)} title={t("dashboard.clickToEdit")}>
                             <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                               <span style={{
                                 fontWeight: 500,
@@ -450,9 +440,9 @@ export default function DashboardPage({ userId }: { userId: number }) {
                                 {r.title}
                               </span>
                               <span className="badge" style={{ textTransform: "capitalize", fontSize: 10 }}>
-                                {r.reminder_type.replace("_", " ")}
+                                {getReminderTypeLabel(t, r.reminder_type)}
                               </span>
-                              {isOverdue(r) && <span style={{ fontSize: 10, color: "var(--danger)", fontWeight: 600 }}>OVERDUE</span>}
+                              {isOverdue(r) && <span style={{ fontSize: 10, color: "var(--danger)", fontWeight: 600 }}>{t("dashboard.overdue")}</span>}
                             </div>
                             <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>
                               {new Date(r.due_at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
@@ -470,16 +460,16 @@ export default function DashboardPage({ userId }: { userId: number }) {
 
             {/* New reminder form — always visible */}
             <div className="glass-card">
-              <div className="glass-card-header"><h4 style={{ margin: 0, fontSize: 13 }}>New reminder</h4></div>
+              <div className="glass-card-header"><h4 style={{ margin: 0, fontSize: 13 }}>{t("dashboard.newReminder")}</h4></div>
               <div className="glass-card-body" style={{ padding: "12px 14px" }}>
                 <form onSubmit={handleAddReminder} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  <input placeholder="Title *" value={addTitle} onChange={(e) => setAddTitle(e.target.value)} style={{ fontSize: 13 }} />
+                  <input placeholder={t("dashboard.titlePlaceholder")} value={addTitle} onChange={(e) => setAddTitle(e.target.value)} style={{ fontSize: 13 }} />
                   <select value={addType} onChange={(e) => setAddType(e.target.value)} style={{ fontSize: 13 }}>
-                    {REMINDER_TYPES.map((t) => <option key={t} value={t}>{t.replace("_", " ")}</option>)}
+                    {REMINDER_TYPES.map((rt) => <option key={rt} value={rt}>{getReminderTypeLabel(t, rt)}</option>)}
                   </select>
                   <DateTimeInput value={addDueAt} onChange={setAddDueAt} style={{ fontSize: 13 }} />
-                  <textarea rows={2} value={addDescription} onChange={(e) => setAddDescription(e.target.value)} placeholder="Description (optional)" style={{ fontSize: 13 }} />
-                  <button type="submit" className="btn-primary" style={{ boxShadow: "none", fontSize: 12 }}>Add</button>
+                  <textarea rows={2} value={addDescription} onChange={(e) => setAddDescription(e.target.value)} placeholder={t("dashboard.descriptionPlaceholder")} style={{ fontSize: 13 }} />
+                  <button type="submit" className="btn-primary" style={{ boxShadow: "none", fontSize: 12 }}>{t("dashboard.add")}</button>
                 </form>
               </div>
             </div>
