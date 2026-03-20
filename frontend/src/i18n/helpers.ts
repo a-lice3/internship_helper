@@ -26,10 +26,6 @@ const STATUS_KEYS = [
   "bookmarked", "applied", "screened", "interview", "rejected", "accepted",
 ] as const;
 
-const REMINDER_TYPE_KEYS = [
-  "deadline", "follow_up", "interview", "custom",
-] as const;
-
 export function getMonths(t: TFunction): string[] {
   return MONTH_KEYS.map((k) => t(k));
 }
