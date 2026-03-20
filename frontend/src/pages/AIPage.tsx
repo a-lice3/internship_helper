@@ -1,11 +1,13 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { Document, Packer, Paragraph, TextRun } from "docx";
 import { saveAs } from "file-saver";
+import { useTranslation } from "react-i18next";
 import * as api from "../api";
 
 type Tab = "generate" | "cover-letters" | "skill-gaps" | "pitch-analyses";
 
 export default function AIPage({ userId }: { userId: number }) {
+  const { t } = useTranslation();
   const [tab, setTab] = useState<Tab>("generate");
 
   const [offers, setOffers] = useState<api.Offer[]>([]);
@@ -106,16 +108,16 @@ export default function AIPage({ userId }: { userId: number }) {
         const blob = new Blob(chunksRef.current, { type: "audio/webm" });
         const file = new File([blob], "pitch-recording.webm", { type: "audio/webm" });
         setPitchFile(file);
-        stream.getTracks().forEach((t) => t.stop());
+        stream.getTracks().forEach((tr) => tr.stop());
         if (timerRef.current) clearInterval(timerRef.current);
         setRecordingTime(0);
       };
       mediaRecorder.start();
       setRecording(true);
       setRecordingTime(0);
-      timerRef.current = setInterval(() => setRecordingTime((t) => t + 1), 1000);
+      timerRef.current = setInterval(() => setRecordingTime((prev) => prev + 1), 1000);
     } catch {
-      setError("Microphone access denied or unavailable");
+      setError(t("aiPage.micDenied"));
     }
   };
 
@@ -157,7 +159,7 @@ export default function AIPage({ userId }: { userId: number }) {
       });
       const blob = await api.compileCVPdf(userId, saved.id);
       saveAs(blob, `CV_${offer?.company?.replace(/\s+/g, "_") ?? "adapted"}.pdf`);
-    } catch (e: unknown) { setError(e instanceof Error ? e.message : "Save/compile failed"); }
+    } catch (e: unknown) { setError(e instanceof Error ? e.message : t("aiPage.saveCompileFailed")); }
     setSavingLatex(false);
   };
 
@@ -177,7 +179,7 @@ export default function AIPage({ userId }: { userId: number }) {
       });
       const blob = await api.compileCVPdf(userId, saved.id);
       saveAs(blob, `CV_${offer?.company?.replace(/\s+/g, "_") ?? "adapted"}.pdf`);
-    } catch (e: unknown) { setError(e instanceof Error ? e.message : "Compile failed"); }
+    } catch (e: unknown) { setError(e instanceof Error ? e.message : t("aiPage.compileFailed")); }
     setSavingLatex(false);
   };
 
@@ -201,15 +203,15 @@ export default function AIPage({ userId }: { userId: number }) {
   return (
     <div className="page">
       <div className="page-header">
-        <h2>AI Assistant</h2>
-        <p className="page-desc">Generate cover letters, analyze skills gaps, and more</p>
+        <h2>{t("aiPage.title")}</h2>
+        <p className="page-desc">{t("aiPage.description")}</p>
       </div>
 
       <div className="tab-bar" style={{ marginBottom: 20 }}>
-        <button className={tab === "generate" ? "active" : ""} onClick={() => setTab("generate")}>Generate</button>
-        <button className={tab === "cover-letters" ? "active" : ""} onClick={() => setTab("cover-letters")}>Cover Letters ({storedLetters.length})</button>
-        <button className={tab === "skill-gaps" ? "active" : ""} onClick={() => setTab("skill-gaps")}>Skill Gaps ({storedGaps.length})</button>
-        <button className={tab === "pitch-analyses" ? "active" : ""} onClick={() => setTab("pitch-analyses")}>Pitches ({storedPitches.length})</button>
+        <button className={tab === "generate" ? "active" : ""} onClick={() => setTab("generate")}>{t("aiPage.generate")}</button>
+        <button className={tab === "cover-letters" ? "active" : ""} onClick={() => setTab("cover-letters")}>{t("aiPage.coverLetters")} ({storedLetters.length})</button>
+        <button className={tab === "skill-gaps" ? "active" : ""} onClick={() => setTab("skill-gaps")}>{t("aiPage.skillGaps")} ({storedGaps.length})</button>
+        <button className={tab === "pitch-analyses" ? "active" : ""} onClick={() => setTab("pitch-analyses")}>{t("aiPage.pitches")} ({storedPitches.length})</button>
       </div>
 
       {/* GENERATE TAB */}
@@ -219,32 +221,32 @@ export default function AIPage({ userId }: { userId: number }) {
             <div className="glass-card-body">
               <div className="form-grid" style={{ marginBottom: 16 }}>
                 <label>
-                  Offer
+                  {t("aiPage.offer")}
                   <select value={selectedOffer} onChange={(e) => setSelectedOffer(e.target.value ? Number(e.target.value) : "")}>
-                    <option value="">-- Select an offer --</option>
+                    <option value="">{t("aiPage.selectOffer")}</option>
                     {offers.map((o) => <option key={o.id} value={o.id}>{o.company} - {o.title}</option>)}
                   </select>
                 </label>
                 <label>
-                  Template (for cover letter)
+                  {t("aiPage.templateForCL")}
                   <select value={selectedTemplate} onChange={(e) => setSelectedTemplate(e.target.value ? Number(e.target.value) : "")}>
-                    <option value="">None</option>
-                    {templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                    <option value="">{t("aiPage.noTemplate")}</option>
+                    {templates.map((tpl) => <option key={tpl.id} value={tpl.id}>{tpl.name}</option>)}
                   </select>
                 </label>
                 <label>
-                  LaTeX CV (for adaptation)
+                  {t("aiPage.latexCV")}
                   <select value={selectedCV} onChange={(e) => setSelectedCV(e.target.value ? Number(e.target.value) : "")}>
-                    <option value="">-- Select a CV --</option>
+                    <option value="">{t("aiPage.selectCV")}</option>
                     {latexCvs.map((c) => <option key={c.id} value={c.id}>{c.name} {c.company ? `(${c.company})` : ""}</option>)}
                   </select>
                 </label>
                 <div>
                   <div className="pitch-input-section">
-                    <label style={{ marginBottom: 4 }}>Pitch audio</label>
+                    <label style={{ marginBottom: 4 }}>{t("aiPage.pitchAudio")}</label>
                     <div className="pitch-mode-toggle">
-                      <button className={pitchMode === "upload" ? "active" : ""} onClick={() => { setPitchMode("upload"); setPitchFile(null); }} disabled={recording}>Upload</button>
-                      <button className={pitchMode === "record" ? "active" : ""} onClick={() => { setPitchMode("record"); setPitchFile(null); }} disabled={recording}>Record</button>
+                      <button className={pitchMode === "upload" ? "active" : ""} onClick={() => { setPitchMode("upload"); setPitchFile(null); }} disabled={recording}>{t("aiPage.upload")}</button>
+                      <button className={pitchMode === "record" ? "active" : ""} onClick={() => { setPitchMode("record"); setPitchFile(null); }} disabled={recording}>{t("aiPage.record")}</button>
                     </div>
                     {pitchMode === "upload" && (
                       <input type="file" accept=".mp3,.wav,.webm,.ogg,.m4a,.flac" onChange={(e) => setPitchFile(e.target.files?.[0] ?? null)} style={{ marginTop: 6 }} />
@@ -252,19 +254,19 @@ export default function AIPage({ userId }: { userId: number }) {
                     {pitchMode === "record" && (
                       <div className="recorder-controls" style={{ marginTop: 6 }}>
                         {!recording && !pitchFile && (
-                          <button className="btn-record" onClick={startRecording} disabled={loading}>Start Recording</button>
+                          <button className="btn-record" onClick={startRecording} disabled={loading}>{t("aiPage.startRecording")}</button>
                         )}
                         {recording && (
                           <div className="recording-indicator">
                             <span className="recording-dot" />
                             <span>{formatTime(recordingTime)}</span>
-                            <button className="btn-record btn-stop" onClick={stopRecording}>Stop</button>
+                            <button className="btn-record btn-stop" onClick={stopRecording}>{t("aiPage.stop")}</button>
                           </div>
                         )}
                         {!recording && pitchFile && (
                           <div className="recording-ready">
-                            <span>Recording ready ({pitchFile.name})</span>
-                            <button onClick={() => setPitchFile(null)} className="btn-ghost" style={{ marginLeft: 8 }}>Discard</button>
+                            <span>{t("aiPage.recordingReady")} ({pitchFile.name})</span>
+                            <button onClick={() => setPitchFile(null)} className="btn-ghost" style={{ marginLeft: 8 }}>{t("aiPage.discard")}</button>
                           </div>
                         )}
                       </div>
@@ -275,16 +277,16 @@ export default function AIPage({ userId }: { userId: number }) {
 
               <div className="ai-buttons">
                 <button onClick={handleSkillGap} disabled={!selectedOffer || loading}>
-                  {loading ? "Analyzing..." : "Skill Gap"}
+                  {loading ? t("aiPage.analyzingBtn") : t("aiPage.skillGap")}
                 </button>
                 <button onClick={handleCoverLetter} disabled={!selectedOffer || loading}>
-                  {loading ? "Generating..." : "Cover Letter"}
+                  {loading ? t("aiPage.generatingBtn") : t("aiPage.coverLetter")}
                 </button>
                 <button onClick={handleAdaptLatex} disabled={!selectedOffer || !selectedCV || loading}>
-                  {loading ? "Adapting..." : "Adapt CV"}
+                  {loading ? t("aiPage.adaptingBtn") : t("aiPage.adaptCV")}
                 </button>
                 <button onClick={handlePitchAnalysis} disabled={!pitchFile || loading}>
-                  {loading ? "Analyzing..." : selectedOffer ? "Pitch (Offer)" : "Pitch (General)"}
+                  {loading ? t("aiPage.analyzingBtn") : selectedOffer ? t("aiPage.pitchOffer") : t("aiPage.pitchGeneral")}
                 </button>
               </div>
             </div>
@@ -324,10 +326,10 @@ export default function AIPage({ userId }: { userId: number }) {
               <div className="glass-card-header">
                 <h3 style={{ margin: 0, flex: 1 }}>Adapted CV: {latexResult.company} - {latexResult.offer_title}</h3>
                 <button className="btn-download" onClick={handleSaveLatex} disabled={savingLatex}>
-                  {savingLatex ? "Compiling..." : "Save & Download"}
+                  {savingLatex ? t("aiPage.compilingBtn") : t("aiPage.saveDownload")}
                 </button>
                 <button className="btn-download" onClick={handleDownloadPdfOnly} disabled={savingLatex} style={{ marginLeft: 8 }}>
-                  {savingLatex ? "..." : "Download PDF"}
+                  {savingLatex ? "..." : t("aiPage.downloadPDF")}
                 </button>
               </div>
               <textarea
@@ -344,7 +346,7 @@ export default function AIPage({ userId }: { userId: number }) {
       {/* COVER LETTERS HISTORY */}
       {tab === "cover-letters" && (
         <div className="card-list">
-          {storedLetters.length === 0 && <p className="empty">No cover letters generated yet.</p>}
+          {storedLetters.length === 0 && <p className="empty">{t("aiPage.noCoverLetters")}</p>}
           {storedLetters.map((l) => (
             <CoverLetterAccordion
               key={l.id}
@@ -362,7 +364,7 @@ export default function AIPage({ userId }: { userId: number }) {
       {/* SKILL GAPS HISTORY */}
       {tab === "skill-gaps" && (
         <div className="card-list">
-          {storedGaps.length === 0 && <p className="empty">No skill gap analyses yet.</p>}
+          {storedGaps.length === 0 && <p className="empty">{t("aiPage.noSkillGaps")}</p>}
           {storedGaps.map((g) => (
             <SkillGapAccordion
               key={g.id}
@@ -380,11 +382,11 @@ export default function AIPage({ userId }: { userId: number }) {
       {/* PITCH ANALYSES HISTORY */}
       {tab === "pitch-analyses" && (
         <div className="card-list">
-          {storedPitches.length === 0 && <p className="empty">No pitch analyses yet.</p>}
+          {storedPitches.length === 0 && <p className="empty">{t("aiPage.noPitchAnalyses")}</p>}
           {storedPitches.map((p) => (
             <PitchAnalysisAccordion
               key={p.id}
-              title={p.company ? `${p.company} - ${p.offer_title}` : "General Pitch"}
+              title={p.company ? `${p.company} - ${p.offer_title}` : t("aiPage.generalPitch")}
               analysis={p}
               date={p.created_at ? new Date(p.created_at).toLocaleDateString() : undefined}
               onDelete={() => handleDeletePitch(p.id)}
@@ -428,6 +430,7 @@ function SkillGapAccordion({
   title: string; hardSkills: string[]; softSkills: string[]; recommendations: string[];
   date?: string; onDelete?: () => void; defaultOpen?: boolean;
 }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(defaultOpen);
   const toggle = useCallback(() => setOpen((o) => !o), []);
 
@@ -443,19 +446,19 @@ function SkillGapAccordion({
         <div style={{ padding: 18, fontSize: 13 }}>
           {hardSkills.length > 0 && (
             <>
-              <h4 style={{ margin: "0 0 6px", textTransform: "none", letterSpacing: 0, color: "var(--text-h)" }}>Missing Hard Skills</h4>
+              <h4 style={{ margin: "0 0 6px", textTransform: "none", letterSpacing: 0, color: "var(--text-h)" }}>{t("aiPage.missingHardSkills")}</h4>
               <ul style={{ margin: "0 0 14px", paddingLeft: 20 }}>{hardSkills.map((s, i) => <li key={i}>{s}</li>)}</ul>
             </>
           )}
           {softSkills.length > 0 && (
             <>
-              <h4 style={{ margin: "0 0 6px", textTransform: "none", letterSpacing: 0, color: "var(--text-h)" }}>Missing Soft Skills</h4>
+              <h4 style={{ margin: "0 0 6px", textTransform: "none", letterSpacing: 0, color: "var(--text-h)" }}>{t("aiPage.missingSoftSkills")}</h4>
               <ul style={{ margin: "0 0 14px", paddingLeft: 20 }}>{softSkills.map((s, i) => <li key={i}>{s}</li>)}</ul>
             </>
           )}
           {recommendations.length > 0 && (
             <>
-              <h4 style={{ margin: "0 0 6px", textTransform: "none", letterSpacing: 0, color: "var(--text-h)" }}>Recommendations</h4>
+              <h4 style={{ margin: "0 0 6px", textTransform: "none", letterSpacing: 0, color: "var(--text-h)" }}>{t("aiPage.recommendations")}</h4>
               <ul style={{ margin: 0, paddingLeft: 20 }}>{recommendations.map((r, i) => <li key={i}>{r}</li>)}</ul>
             </>
           )}
@@ -476,6 +479,7 @@ function PitchAnalysisAccordion({
   };
   date?: string; onDelete?: () => void; defaultOpen?: boolean;
 }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(defaultOpen);
   const toggle = useCallback(() => setOpen((o) => !o), []);
 
@@ -490,34 +494,34 @@ function PitchAnalysisAccordion({
       </div>
       {open && (
         <div style={{ padding: 18, fontSize: 13 }}>
-          <h4 style={{ margin: "0 0 4px", textTransform: "none", letterSpacing: 0, color: "var(--text-h)" }}>Summary</h4>
+          <h4 style={{ margin: "0 0 4px", textTransform: "none", letterSpacing: 0, color: "var(--text-h)" }}>{t("aiPage.summary")}</h4>
           <p style={{ margin: "0 0 14px" }}>{analysis.summary}</p>
 
-          <h4 style={{ margin: "0 0 4px", textTransform: "none", letterSpacing: 0, color: "var(--text-h)" }}>Structure & Clarity</h4>
+          <h4 style={{ margin: "0 0 4px", textTransform: "none", letterSpacing: 0, color: "var(--text-h)" }}>{t("aiPage.structureClarity")}</h4>
           <p style={{ margin: "0 0 14px" }}>{analysis.structure_clarity}</p>
 
           {analysis.strengths.length > 0 && (
             <>
-              <h4 style={{ margin: "0 0 4px", textTransform: "none", letterSpacing: 0, color: "var(--text-h)" }}>Strengths</h4>
+              <h4 style={{ margin: "0 0 4px", textTransform: "none", letterSpacing: 0, color: "var(--text-h)" }}>{t("aiPage.strengths")}</h4>
               <ul style={{ margin: "0 0 14px", paddingLeft: 20 }}>{analysis.strengths.map((s, i) => <li key={i}>{s}</li>)}</ul>
             </>
           )}
 
           {analysis.improvements.length > 0 && (
             <>
-              <h4 style={{ margin: "0 0 4px", textTransform: "none", letterSpacing: 0, color: "var(--text-h)" }}>Areas for Improvement</h4>
+              <h4 style={{ margin: "0 0 4px", textTransform: "none", letterSpacing: 0, color: "var(--text-h)" }}>{t("aiPage.areasForImprovement")}</h4>
               <ul style={{ margin: "0 0 14px", paddingLeft: 20 }}>{analysis.improvements.map((s, i) => <li key={i}>{s}</li>)}</ul>
             </>
           )}
 
           {analysis.offer_relevance && (
             <>
-              <h4 style={{ margin: "0 0 4px", textTransform: "none", letterSpacing: 0, color: "var(--text-h)" }}>Offer Relevance</h4>
+              <h4 style={{ margin: "0 0 4px", textTransform: "none", letterSpacing: 0, color: "var(--text-h)" }}>{t("aiPage.offerRelevance")}</h4>
               <p style={{ margin: "0 0 14px" }}>{analysis.offer_relevance}</p>
             </>
           )}
 
-          <h4 style={{ margin: "0 0 4px", textTransform: "none", letterSpacing: 0, color: "var(--text-h)" }}>Transcription</h4>
+          <h4 style={{ margin: "0 0 4px", textTransform: "none", letterSpacing: 0, color: "var(--text-h)" }}>{t("aiPage.transcription")}</h4>
           <pre style={{ margin: 0, whiteSpace: "pre-wrap", background: "var(--accent-light)", padding: 12, borderRadius: 8, fontSize: 12 }}>
             {analysis.transcription}
           </pre>

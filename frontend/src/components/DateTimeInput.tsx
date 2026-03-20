@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
+import { useTranslation } from "react-i18next";
+import { getMonthsShort, getDaysShort } from "../i18n/helpers";
 
 /**
  * A friendly date/time picker that shows a popover calendar + time selector.
@@ -15,9 +17,6 @@ interface Props {
   placeholder?: string;
 }
 
-const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const DAYS_HEADER = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
-
 function getDaysInMonth(year: number, month: number) {
   return new Date(year, month + 1, 0).getDate();
 }
@@ -30,19 +29,23 @@ function pad(n: number) {
   return n.toString().padStart(2, "0");
 }
 
-function formatDisplay(value: string, mode: "datetime" | "date"): string {
-  if (!value) return "";
-  const parts = value.split("T");
-  const datePart = parts[0];
-  const [y, m, d] = datePart.split("-").map(Number);
-  if (!y || !m || !d) return value;
-  const dateStr = `${pad(d)} ${MONTHS_SHORT[m - 1]} ${y}`;
-  if (mode === "date") return dateStr;
-  const timePart = parts[1] || "00:00";
-  return `${dateStr}, ${timePart}`;
-}
-
 export default function DateTimeInput({ value, onChange, mode = "datetime", style, className, placeholder }: Props) {
+  const { t } = useTranslation();
+  const MONTHS_SHORT = getMonthsShort(t);
+  const DAYS_HEADER = getDaysShort(t);
+
+  function formatDisplay(val: string, m: "datetime" | "date"): string {
+    if (!val) return "";
+    const parts = val.split("T");
+    const datePart = parts[0];
+    const [y, mo, d] = datePart.split("-").map(Number);
+    if (!y || !mo || !d) return val;
+    const dateStr = `${pad(d)} ${MONTHS_SHORT[mo - 1]} ${y}`;
+    if (m === "date") return dateStr;
+    const timePart = parts[1] || "00:00";
+    return `${dateStr}, ${timePart}`;
+  }
+
   const [open, setOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
@@ -116,11 +119,11 @@ export default function DateTimeInput({ value, onChange, mode = "datetime", styl
     onChange(buildValue(y, m, d, h, min));
   };
 
-  const prevMonth = () => {
+  const prevMonthFn = () => {
     if (viewMonth === 0) { setViewMonth(11); setViewYear(viewYear - 1); }
     else setViewMonth(viewMonth - 1);
   };
-  const nextMonth = () => {
+  const nextMonthFn = () => {
     if (viewMonth === 11) { setViewMonth(0); setViewYear(viewYear + 1); }
     else setViewMonth(viewMonth + 1);
   };
@@ -147,9 +150,9 @@ export default function DateTimeInput({ value, onChange, mode = "datetime", styl
     >
       {/* Month nav */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-        <button type="button" onClick={prevMonth} className="btn-ghost" style={{ padding: "2px 8px", fontSize: 14 }}>&lt;</button>
+        <button type="button" onClick={prevMonthFn} className="btn-ghost" style={{ padding: "2px 8px", fontSize: 14 }}>&lt;</button>
         <span style={{ fontWeight: 600, fontSize: 13 }}>{MONTHS_SHORT[viewMonth]} {viewYear}</span>
-        <button type="button" onClick={nextMonth} className="btn-ghost" style={{ padding: "2px 8px", fontSize: 14 }}>&gt;</button>
+        <button type="button" onClick={nextMonthFn} className="btn-ghost" style={{ padding: "2px 8px", fontSize: 14 }}>&gt;</button>
       </div>
 
       {/* Day headers */}
@@ -197,7 +200,7 @@ export default function DateTimeInput({ value, onChange, mode = "datetime", styl
       {/* Time picker */}
       {mode === "datetime" && (
         <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 12, paddingTop: 10, borderTop: "1px solid var(--border)" }}>
-          <span style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 500 }}>Time</span>
+          <span style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 500 }}>{t("dateTimeInput.time")}</span>
           <select
             value={curHour || 9}
             onChange={(e) => setTime(Number(e.target.value), curMinute || 0)}
@@ -223,7 +226,7 @@ export default function DateTimeInput({ value, onChange, mode = "datetime", styl
             style={{ marginLeft: "auto", fontSize: 12, padding: "4px 10px", color: "var(--accent)", fontWeight: 600 }}
             onClick={() => setOpen(false)}
           >
-            Done
+            {t("dateTimeInput.done")}
           </button>
         </div>
       )}
@@ -238,7 +241,7 @@ export default function DateTimeInput({ value, onChange, mode = "datetime", styl
         type="text"
         readOnly
         value={formatDisplay(value, mode)}
-        placeholder={placeholder || (mode === "date" ? "Pick a date" : "Pick date & time")}
+        placeholder={placeholder || (mode === "date" ? t("dateTimeInput.pickDate") : t("dateTimeInput.pickDateTime"))}
         onClick={() => setOpen(!open)}
         style={{ cursor: "pointer", width: "100%" }}
       />

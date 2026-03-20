@@ -208,8 +208,8 @@ describe("App - authenticated", () => {
     // Check navigation links exist in the sidebar
     const sidebar = screen.getByRole("complementary"); // <aside>
     expect(sidebar).toHaveTextContent("Dashboard");
-    expect(sidebar).toHaveTextContent("Candidatures");
-    expect(sidebar).toHaveTextContent("Mon Profil");
+    expect(sidebar).toHaveTextContent("Applications");
+    expect(sidebar).toHaveTextContent("My Profile");
     expect(sidebar).toHaveTextContent("Interview");
     expect(sidebar).toHaveTextContent("Settings");
   });

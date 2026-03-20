@@ -1,14 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import * as api from "../api";
+import { getStatusLabel, STATUSES } from "../i18n/helpers";
 const mistralLogo = "/logo_mistral.png";
-
-const STATUSES = ["bookmarked", "applied", "screened", "interview", "rejected", "accepted"];
 
 const isUrl = (s: string) => /^https?:\/\/.+/i.test(s.trim());
 
 export default function OffersPage({ userId }: { userId: number }) {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [offers, setOffers] = useState<api.Offer[]>([]);
   const [filterStatuses, setFilterStatuses] = useState<Set<string>>(new Set());
 
@@ -60,7 +61,7 @@ export default function OffersPage({ userId }: { userId: number }) {
         api.generateCoverLetter(userId, o.id),
       ]);
     } catch {
-      alert("Failed to extract offer from this link — the page may be inaccessible.");
+      alert(t("offers.extractFailed"));
     } finally {
       setParsing(false);
       parsingRef.current = false;
@@ -94,13 +95,13 @@ export default function OffersPage({ userId }: { userId: number }) {
   return (
     <div className="page">
       <div className="page-header">
-        <h2>Candidatures</h2>
-        <p className="page-desc">Track and manage your applications</p>
+        <h2>{t("offers.title")}</h2>
+        <p className="page-desc">{t("offers.description")}</p>
       </div>
 
       <nav className="pill-nav">
-        <NavLink to="/offers" end className={({ isActive }) => `pill${isActive ? " active" : ""}`}>Mes offres</NavLink>
-        <NavLink to="/offers/search" className={({ isActive }) => `pill${isActive ? " active" : ""}`}>Recherche</NavLink>
+        <NavLink to="/offers" end className={({ isActive }) => `pill${isActive ? " active" : ""}`}>{t("offers.myOffers")}</NavLink>
+        <NavLink to="/offers/search" className={({ isActive }) => `pill${isActive ? " active" : ""}`}>{t("offers.search")}</NavLink>
       </nav>
 
       {/* Stats bento row */}
@@ -113,7 +114,7 @@ export default function OffersPage({ userId }: { userId: number }) {
             onClick={() => toggleStatus(s)}
           >
             <span className="stat-value">{counts[s] || 0}</span>
-            <span className="stat-label" style={{ textTransform: "capitalize" }}>{s}</span>
+            <span className="stat-label" style={{ textTransform: "capitalize" }}>{getStatusLabel(t, s)}</span>
           </div>
         ))}
       </div>
@@ -122,7 +123,7 @@ export default function OffersPage({ userId }: { userId: number }) {
       {filterStatuses.size > 0 && (
         <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
           <button className="btn-secondary" onClick={() => setFilterStatuses(new Set())}>
-            Clear filters
+            {t("offers.clearFilters")}
           </button>
         </div>
       )}
@@ -132,12 +133,12 @@ export default function OffersPage({ userId }: { userId: number }) {
         {parsing ? (
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <img src={mistralLogo} alt="Loading" className="mistral-spin-img" />
-            <span style={{ fontSize: 13, color: "var(--text-muted)" }}>Extracting offer &amp; generating analyses...</span>
+            <span style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("offers.extracting")}</span>
           </div>
         ) : (
           <input
             type="text"
-            placeholder="Paste offer link"
+            placeholder={t("offers.pasteLink")}
             value={pasteText}
             onChange={(e) => handlePasteChange(e.target.value)}
             className="paste-link-input"
@@ -147,7 +148,7 @@ export default function OffersPage({ userId }: { userId: number }) {
 
       {/* Offers list as cards — clickable to navigate to detail */}
       {filteredOffers.length === 0 ? (
-        <p className="empty">{offers.length === 0 ? "No offers yet. Add your first one!" : "No offers match the selected filters."}</p>
+        <p className="empty">{offers.length === 0 ? t("offers.noOffers") : t("offers.noMatch")}</p>
       ) : (
         <div className="card-list">
           {filteredOffers.map((o) => (
@@ -166,12 +167,12 @@ export default function OffersPage({ userId }: { userId: number }) {
                   {o.locations && <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{o.locations}</span>}
                   {o.link && (
                     <a href={o.link} target="_blank" rel="noreferrer" style={{ fontSize: 12 }} onClick={(e) => e.stopPropagation()}>
-                      Link
+                      {t("offers.link")}
                     </a>
                   )}
                   <span style={{ flex: 1 }} />
                   {o.date_applied && <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{o.date_applied}</span>}
-                  <button onClick={(e) => handleDelete(o.id, e)} className="btn-icon" title="Delete">x</button>
+                  <button onClick={(e) => handleDelete(o.id, e)} className="btn-icon" title={t("offers.delete")}>x</button>
                 </div>
                 {/* Row 2: Status */}
                 <div style={{ marginTop: 4, display: "flex", alignItems: "center", gap: 6 }}>
@@ -183,7 +184,7 @@ export default function OffersPage({ userId }: { userId: number }) {
                     style={{ width: "auto", fontSize: 11, padding: "2px 6px", border: "none", background: "transparent", color: "var(--text-muted)", cursor: "pointer", textTransform: "capitalize" }}
                     className={`status-${o.status}`}
                   >
-                    {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                    {STATUSES.map((s) => <option key={s} value={s}>{getStatusLabel(t, s)}</option>)}
                   </select>
                 </div>
               </div>

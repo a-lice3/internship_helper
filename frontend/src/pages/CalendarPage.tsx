@@ -1,13 +1,8 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { getMonths, getDays, getReminderTypeLabel, REMINDER_TYPES } from "../i18n/helpers";
 import * as api from "../api";
 import DateTimeInput from "../components/DateTimeInput";
-
-const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-const MONTHS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-];
-const REMINDER_TYPES = ["deadline", "follow_up", "interview", "custom"];
 
 const EVENT_COLORS: Record<string, string> = {
   application: "var(--accent)",
@@ -29,6 +24,10 @@ function toDateKey(d: Date): string {
 }
 
 export default function CalendarPage({ userId }: { userId: number }) {
+  const { t } = useTranslation();
+  const DAYS = getDays(t);
+  const MONTHS = getMonths(t);
+
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
@@ -187,8 +186,8 @@ export default function CalendarPage({ userId }: { userId: number }) {
   return (
     <div className="page">
       <div className="page-header">
-        <h2>Calendar</h2>
-        <p className="page-desc">View your events and manage reminders in one place</p>
+        <h2>{t("calendar.title")}</h2>
+        <p className="page-desc">{t("calendar.description")}</p>
       </div>
 
       {/* Navigation */}
@@ -198,7 +197,7 @@ export default function CalendarPage({ userId }: { userId: number }) {
           {MONTHS[month]} {year}
         </h3>
         <button className="btn-secondary" onClick={nextMonth} style={{ padding: "8px 14px" }}>&gt;</button>
-        <button className="btn-ghost" onClick={goToday} style={{ marginLeft: 8 }}>Today</button>
+        <button className="btn-ghost" onClick={goToday} style={{ marginLeft: 8 }}>{t("calendar.today")}</button>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: selectedDay ? "1fr 360px" : "1fr", gap: 16 }}>
@@ -306,7 +305,7 @@ export default function CalendarPage({ userId }: { userId: number }) {
             <div className="glass-card">
               <div className="glass-card-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <h3 style={{ margin: 0 }}>{new Date(selectedDay + "T00:00:00").toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}</h3>
-                <button className="btn-ghost" onClick={() => { if (showAdd) { setShowAdd(false); } else { openAddForDay(selectedDay); } }} title={showAdd ? "Cancel" : "Add reminder on this day"} style={{ fontSize: 18, padding: "2px 8px" }}>
+                <button className="btn-ghost" onClick={() => { if (showAdd) { setShowAdd(false); } else { openAddForDay(selectedDay); } }} title={showAdd ? t("calendar.cancel") : t("calendar.addReminderOnDay")} style={{ fontSize: 18, padding: "2px 8px" }}>
                   {showAdd ? "x" : "+"}
                 </button>
               </div>
@@ -315,7 +314,7 @@ export default function CalendarPage({ userId }: { userId: number }) {
             {/* Other events (applications, interviews) */}
             {selectedDayOtherEvents.length > 0 && (
               <div className="glass-card">
-                <div className="glass-card-header"><h4 style={{ margin: 0, fontSize: 13 }}>Events</h4></div>
+                <div className="glass-card-header"><h4 style={{ margin: 0, fontSize: 13 }}>{t("calendar.events")}</h4></div>
                 <div className="glass-card-body" style={{ padding: "8px 14px" }}>
                   <ul className="item-list" style={{ margin: 0 }}>
                     {selectedDayOtherEvents.map((ev) => (
@@ -337,24 +336,24 @@ export default function CalendarPage({ userId }: { userId: number }) {
 
             {/* Reminders for this day */}
             <div className="glass-card">
-              <div className="glass-card-header"><h4 style={{ margin: 0, fontSize: 13 }}>Reminders</h4></div>
+              <div className="glass-card-header"><h4 style={{ margin: 0, fontSize: 13 }}>{t("calendar.reminders")}</h4></div>
               <div className="glass-card-body" style={{ padding: "8px 14px" }}>
                 {selectedDayReminders.length === 0 && !showAdd ? (
-                  <p className="empty" style={{ padding: 8, margin: 0, fontSize: 13 }}>No reminders this day</p>
+                  <p className="empty" style={{ padding: 8, margin: 0, fontSize: 13 }}>{t("calendar.noRemindersDay")}</p>
                 ) : (
                   <ul className="item-list" style={{ margin: 0 }}>
                     {selectedDayReminders.map((r) =>
                       editingId === r.id ? (
                         <li key={r.id} style={{ flexDirection: "column", gap: 8, padding: "8px 0" }}>
-                          <input placeholder="Title" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} style={{ fontSize: 13 }} />
+                          <input placeholder={t("calendar.title_label")} value={editTitle} onChange={(e) => setEditTitle(e.target.value)} style={{ fontSize: 13 }} />
                           <select value={editType} onChange={(e) => setEditType(e.target.value)} style={{ fontSize: 13 }}>
-                            {REMINDER_TYPES.map((t) => <option key={t} value={t}>{t.replace("_", " ")}</option>)}
+                            {REMINDER_TYPES.map((rt) => <option key={rt} value={rt}>{getReminderTypeLabel(t, rt)}</option>)}
                           </select>
                           <DateTimeInput value={editDueAt} onChange={setEditDueAt} style={{ fontSize: 13 }} />
-                          <textarea rows={2} value={editDesc} onChange={(e) => setEditDesc(e.target.value)} placeholder="Description" style={{ fontSize: 13 }} />
+                          <textarea rows={2} value={editDesc} onChange={(e) => setEditDesc(e.target.value)} placeholder={t("calendar.description_label")} style={{ fontSize: 13 }} />
                           <div style={{ display: "flex", gap: 8 }}>
-                            <button className="btn-primary" onClick={handleSaveEdit} style={{ boxShadow: "none", fontSize: 12 }}>Save</button>
-                            <button className="btn-cancel" onClick={() => setEditingId(null)} style={{ fontSize: 12 }}>Cancel</button>
+                            <button className="btn-primary" onClick={handleSaveEdit} style={{ boxShadow: "none", fontSize: 12 }}>{t("calendar.save")}</button>
+                            <button className="btn-cancel" onClick={() => setEditingId(null)} style={{ fontSize: 12 }}>{t("calendar.cancel")}</button>
                           </div>
                         </li>
                       ) : (
@@ -362,9 +361,9 @@ export default function CalendarPage({ userId }: { userId: number }) {
                           <button
                             className={`reminder-toggle${r.is_done ? " done" : ""}`}
                             onClick={() => handleToggleDone(r)}
-                            title={r.is_done ? "Mark undone" : "Mark done"}
+                            title={r.is_done ? t("calendar.markUndone") : t("calendar.markDone")}
                           >{r.is_done ? "\u2713" : ""}</button>
-                          <div style={{ flex: 1, minWidth: 0, cursor: "pointer" }} onClick={() => startEdit(r)} title="Click to edit">
+                          <div style={{ flex: 1, minWidth: 0, cursor: "pointer" }} onClick={() => startEdit(r)} title={t("calendar.clickToEdit")}>
                             <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                               <span style={{
                                 fontWeight: 500,
@@ -375,9 +374,9 @@ export default function CalendarPage({ userId }: { userId: number }) {
                                 {r.title}
                               </span>
                               <span className="badge" style={{ textTransform: "capitalize", fontSize: 10 }}>
-                                {r.reminder_type.replace("_", " ")}
+                                {getReminderTypeLabel(t, r.reminder_type)}
                               </span>
-                              {isOverdue(r) && <span style={{ fontSize: 10, color: "var(--danger)", fontWeight: 600 }}>OVERDUE</span>}
+                              {isOverdue(r) && <span style={{ fontSize: 10, color: "var(--danger)", fontWeight: 600 }}>{t("calendar.overdue")}</span>}
                             </div>
                             <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>
                               {new Date(r.due_at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
@@ -396,22 +395,22 @@ export default function CalendarPage({ userId }: { userId: number }) {
             {/* Add reminder form (inline in sidebar) */}
             {showAdd && (
               <div className="glass-card">
-                <div className="glass-card-header"><h4 style={{ margin: 0, fontSize: 13 }}>New reminder</h4></div>
+                <div className="glass-card-header"><h4 style={{ margin: 0, fontSize: 13 }}>{t("calendar.newReminder")}</h4></div>
                 <div className="glass-card-body" style={{ padding: "12px 14px" }}>
                   <form onSubmit={handleAdd} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                    <input placeholder="Title *" value={title} onChange={(e) => setTitle(e.target.value)} style={{ fontSize: 13 }} />
+                    <input placeholder={t("calendar.titlePlaceholder")} value={title} onChange={(e) => setTitle(e.target.value)} style={{ fontSize: 13 }} />
                     <select value={reminderType} onChange={(e) => setReminderType(e.target.value)} style={{ fontSize: 13 }}>
-                      {REMINDER_TYPES.map((t) => <option key={t} value={t}>{t.replace("_", " ")}</option>)}
+                      {REMINDER_TYPES.map((rt) => <option key={rt} value={rt}>{getReminderTypeLabel(t, rt)}</option>)}
                     </select>
                     <DateTimeInput value={dueAt} onChange={setDueAt} style={{ fontSize: 13 }} />
                     <select value={offerId} onChange={(e) => setOfferId(e.target.value ? Number(e.target.value) : "")} style={{ fontSize: 13 }}>
-                      <option value="">Linked offer (optional)</option>
+                      <option value="">{t("calendar.linkedOffer")}</option>
                       {offers.map((o) => <option key={o.id} value={o.id}>{o.company} — {o.title}</option>)}
                     </select>
-                    <textarea rows={2} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description (optional)" style={{ fontSize: 13 }} />
+                    <textarea rows={2} value={description} onChange={(e) => setDescription(e.target.value)} placeholder={t("calendar.descriptionPlaceholder")} style={{ fontSize: 13 }} />
                     <div style={{ display: "flex", gap: 8 }}>
-                      <button type="submit" className="btn-primary" style={{ boxShadow: "none", fontSize: 12 }}>Add</button>
-                      <button type="button" className="btn-cancel" onClick={() => setShowAdd(false)} style={{ fontSize: 12 }}>Cancel</button>
+                      <button type="submit" className="btn-primary" style={{ boxShadow: "none", fontSize: 12 }}>{t("calendar.add")}</button>
+                      <button type="button" className="btn-cancel" onClick={() => setShowAdd(false)} style={{ fontSize: 12 }}>{t("calendar.cancel")}</button>
                     </div>
                   </form>
                 </div>
@@ -424,15 +423,15 @@ export default function CalendarPage({ userId }: { userId: number }) {
       {/* All reminders list below the calendar */}
       <div style={{ marginTop: 24 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
-          <h3 style={{ margin: 0, fontSize: 15 }}>All reminders</h3>
+          <h3 style={{ margin: 0, fontSize: 15 }}>{t("calendar.allReminders")}</h3>
           <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, cursor: "pointer", flexDirection: "row" }}>
             <input type="checkbox" checked={showDone} onChange={(e) => setShowDone(e.target.checked)} style={{ width: "auto" }} />
-            Show completed
+            {t("calendar.showCompleted")}
           </label>
         </div>
 
         {upcomingReminders.length === 0 && !showDone ? (
-          <p className="empty">No pending reminders</p>
+          <p className="empty">{t("calendar.noPending")}</p>
         ) : (
           <div className="card-list">
             {upcomingReminders.map((r) =>
@@ -440,18 +439,18 @@ export default function CalendarPage({ userId }: { userId: number }) {
                 <div key={r.id} className="glass-card">
                   <div className="glass-card-body">
                     <div className="form-grid">
-                      <label>Title <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} /></label>
-                      <label>Type
+                      <label>{t("calendar.title_label")} <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} /></label>
+                      <label>{t("calendar.type")}
                         <select value={editType} onChange={(e) => setEditType(e.target.value)}>
-                          {REMINDER_TYPES.map((t) => <option key={t} value={t}>{t.replace("_", " ")}</option>)}
+                          {REMINDER_TYPES.map((rt) => <option key={rt} value={rt}>{getReminderTypeLabel(t, rt)}</option>)}
                         </select>
                       </label>
-                      <label>Due date <DateTimeInput value={editDueAt} onChange={setEditDueAt} /></label>
-                      <label>Description <textarea rows={2} value={editDesc} onChange={(e) => setEditDesc(e.target.value)} /></label>
+                      <label>{t("calendar.dueDate")} <DateTimeInput value={editDueAt} onChange={setEditDueAt} /></label>
+                      <label>{t("calendar.description_label")} <textarea rows={2} value={editDesc} onChange={(e) => setEditDesc(e.target.value)} /></label>
                     </div>
                     <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-                      <button className="btn-primary" onClick={handleSaveEdit} style={{ boxShadow: "none" }}>Save</button>
-                      <button className="btn-cancel" onClick={() => setEditingId(null)}>Cancel</button>
+                      <button className="btn-primary" onClick={handleSaveEdit} style={{ boxShadow: "none" }}>{t("calendar.save")}</button>
+                      <button className="btn-cancel" onClick={() => setEditingId(null)}>{t("calendar.cancel")}</button>
                     </div>
                   </div>
                 </div>
@@ -471,24 +470,24 @@ export default function CalendarPage({ userId }: { userId: number }) {
                     <button
                       className={`reminder-toggle${r.is_done ? " done" : ""}`}
                       onClick={(e) => { e.stopPropagation(); handleToggleDone(r); }}
-                      title={r.is_done ? "Mark undone" : "Mark done"}
+                      title={r.is_done ? t("calendar.markUndone") : t("calendar.markDone")}
                     >{r.is_done ? "\u2713" : ""}</button>
-                    <div style={{ flex: 1, minWidth: 0, cursor: "pointer" }} onClick={(e) => { e.stopPropagation(); startEdit(r); }} title="Click to edit">
+                    <div style={{ flex: 1, minWidth: 0, cursor: "pointer" }} onClick={(e) => { e.stopPropagation(); startEdit(r); }} title={t("calendar.clickToEdit")}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <strong style={{ color: isOverdue(r) ? "var(--danger)" : "var(--text-h)", fontSize: 14 }}>
                           {r.title}
                         </strong>
                         <span className="badge" style={{ textTransform: "capitalize" }}>
-                          {r.reminder_type.replace("_", " ")}
+                          {getReminderTypeLabel(t, r.reminder_type)}
                         </span>
-                        {isOverdue(r) && <span style={{ fontSize: 11, color: "var(--danger)", fontWeight: 600 }}>OVERDUE</span>}
+                        {isOverdue(r) && <span style={{ fontSize: 11, color: "var(--danger)", fontWeight: 600 }}>{t("calendar.overdue")}</span>}
                       </div>
                       <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
                         {formatDate(r.due_at)}
                         {r.description && <span> — {r.description}</span>}
                       </div>
                     </div>
-                    <button onClick={(e) => { e.stopPropagation(); handleDelete(r.id); }} className="btn-icon" title="Delete">x</button>
+                    <button onClick={(e) => { e.stopPropagation(); handleDelete(r.id); }} className="btn-icon" title={t("common.delete")}>x</button>
                   </div>
                 </div>
               )
@@ -498,7 +497,7 @@ export default function CalendarPage({ userId }: { userId: number }) {
 
         {showDone && doneReminders.length > 0 && (
           <div style={{ marginTop: 16 }}>
-            <h4 style={{ fontSize: 14, marginBottom: 8, color: "var(--text-muted)" }}>Completed</h4>
+            <h4 style={{ fontSize: 14, marginBottom: 8, color: "var(--text-muted)" }}>{t("calendar.completed")}</h4>
             <div className="card-list">
               {doneReminders.map((r) => (
                 <div key={r.id} className="glass-card" style={{ padding: 0, opacity: 0.6 }}>
@@ -506,13 +505,13 @@ export default function CalendarPage({ userId }: { userId: number }) {
                     <button
                       className="reminder-toggle done"
                       onClick={() => handleToggleDone(r)}
-                      title="Mark undone"
+                      title={t("calendar.markUndone")}
                     >{"\u2713"}</button>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ textDecoration: "line-through", fontSize: 14, color: "var(--text-muted)" }}>{r.title}</div>
                       <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{formatDate(r.due_at)}</div>
                     </div>
-                    <button onClick={() => handleDelete(r.id)} className="btn-icon" title="Delete">x</button>
+                    <button onClick={() => handleDelete(r.id)} className="btn-icon" title={t("common.delete")}>x</button>
                   </div>
                 </div>
               ))}

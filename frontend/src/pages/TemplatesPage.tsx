@@ -1,8 +1,11 @@
 import { useEffect, useState, useCallback } from "react";
 import { NavLink } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import * as api from "../api";
 
 export default function TemplatesPage({ userId }: { userId: number }) {
+  const { t } = useTranslation();
+
   const [templates, setTemplates] = useState<api.Template[]>([]);
   const [name, setName] = useState("");
   const [content, setContent] = useState("");
@@ -31,7 +34,7 @@ export default function TemplatesPage({ userId }: { userId: number }) {
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      alert(err.detail || "Upload failed");
+      alert(err.detail || t("templatesPage.uploadFailed"));
       return;
     }
     const tpl: api.Template = await res.json();
@@ -47,44 +50,44 @@ export default function TemplatesPage({ userId }: { userId: number }) {
   return (
     <div className="page">
       <div className="page-header">
-        <h2>Mon Profil</h2>
-        <p className="page-desc">Save templates for AI-powered cover letter generation</p>
+        <h2>{t("templatesPage.title")}</h2>
+        <p className="page-desc">{t("templatesPage.description")}</p>
       </div>
 
       <nav className="pill-nav">
-        <NavLink to="/profile" end className={({ isActive }) => `pill${isActive ? " active" : ""}`}>Profil</NavLink>
-        <NavLink to="/profile/cvs" className={({ isActive }) => `pill${isActive ? " active" : ""}`}>CVs</NavLink>
-        <NavLink to="/profile/templates" className={({ isActive }) => `pill${isActive ? " active" : ""}`}>Templates</NavLink>
+        <NavLink to="/profile" end className={({ isActive }) => `pill${isActive ? " active" : ""}`}>{t("profile.profil")}</NavLink>
+        <NavLink to="/profile/cvs" className={({ isActive }) => `pill${isActive ? " active" : ""}`}>{t("profile.cvs")}</NavLink>
+        <NavLink to="/profile/templates" className={({ isActive }) => `pill${isActive ? " active" : ""}`}>{t("profile.templates")}</NavLink>
       </nav>
 
       <div className="bento-grid-2" style={{ marginBottom: 24 }}>
         <div className="glass-card">
-          <div className="glass-card-header"><h3>Add from text</h3></div>
+          <div className="glass-card-header"><h3>{t("templatesPage.addFromText")}</h3></div>
           <div className="glass-card-body">
             <form onSubmit={handleAddText} className="form-vertical">
-              <input placeholder="Template name" value={name} onChange={(e) => setName(e.target.value)} />
+              <input placeholder={t("templatesPage.templateName")} value={name} onChange={(e) => setName(e.target.value)} />
               <textarea
-                placeholder="Dear hiring manager, ..."
+                placeholder={t("templatesPage.placeholder")}
                 rows={5}
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
               />
-              <button type="submit">Add template</button>
+              <button type="submit">{t("templatesPage.addTemplate")}</button>
             </form>
           </div>
         </div>
 
         <div className="glass-card">
-          <div className="glass-card-header"><h3>Upload PDF</h3></div>
+          <div className="glass-card-header"><h3>{t("templatesPage.uploadPDF")}</h3></div>
           <div className="glass-card-body">
-            <p className="hint" style={{ marginBottom: 12 }}>The text will be extracted automatically for AI use.</p>
+            <p className="hint" style={{ marginBottom: 12 }}>{t("templatesPage.pdfHint")}</p>
             <input type="file" accept=".pdf" onChange={handleUploadPdf} />
           </div>
         </div>
       </div>
 
       {templates.length === 0 ? (
-        <p className="empty">No templates yet.</p>
+        <p className="empty">{t("templatesPage.noTemplates")}</p>
       ) : (
         <div className="card-list">
           {templates.map((t) => (
