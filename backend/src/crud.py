@@ -543,19 +543,23 @@ def create_adapted_cv(
 def create_generated_cover_letter(
     db: Session,
     user_id: int,
-    offer_id: int,
+    offer_id: int | None,
     template_id: int | None,
-    offer_title: str,
-    company: str,
+    offer_title: str | None,
+    company: str | None,
     content: str,
+    name: str | None = None,
+    saved: bool = False,
 ) -> models.GeneratedCoverLetter:
     obj = models.GeneratedCoverLetter(
         user_id=user_id,
         offer_id=offer_id,
         template_id=template_id,
+        name=name,
         offer_title=offer_title,
         company=company,
         content=content,
+        saved=saved,
     )
     db.add(obj)
     db.commit()
@@ -563,19 +567,32 @@ def create_generated_cover_letter(
     return obj
 
 
-def get_generated_cover_letters(
-    db: Session, user_id: int
-) -> list[models.GeneratedCoverLetter]:
+def get_generated_cover_letter(
+    db: Session, letter_id: int
+) -> models.GeneratedCoverLetter | None:
     return (
         db.query(models.GeneratedCoverLetter)
-        .filter(models.GeneratedCoverLetter.user_id == user_id)
-        .order_by(models.GeneratedCoverLetter.created_at.desc())
-        .all()
+        .filter(models.GeneratedCoverLetter.id == letter_id)
+        .first()
     )
 
 
-def update_generated_cover_letter_content(
-    db: Session, letter_id: int, content: str
+def get_generated_cover_letters(
+    db: Session, user_id: int, saved_only: bool = False
+) -> list[models.GeneratedCoverLetter]:
+    q = db.query(models.GeneratedCoverLetter).filter(
+        models.GeneratedCoverLetter.user_id == user_id
+    )
+    if saved_only:
+        q = q.filter(models.GeneratedCoverLetter.saved.is_(True))
+    return q.order_by(models.GeneratedCoverLetter.created_at.desc()).all()
+
+
+def update_generated_cover_letter(
+    db: Session,
+    letter_id: int,
+    content: str | None = None,
+    saved: bool | None = None,
 ) -> models.GeneratedCoverLetter | None:
     obj = (
         db.query(models.GeneratedCoverLetter)
@@ -584,7 +601,10 @@ def update_generated_cover_letter_content(
     )
     if not obj:
         return None
-    obj.content = content
+    if content is not None:
+        obj.content = content
+    if saved is not None:
+        obj.saved = saved
     db.commit()
     db.refresh(obj)
     return obj

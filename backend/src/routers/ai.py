@@ -188,7 +188,12 @@ def cover_letter_endpoint(
         raise HTTPException(status_code=404, detail="Offer not found")
 
     template_content = ""
-    if body.template_id:
+    if body.cover_letter_id:
+        ref_cl = crud.get_generated_cover_letter(db, body.cover_letter_id)
+        if not ref_cl:
+            raise HTTPException(status_code=404, detail="Cover letter not found")
+        template_content = ref_cl.content
+    elif body.template_id:
         template = crud.get_template(db, body.template_id)
         if not template:
             raise HTTPException(status_code=404, detail="Template not found")
@@ -235,11 +240,83 @@ def cover_letter_endpoint(
 )
 def list_cover_letters(
     user_id: int,
+    saved_only: bool = False,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     _verify_owner(user_id, current_user)
-    return crud.get_generated_cover_letters(db, user_id)
+    return crud.get_generated_cover_letters(db, user_id, saved_only=saved_only)
+
+
+@router.post(
+    "/users/{user_id}/cover-letters",
+    response_model=schemas.GeneratedCoverLetterResponse,
+)
+def create_cover_letter_manual(
+    user_id: int,
+    body: schemas.CreateCoverLetterRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Create a cover letter manually (from text)."""
+    _verify_owner(user_id, current_user)
+    obj = crud.create_generated_cover_letter(
+        db,
+        user_id=user_id,
+        offer_id=None,
+        template_id=None,
+        offer_title=None,
+        company=None,
+        content=body.content,
+        name=body.name,
+        saved=True,
+    )
+    return obj
+
+
+@router.post(
+    "/users/{user_id}/cover-letters/upload",
+    response_model=schemas.GeneratedCoverLetterResponse,
+)
+def upload_cover_letter_pdf(
+    user_id: int,
+    file: UploadFile,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Upload a PDF as a cover letter (text extracted automatically)."""
+    from src.file_service import extract_text_from_pdf, save_upload, validate_file_magic
+
+    _verify_owner(user_id, current_user)
+    if not file.filename or not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Only PDF files are accepted")
+
+    raw = file.file.read()
+    try:
+        validate_file_magic(raw, "pdf")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    file.file.seek(0)
+
+    path = save_upload(user_id, file)
+    content = extract_text_from_pdf(path)
+
+    if not content.strip():
+        raise HTTPException(status_code=422, detail="Could not extract text from PDF")
+
+    name = file.filename.rsplit(".", 1)[0]
+    obj = crud.create_generated_cover_letter(
+        db,
+        user_id=user_id,
+        offer_id=None,
+        template_id=None,
+        offer_title=None,
+        company=None,
+        content=content,
+        name=name,
+        saved=True,
+    )
+    return obj
 
 
 @router.delete("/users/{user_id}/cover-letters/{letter_id}")
@@ -277,7 +354,7 @@ def chat_edit_cover_letter_endpoint(
     )
 
     # Persist the updated content
-    crud.update_generated_cover_letter_content(db, letter_id, updated_content)
+    crud.update_generated_cover_letter(db, letter_id, content=updated_content)
 
     return schemas.ChatEditCoverLetterResponse(updated_content=updated_content)
 
@@ -293,10 +370,12 @@ def update_cover_letter_content(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Update the cover letter content (manual edits from the textarea)."""
+    """Update the cover letter content and/or saved flag."""
     _verify_owner(user_id, current_user)
 
-    obj = crud.update_generated_cover_letter_content(db, letter_id, body.content)
+    obj = crud.update_generated_cover_letter(
+        db, letter_id, content=body.content, saved=body.saved
+    )
     if not obj:
         raise HTTPException(status_code=404, detail="Cover letter not found")
     return obj

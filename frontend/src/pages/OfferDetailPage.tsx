@@ -46,8 +46,8 @@ export default function OfferDetailPage({ userId }: { userId: number }) {
   const [companyInfo, setCompanyInfo] = useState<api.CompanyInfo | null>(null);
 
   // Cover letter
-  const [templates, setTemplates] = useState<api.Template[]>([]);
-  const [selectedTemplate, setSelectedTemplate] = useState<number | "">("");
+  const [savedCoverLetters, setSavedCoverLetters] = useState<api.StoredCoverLetter[]>([]);
+  const [selectedCoverLetterId, setSelectedCoverLetterId] = useState<number | "">("");
   const [coverLetter, setCoverLetter] = useState<api.CoverLetterResult | null>(null);
   const [storedCoverLetter, setStoredCoverLetter] = useState<api.StoredCoverLetter | null>(null);
   const [editableCoverLetter, setEditableCoverLetter] = useState("");
@@ -93,16 +93,16 @@ export default function OfferDetailPage({ userId }: { userId: number }) {
     Promise.all([
       api.getOffer(userId, id),
       api.getOfferNotes(userId, id),
-      api.getTemplates(userId),
+      api.getSavedCoverLetters(userId),
       api.getCVs(userId),
       api.getReminders(userId, true),
       api.getStoredSkillGaps(userId),
       api.getStoredCoverLetters(userId),
-    ]).then(([o, n, t, c, r, sgs, cls]) => {
+    ]).then(([o, n, scls, c, r, sgs, cls]) => {
       if (cancelled) return;
       setOffer(o);
       setNotes(n);
-      setTemplates(t);
+      setSavedCoverLetters(scls);
 
       // Fetch company info from Wikipedia (non-blocking)
       api.getCompanyInfo(o.company).then((info) => {
@@ -133,7 +133,7 @@ export default function OfferDetailPage({ userId }: { userId: number }) {
           }
           if (clResult.status === "fulfilled") {
             const cl = clResult.value;
-            setStoredCoverLetter({ id: cl.id, offer_id: id, template_id: null, offer_title: cl.offer_title, company: cl.company, content: cl.cover_letter, created_at: null });
+            setStoredCoverLetter({ id: cl.id, offer_id: id, template_id: null, name: null, offer_title: cl.offer_title, company: cl.company, content: cl.cover_letter, saved: false, created_at: null });
             setCoverLetter(cl);
             setEditableCoverLetter(cl.cover_letter);
           }
@@ -251,12 +251,12 @@ export default function OfferDetailPage({ userId }: { userId: number }) {
   };
 
   // AI: Cover letter
-  const handleCoverLetter = async (templateId?: number) => {
+  const handleCoverLetter = async (coverLetterId?: number) => {
     setAiLoading(true); setAiError(""); setCoverLetter(null);
     try {
-      const result = await api.generateCoverLetter(userId, id, templateId);
+      const result = await api.generateCoverLetter(userId, id, coverLetterId ? { coverLetterId } : undefined);
       setCoverLetter(result);
-      setStoredCoverLetter({ id: result.id, offer_id: id, template_id: templateId ?? null, offer_title: result.offer_title, company: result.company, content: result.cover_letter, created_at: null });
+      setStoredCoverLetter({ id: result.id, offer_id: id, template_id: null, name: null, offer_title: result.offer_title, company: result.company, content: result.cover_letter, saved: false, created_at: null });
       setEditableCoverLetter(result.cover_letter);
       setClChatHistory([]);
       setClEdited(false);
@@ -288,12 +288,29 @@ export default function OfferDetailPage({ userId }: { userId: number }) {
     if (!storedCoverLetter) return;
     setClSaving(true); setAiError("");
     try {
-      await api.updateCoverLetterContent(userId, storedCoverLetter.id, editableCoverLetter);
+      await api.updateCoverLetter(userId, storedCoverLetter.id, { content: editableCoverLetter });
       setStoredCoverLetter({ ...storedCoverLetter, content: editableCoverLetter });
       setCoverLetter((prev) => prev ? { ...prev, cover_letter: editableCoverLetter } : prev);
       setClEdited(false);
     } catch (e: unknown) { setAiError(e instanceof Error ? e.message : "Unknown error"); }
     setClSaving(false);
+  };
+
+  // Cover letter: toggle saved flag (add to / remove from Cover Letters page)
+  const handleToggleSavedCoverLetter = async () => {
+    if (!storedCoverLetter) return;
+    const newSaved = !storedCoverLetter.saved;
+    try {
+      // Also persist content edits if any
+      const data: { saved: boolean; content?: string } = { saved: newSaved };
+      if (clEdited) data.content = editableCoverLetter;
+      await api.updateCoverLetter(userId, storedCoverLetter.id, data);
+      setStoredCoverLetter({ ...storedCoverLetter, saved: newSaved, ...(clEdited ? { content: editableCoverLetter } : {}) });
+      if (clEdited) {
+        setCoverLetter((prev) => prev ? { ...prev, cover_letter: editableCoverLetter } : prev);
+        setClEdited(false);
+      }
+    } catch (e: unknown) { setAiError(e instanceof Error ? e.message : "Unknown error"); }
   };
 
   // AI: Skill gap
@@ -573,16 +590,16 @@ export default function OfferDetailPage({ userId }: { userId: number }) {
           <h3 style={{ margin: 0 }}>{t("offerDetail.coverLetter")}</h3>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <select
-              value={selectedTemplate}
-              onChange={(e) => setSelectedTemplate(e.target.value ? Number(e.target.value) : "")}
+              value={selectedCoverLetterId}
+              onChange={(e) => setSelectedCoverLetterId(e.target.value ? Number(e.target.value) : "")}
               style={{ width: "auto", fontSize: 11, padding: "2px 6px" }}
             >
               <option value="">{t("offerDetail.noTemplate")}</option>
-              {templates.map((tpl) => <option key={tpl.id} value={tpl.id}>{tpl.name}</option>)}
+              {savedCoverLetters.map((cl) => <option key={cl.id} value={cl.id}>{cl.name || cl.offer_title || `#${cl.id}`}</option>)}
             </select>
             <button
               className="btn-ghost"
-              onClick={() => handleCoverLetter(selectedTemplate ? Number(selectedTemplate) : undefined)}
+              onClick={() => handleCoverLetter(selectedCoverLetterId ? Number(selectedCoverLetterId) : undefined)}
               disabled={aiLoading}
               style={{ fontSize: 12, padding: "2px 8px" }}
             >
@@ -608,6 +625,9 @@ export default function OfferDetailPage({ userId }: { userId: number }) {
                       {clSaving ? t("settings.saving") : t("offerDetail.saveChanges")}
                     </button>
                   )}
+                  <button onClick={handleToggleSavedCoverLetter} className={storedCoverLetter?.saved ? "btn-ghost" : "btn-secondary"} style={{ fontSize: 12 }}>
+                    {storedCoverLetter?.saved ? t("offerDetail.savedToCoverLetters") : t("offerDetail.saveToCoverLetters")}
+                  </button>
                   <button onClick={() => downloadDocx(editableCoverLetter, displayCoverLetterCompany)} className="btn-secondary" style={{ fontSize: 12 }}>
                     {t("offerDetail.downloadDocx")}
                   </button>

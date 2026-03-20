@@ -4,6 +4,8 @@ import * as api from "../api";
 import { useInterview } from "../hooks/useInterview";
 import { useSpeechRecognition } from "../hooks/useSpeechRecognition";
 
+const mistralLogo = "/logo_mistral.png";
+
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
@@ -53,7 +55,8 @@ export default function InterviewPage({ userId }: { userId: number }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const [view, setView] = useState<"setup" | "live" | "history" | "detail">("setup");
+  const [view, setView] = useState<"live" | "history" | "detail">("history");
+  const [showSetupModal, setShowSetupModal] = useState(false);
 
   const interview = useInterview(activeSession?.session_id ?? null);
   const speech = useSpeechRecognition(language);
@@ -71,7 +74,7 @@ export default function InterviewPage({ userId }: { userId: number }) {
         offer_id: selectedOffer, interview_type: interviewType,
         difficulty, language, duration_minutes: duration, enable_hints: enableHints,
       });
-      setActiveSession(session); setView("live"); setAnalysis(null);
+      setActiveSession(session); setView("live"); setAnalysis(null); setShowSetupModal(false);
     } catch (e: unknown) { setError(e instanceof Error ? e.message : t("interviewPage.createFailed")); }
     finally { setLoading(false); }
   };
@@ -98,11 +101,9 @@ export default function InterviewPage({ userId }: { userId: number }) {
   useEffect(() => {
     if (interview.state.status === "active" && interview.state.questionNumber > 0) {
       interview.startRecording();
-      speech.reset();
-      speech.start();
       setAnswerText("");
     }
-    if (interview.state.status === "thinking" || interview.state.status === "results") {
+    if (interview.state.status === "results") {
       speech.stop();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -110,21 +111,27 @@ export default function InterviewPage({ userId }: { userId: number }) {
 
   const handleSubmitAnswer = useCallback(async () => {
     interview.pauseTimer();
-    if (speech.isRecording) {
+    const wasRecording = speech.isRecording;
+    if (wasRecording) {
       setIsSubmitting(true);
       const transcription = await speech.stopAndTranscribe();
       const finalText = answerText.trim() || transcription;
-      interview.submitAnswer(finalText);
+      if (finalText) {
+        interview.submitAnswer(finalText);
+      } else {
+        interview.skipQuestion();
+      }
       setAnswerText(""); setIsSubmitting(false);
-    } else {
+      speech.reset();
+      speech.start();
+    } else if (answerText.trim()) {
       interview.submitAnswer(answerText);
+      setAnswerText("");
+    } else {
+      interview.skipQuestion();
       setAnswerText("");
     }
   }, [answerText, interview, speech]);
-
-  const handleSkip = useCallback(() => {
-    speech.stop(); interview.skipQuestion(); setAnswerText("");
-  }, [interview, speech]);
 
   const handleEndInterview = useCallback(async () => {
     speech.stop(); interview.endInterview();
@@ -133,20 +140,19 @@ export default function InterviewPage({ userId }: { userId: number }) {
   useEffect(() => {
     if (interview.state.status === "results" && activeSession) {
       api.getInterviewSessions(userId).then(setSessions).catch(() => {});
+      // Auto-launch AI analysis
+      setAnalyzing(true);
+      api.analyzeInterview(userId, activeSession.id)
+        .then((result) => {
+          setAnalysis(result);
+          api.getInterviewSessions(userId).then(setSessions).catch(() => {});
+          api.getInterviewProgress(userId).then(setProgress).catch(() => {});
+        })
+        .catch(() => setError(t("interviewPage.analysisFailed")))
+        .finally(() => setAnalyzing(false));
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [interview.state.status, activeSession, userId]);
-
-  const handleAnalyze = async () => {
-    if (!activeSession) return;
-    setAnalyzing(true);
-    try {
-      const result = await api.analyzeInterview(userId, activeSession.id);
-      setAnalysis(result);
-      api.getInterviewSessions(userId).then(setSessions).catch(() => {});
-      api.getInterviewProgress(userId).then(setProgress).catch(() => {});
-    } catch (e: unknown) { setError(e instanceof Error ? e.message : t("interviewPage.analysisFailed")); }
-    finally { setAnalyzing(false); }
-  };
 
   const handleViewDetail = async (sessionId: number) => {
     try {
@@ -162,9 +168,11 @@ export default function InterviewPage({ userId }: { userId: number }) {
     } catch { setError(t("interviewPage.deleteFailed")); }
   };
 
-  const handleBackToSetup = () => {
-    setView("setup"); setActiveSession(null);
+  const handleBackToHistory = () => {
+    setView("history"); setActiveSession(null);
     setAnalysis(null); setSelectedDetail(null); setPredictedQuestions([]);
+    api.getInterviewSessions(userId).then(setSessions).catch(() => {});
+    api.getInterviewProgress(userId).then(setProgress).catch(() => {});
   };
 
   return (
@@ -176,60 +184,21 @@ export default function InterviewPage({ userId }: { userId: number }) {
 
       {error && <p className="error" style={{ marginBottom: 12 }}>{error}</p>}
 
-      {/* Sub-navigation */}
-      {view !== "live" && (
-        <div className="tab-bar" style={{ marginBottom: 20 }}>
-          <button className={view === "setup" ? "active" : ""} onClick={() => { setView("setup"); setSelectedDetail(null); }}>
-            {t("interviewPage.newInterview")}
-          </button>
-          <button className={view === "history" || view === "detail" ? "active" : ""} onClick={() => setView("history")}>
-            {t("interviewPage.history")} ({sessions.length})
-          </button>
-        </div>
-      )}
-
-      {/* SETUP */}
-      {view === "setup" && (
-        <div>
-          {progress && progress.total_sessions > 0 && (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 12, marginBottom: 20 }}>
-              <div className="glass-card stat-card">
-                <span className="stat-value">{progress.total_sessions}</span>
-                <span className="stat-label">{t("interviewPage.sessions")}</span>
-              </div>
-              {progress.average_score != null && (
-                <div className="glass-card stat-card">
-                  <span className="stat-value">{progress.average_score}</span>
-                  <span className="stat-label">{t("interviewPage.avgScore")}</span>
-                </div>
-              )}
-              <div className="glass-card stat-card">
-                <span className="stat-value">{progress.total_practice_minutes}</span>
-                <span className="stat-label">{t("interviewPage.minPracticed")}</span>
-              </div>
-              <div className="glass-card stat-card">
-                <span className="stat-value">{progress.sessions_this_week}</span>
-                <span className="stat-label">{t("interviewPage.thisWeek")}</span>
-              </div>
-              {progress.best_category && (
-                <div className="glass-card stat-card">
-                  <span className="stat-value" style={{ fontSize: 16 }}>{progress.best_category}</span>
-                  <span className="stat-label">{t("interviewPage.best")}</span>
-                </div>
-              )}
-              {progress.worst_category && (
-                <div className="glass-card stat-card">
-                  <span className="stat-value" style={{ fontSize: 16 }}>{progress.worst_category}</span>
-                  <span className="stat-label">{t("interviewPage.focusOn")}</span>
-                </div>
-              )}
+      {/* SETUP MODAL */}
+      {showSetupModal && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+          background: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          zIndex: 2000,
+        }} onClick={(e) => { if (e.target === e.currentTarget) setShowSetupModal(false); }}>
+          <div className="glass-card" style={{ width: 420, maxWidth: "90vw", overflow: "visible" }}>
+            <div className="glass-card-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <h3 style={{ margin: 0 }}>{t("interviewPage.configureInterview")}</h3>
+              <button className="btn-ghost" onClick={() => setShowSetupModal(false)} style={{ fontSize: 16, padding: "2px 8px" }}>x</button>
             </div>
-          )}
-
-          <div className="glass-card" style={{ marginBottom: 20 }}>
-            <div className="glass-card-header"><h3>{t("interviewPage.configureInterview")}</h3></div>
-            <div className="glass-card-body">
-              <div className="form-grid">
+            <div className="glass-card-body" style={{ overflow: "visible" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 <label>
                   {t("interviewPage.offer")}
                   <select value={selectedOffer ?? ""} onChange={(e) => setSelectedOffer(e.target.value ? Number(e.target.value) : null)}>
@@ -271,47 +240,61 @@ export default function InterviewPage({ userId }: { userId: number }) {
                     <option value={30}>30 min</option>
                   </select>
                 </label>
-                <label style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                  <input type="checkbox" checked={enableHints} onChange={(e) => setEnableHints(e.target.checked)} style={{ width: "auto" }} />
-                  {t("interviewPage.enableHints")}
+                <label
+                  style={{ flexDirection: "row", alignItems: "center", gap: 10, cursor: "pointer", userSelect: "none" }}
+                  onClick={(e) => { e.preventDefault(); setEnableHints(!enableHints); }}
+                >
+                  <div style={{
+                    width: 36, height: 20, borderRadius: 10,
+                    background: enableHints ? "var(--accent)" : "var(--border)",
+                    position: "relative", transition: "background 0.2s",
+                  }}>
+                    <div style={{
+                      width: 16, height: 16, borderRadius: "50%",
+                      background: "#fff", position: "absolute", top: 2,
+                      left: enableHints ? 18 : 2, transition: "left 0.2s",
+                      boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+                    }} />
+                  </div>
+                  <span style={{ fontSize: 13 }}>{t("interviewPage.enableHints")}</span>
                 </label>
-              </div>
-              <div style={{ marginTop: 16, display: "flex", gap: 8 }}>
-                <button onClick={handleCreateSession} disabled={loading} className="btn-primary">
-                  {loading ? t("interviewPage.creating") : t("interviewPage.startInterview")}
-                </button>
+                <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 4 }}>
+                  <button type="button" className="btn-cancel" onClick={() => setShowSetupModal(false)}>{t("interviewPage.cancel")}</button>
+                  <button onClick={handleCreateSession} disabled={loading} className="btn-primary" style={{ boxShadow: "none" }}>
+                    {loading ? t("interviewPage.creating") : t("interviewPage.startInterview")}
+                  </button>
+                </div>
                 {selectedOffer && (
-                  <button onClick={handlePredictQuestions} disabled={loading} className="btn-secondary">
+                  <button onClick={handlePredictQuestions} disabled={loading} className="btn-secondary" style={{ alignSelf: "flex-start" }}>
                     {t("interviewPage.predictQuestions")}
                   </button>
                 )}
               </div>
+
+              {predictedQuestions.length > 0 && (
+                <div style={{ marginTop: 20 }}>
+                  <h4 style={{ textTransform: "none", letterSpacing: 0, color: "var(--text-h)", marginBottom: 8 }}>{t("interviewPage.predictedQuestions")}</h4>
+                  {predictedQuestions.map((q, i) => (
+                    <div key={i} style={{ marginBottom: 14, padding: 12, background: "var(--accent-light)", borderRadius: 8 }}>
+                      <div style={{ fontWeight: 600, fontSize: 13, color: "var(--text-h)" }}>{i + 1}. {q.question}</div>
+                      <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4, display: "flex", gap: 6 }}>
+                        <span className="badge">{q.category}</span>
+                        <span className="badge">{q.difficulty}</span>
+                      </div>
+                      <div style={{ fontSize: 12, color: "var(--text)", marginTop: 4 }}>{q.tip}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
-
-          {predictedQuestions.length > 0 && (
-            <div className="glass-card">
-              <div className="glass-card-header"><h3>{t("interviewPage.predictedQuestions")}</h3></div>
-              <div className="glass-card-body">
-                {predictedQuestions.map((q, i) => (
-                  <div key={i} style={{ marginBottom: 14, padding: 12, background: "var(--accent-light)", borderRadius: 8 }}>
-                    <div style={{ fontWeight: 600, fontSize: 13, color: "var(--text-h)" }}>{i + 1}. {q.question}</div>
-                    <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4, display: "flex", gap: 6 }}>
-                      <span className="badge">{q.category}</span>
-                      <span className="badge">{q.difficulty}</span>
-                    </div>
-                    <div style={{ fontSize: 12, color: "var(--text)", marginTop: 4 }}>{q.tip}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       )}
 
       {/* LIVE INTERVIEW */}
       {view === "live" && activeSession && (
         <div>
+          <button onClick={handleBackToHistory} className="btn-secondary" style={{ marginBottom: 12 }}>&larr; {t("interviewPage.backToHistory")}</button>
           <div className="glass-card" style={{ marginBottom: 16, padding: "14px 18px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div>
               <strong style={{ color: "var(--text-h)" }}>{activeSession.offer_title || t("interviewPage.general")}</strong>
@@ -344,45 +327,37 @@ export default function InterviewPage({ userId }: { userId: number }) {
               )}
 
               {interview.state.status === "thinking" && (
-                <div className="glass-card" style={{ textAlign: "center", padding: 16, color: "var(--text-muted)" }}>
-                  {t("interviewPage.aiPreparing")}
+                <div className="glass-card" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: 16, color: "var(--text-muted)" }}>
+                  <img src={mistralLogo} alt="Loading" className="mistral-spin-img" style={{ width: 20, height: 20 }} />
+                  <span>{t("interviewPage.aiPreparing")}</span>
                 </div>
               )}
 
               {interview.state.status === "active" && (
                 <div className="glass-card">
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, padding: "0 2px" }}>
-                    <label style={{ margin: 0, flexDirection: "row" }}>{t("interviewPage.yourAnswer")}</label>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      {speech.isRecording && (
-                        <span style={{ fontSize: 12, color: "var(--danger)", display: "flex", alignItems: "center", gap: 4 }}>
-                          <span className="recording-dot" style={{ width: 8, height: 8 }} /> {t("interviewPage.recording")}
-                        </span>
-                      )}
-                      {speech.isTranscribing && <span style={{ fontSize: 12, color: "var(--info)" }}>{t("interviewPage.transcribing")}</span>}
-                      <button
-                        onClick={() => speech.isRecording ? speech.stop() : speech.start()}
-                        disabled={speech.isTranscribing}
-                        className={speech.isRecording ? "btn-danger" : "btn-primary"}
-                        style={{ padding: "4px 14px", fontSize: 12, borderRadius: 20, boxShadow: "none" }}
-                      >
-                        {speech.isRecording ? t("interviewPage.pauseMic") : t("interviewPage.startMic")}
-                      </button>
-                    </div>
-                  </div>
                   <textarea
                     rows={4}
-                    placeholder={speech.isRecording ? t("interviewPage.speakNow") : t("interviewPage.typeOrMic")}
+                    placeholder={t("interviewPage.typeOrMic")}
                     value={answerText}
                     onChange={(e) => setAnswerText(e.target.value)}
                     style={{ width: "100%", marginBottom: 8 }}
                   />
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <button onClick={handleSubmitAnswer} disabled={(!answerText.trim() && !speech.isRecording) || isSubmitting || speech.isTranscribing} className="btn-primary" style={{ boxShadow: "none" }}>
-                      {isSubmitting || speech.isTranscribing ? t("interviewPage.transcribing") : speech.isRecording ? t("interviewPage.stopSubmit") : t("interviewPage.submit")}
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <button
+                      onClick={() => speech.isRecording ? speech.stop() : speech.start()}
+                      disabled={speech.isTranscribing}
+                      className={speech.isRecording ? "btn-danger" : "btn-secondary"}
+                      style={{ padding: "6px 14px", fontSize: 13, borderRadius: 20, boxShadow: "none", display: "flex", alignItems: "center", gap: 6 }}
+                    >
+                      {speech.isRecording && <span className="recording-dot" style={{ width: 8, height: 8 }} />}
+                      {speech.isRecording ? t("interviewPage.pauseMic") : t("interviewPage.startMic")}
                     </button>
-                    <button onClick={handleSkip} className="btn-secondary" disabled={isSubmitting}>{t("interviewPage.skip")}</button>
-                    <button onClick={handleEndInterview} className="btn-danger" style={{ marginLeft: "auto" }} disabled={isSubmitting}>{t("interviewPage.end")}</button>
+                    {speech.isTranscribing && <span style={{ fontSize: 12, color: "var(--info)" }}>{t("interviewPage.transcribing")}</span>}
+                    <div style={{ flex: 1 }} />
+                    <button onClick={handleSubmitAnswer} disabled={isSubmitting || speech.isTranscribing} className="btn-primary" style={{ boxShadow: "none" }}>
+                      {isSubmitting || speech.isTranscribing ? t("interviewPage.transcribing") : t("interviewPage.next")}
+                    </button>
+                    <button onClick={handleEndInterview} className="btn-danger" disabled={isSubmitting}>{t("interviewPage.end")}</button>
                     {enableHints && (
                       <button onClick={() => interview.requestHint(answerText)} className="btn-secondary">{t("interviewPage.hint")}</button>
                     )}
@@ -393,9 +368,9 @@ export default function InterviewPage({ userId }: { userId: number }) {
               {interview.state.turns.length > 0 && (
                 <div style={{ marginTop: 16 }}>
                   <h4 style={{ textTransform: "none", letterSpacing: 0, color: "var(--text-h)", marginBottom: 8 }}>{t("interviewPage.previousAnswers")}</h4>
-                  {interview.state.turns.map((turn, i) => (
-                    <div key={i} className="glass-card" style={{ marginBottom: 8, padding: "12px 16px", fontSize: 13 }}>
-                      <div style={{ color: "var(--accent)", fontWeight: 500 }}>Q{i + 1}: {turn.question}</div>
+                  {[...interview.state.turns].map((turn, i) => ({ turn, num: i + 1 })).reverse().map(({ turn, num }) => (
+                    <div key={num} className="glass-card" style={{ marginBottom: 8, padding: "12px 16px", fontSize: 13 }}>
+                      <div style={{ color: "var(--accent)", fontWeight: 500 }}>Q{num}: {turn.question}</div>
                       <div style={{ marginTop: 4, color: "var(--text)" }}>{turn.answer}</div>
                     </div>
                   ))}
@@ -407,27 +382,24 @@ export default function InterviewPage({ userId }: { userId: number }) {
           {interview.state.status === "error" && (
             <div className="glass-card" style={{ background: "var(--danger-light)", padding: 18 }}>
               <p>{t("interviewPage.error")} {interview.state.error}</p>
-              <button onClick={handleBackToSetup} className="btn-secondary" style={{ marginTop: 8 }}>{t("interviewPage.backToSetup")}</button>
+              <button onClick={handleBackToHistory} className="btn-secondary" style={{ marginTop: 8 }}>{t("interviewPage.backToHistory")}</button>
             </div>
           )}
 
           {interview.state.status === "results" && (
             <div>
-              <div className="glass-card" style={{ background: "var(--success-light)", padding: 18 }}>
-                <h3 style={{ marginBottom: 8 }}>{t("interviewPage.interviewComplete")}</h3>
-                {interview.state.summary && (
-                  <p style={{ fontSize: 13, color: "var(--text)" }}>
-                    {t("interviewPage.questionsAnswered", { count: interview.state.summary.questions_answered, time: formatTime(interview.state.summary.duration_seconds) })}
-                  </p>
-                )}
-                <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-                  <button onClick={handleAnalyze} disabled={analyzing} className="btn-primary" style={{ boxShadow: "none" }}>
-                    {analyzing ? t("interviewPage.analyzing") : t("interviewPage.getAIAnalysis")}
-                  </button>
-                  <button onClick={handleBackToSetup} className="btn-secondary">{t("interviewPage.newInterviewBtn")}</button>
+              {analyzing && (
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "60px 0", gap: 16 }}>
+                  <img src={mistralLogo} alt="Loading" className="mistral-spin-img" style={{ width: 40, height: 40 }} />
+                  <span style={{ fontSize: 14, color: "var(--text-muted)" }}>{t("interviewPage.analyzingInterview")}</span>
                 </div>
-              </div>
-              {analysis && <AnalysisView analysis={analysis} />}
+              )}
+              {!analyzing && analysis && <AnalysisView analysis={analysis} />}
+              {!analyzing && (
+                <div style={{ marginTop: 16 }}>
+                  <button onClick={handleBackToHistory} className="btn-secondary">{t("interviewPage.backToHistory")}</button>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -436,26 +408,75 @@ export default function InterviewPage({ userId }: { userId: number }) {
       {/* HISTORY */}
       {view === "history" && (
         <div>
+          {progress && progress.total_sessions > 0 && (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 12, marginBottom: 20 }}>
+              <div className="glass-card stat-card">
+                <span className="stat-value">{progress.total_sessions}</span>
+                <span className="stat-label">{t("interviewPage.sessions")}</span>
+              </div>
+              {progress.average_score != null && (
+                <div className="glass-card stat-card">
+                  <span className="stat-value">{progress.average_score}</span>
+                  <span className="stat-label">{t("interviewPage.avgScore")}</span>
+                </div>
+              )}
+              <div className="glass-card stat-card">
+                <span className="stat-value">{progress.total_practice_minutes}</span>
+                <span className="stat-label">{t("interviewPage.minPracticed")}</span>
+              </div>
+              <div className="glass-card stat-card">
+                <span className="stat-value">{progress.sessions_this_week}</span>
+                <span className="stat-label">{t("interviewPage.thisWeek")}</span>
+              </div>
+              {progress.best_category && (
+                <div className="glass-card stat-card">
+                  <span className="stat-value" style={{ fontSize: 16 }}>{progress.best_category}</span>
+                  <span className="stat-label">{t("interviewPage.best")}</span>
+                </div>
+              )}
+              {progress.worst_category && (
+                <div className="glass-card stat-card">
+                  <span className="stat-value" style={{ fontSize: 16 }}>{progress.worst_category}</span>
+                  <span className="stat-label">{t("interviewPage.focusOn")}</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          <button onClick={() => setShowSetupModal(true)} className="btn-primary" style={{ marginBottom: 16 }}>
+            + {t("interviewPage.newInterview")}
+          </button>
+
           {sessions.length === 0 ? (
             <p className="empty">{t("interviewPage.noSessions")}</p>
           ) : (
             <div className="card-list">
               {sessions.map((s) => (
-                <div key={s.id} className="glass-card" style={{ padding: 0 }}>
+                <div
+                  key={s.id}
+                  className="glass-card"
+                  style={{ padding: 0, cursor: "pointer", transition: "transform 0.15s, box-shadow 0.15s" }}
+                  onClick={() => handleViewDetail(s.id)}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.transform = "translateY(-2px)"; (e.currentTarget as HTMLDivElement).style.boxShadow = "0 4px 16px rgba(0,0,0,0.12)"; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.transform = ""; (e.currentTarget as HTMLDivElement).style.boxShadow = ""; }}
+                >
                   <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 18px" }}>
                     <div style={{ flex: 1 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <strong style={{ color: "var(--text-h)", fontSize: 14 }}>{s.company || t("interviewPage.general")}</strong>
+                        {s.offer_title && <span style={{ color: "var(--text-muted)", fontSize: 13 }}>— {s.offer_title}</span>}
                         <span className="badge">{s.interview_type}</span>
                         <span className="badge">{s.difficulty}</span>
-                        <span className={`badge badge-${s.status}`}>{s.status}</span>
                       </div>
                       <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
                         {s.created_at ? new Date(s.created_at).toLocaleDateString() : ""}
                       </div>
                     </div>
-                    <button onClick={() => handleViewDetail(s.id)} className="btn-ghost">{t("interviewPage.view")}</button>
-                    <button onClick={() => handleDeleteSession(s.id)} className="btn-icon">x</button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleDeleteSession(s.id); }}
+                      className="btn-icon"
+                      title={t("interviewPage.delete")}
+                    >x</button>
                   </div>
                 </div>
               ))}
@@ -492,7 +513,7 @@ export default function InterviewPage({ userId }: { userId: number }) {
           ) : selectedDetail.turns.length > 0 && (
             <div style={{ marginBottom: 16 }}>
               <h4 style={{ textTransform: "none", letterSpacing: 0, color: "var(--text-h)", marginBottom: 8 }}>{t("interviewPage.interviewTranscript")}</h4>
-              {selectedDetail.turns.map((turn) => (
+              {[...selectedDetail.turns].reverse().map((turn) => (
                 <div key={turn.id} className="glass-card" style={{ marginBottom: 8, padding: "14px 18px" }}>
                   <div style={{ color: "var(--accent)", fontWeight: 500, fontSize: 13 }}>Q{turn.turn_number}: {turn.question_text}</div>
                   <div style={{ marginTop: 4, fontSize: 13 }}>
@@ -605,7 +626,7 @@ function AnalysisView({ analysis }: { analysis: api.InterviewAnalysis }) {
       {analysis.per_turn_feedback.length > 0 && (
         <div style={{ marginTop: 12 }}>
           <h4 style={{ textTransform: "none", letterSpacing: 0, color: "var(--text-h)", marginBottom: 8 }}>{t("analysis.perQuestion")}</h4>
-          {analysis.per_turn_feedback.map((turn) => (
+          {[...analysis.per_turn_feedback].reverse().map((turn) => (
             <div key={turn.id} className="glass-card" style={{ marginBottom: 8, padding: "14px 18px" }}>
               <div style={{ fontWeight: 500, fontSize: 13, color: "var(--text-h)" }}>Q{turn.turn_number}: {turn.question_text}</div>
               <div style={{ marginTop: 4, fontSize: 12, color: "var(--text)" }}>

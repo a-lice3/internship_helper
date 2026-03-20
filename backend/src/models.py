@@ -268,19 +268,23 @@ class GeneratedCoverLetter(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
-    offer_id: Mapped[int] = mapped_column(
-        ForeignKey("internship_offers.id"), nullable=False
+    offer_id: Mapped[int | None] = mapped_column(
+        ForeignKey("internship_offers.id"), nullable=True
     )
     template_id: Mapped[int | None] = mapped_column(
         ForeignKey("cover_letter_templates.id", ondelete="SET NULL"), nullable=True
     )
-    offer_title: Mapped[str] = mapped_column(String(300), nullable=False)
-    company: Mapped[str] = mapped_column(String(200), nullable=False)
+    name: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    offer_title: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    company: Mapped[str | None] = mapped_column(String(200), nullable=True)
     content: Mapped[str] = mapped_column(Text, nullable=False)
+    saved: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="0", nullable=False
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
     user: Mapped["User"] = relationship(back_populates="generated_cover_letters")
-    offer: Mapped["InternshipOffer"] = relationship()
+    offer: Mapped["InternshipOffer | None"] = relationship()
     template: Mapped["CoverLetterTemplate | None"] = relationship()
 
 

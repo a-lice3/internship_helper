@@ -1669,3 +1669,516 @@ button:disabled {
   background: transparent;
   color: var(--success);
 }
+
+/* ---------- Modal overlay ---------- */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  animation: modal-fade-in 0.15s ease-out;
+}
+
+@keyframes modal-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal-content {
+  width: 480px;
+  max-width: 100%;
+  max-height: 85vh;
+  overflow-y: auto;
+  animation: modal-slide-up 0.2s ease-out;
+}
+
+@keyframes modal-slide-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.modal-content .glass-card-header {
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  z-index: 1;
+}
+
+/* ---------- Section add button ---------- */
+
+.btn-add-section {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px dashed var(--border-strong);
+  background: none;
+  color: var(--text-muted);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s var(--ease);
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.btn-add-section:hover {
+  border-color: var(--accent);
+  border-style: solid;
+  color: var(--accent);
+  background: var(--accent-light);
+}
+
+/* ---------- Skill chips (grouped by category) ---------- */
+
+.skill-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.skill-group {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.skill-group-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  min-width: 100px;
+  padding-top: 6px;
+  flex-shrink: 0;
+}
+
+.skill-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.skill-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  background: var(--tag-bg);
+  color: var(--tag-text);
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.15s var(--ease);
+}
+
+.skill-chip:hover {
+  box-shadow: 0 0 0 1px var(--border-strong);
+}
+
+.chip-delete {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 13px;
+  padding: 0 2px;
+  line-height: 1;
+  border-radius: 50%;
+  transition: all 0.15s;
+  opacity: 0;
+}
+
+.skill-chip:hover .chip-delete {
+  opacity: 1;
+}
+
+.chip-delete:hover {
+  color: var(--danger);
+}
+
+/* ---------- Inline editable text ---------- */
+
+.editable-text {
+  cursor: text;
+  border-bottom: 1px dashed transparent;
+  transition: border-color 0.15s;
+  padding-bottom: 1px;
+}
+
+.editable-text:hover {
+  border-bottom-color: var(--border-strong);
+}
+
+.editable-text.item-title {
+  font-weight: 600;
+}
+
+.editable-input {
+  font: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  color: var(--text-h);
+  background: var(--accent-light);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  padding: 1px 6px;
+  outline: none;
+  width: auto;
+  min-width: 60px;
+}
+
+.editable-textarea {
+  width: 100%;
+  min-height: 48px;
+  resize: vertical;
+  font-family: var(--sans);
+  line-height: 1.5;
+  padding: 6px 10px;
+}
+
+/* ---------- Editable select (click-to-change tag) ---------- */
+
+.editable-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: var(--accent-light);
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  border: 1px solid transparent;
+}
+
+.editable-tag:hover {
+  border-color: var(--accent);
+}
+
+.editable-select {
+  font: inherit;
+  font-size: 11px;
+  padding: 2px 4px;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: var(--accent-light);
+  color: var(--accent);
+  outline: none;
+  width: auto;
+  cursor: pointer;
+}
+
+/* Category select inside skill chip: hidden by default, appears on hover */
+.chip-cat-select {
+  font-size: 10px;
+  padding: 0 2px;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent-light);
+  color: var(--accent);
+  outline: none;
+  cursor: pointer;
+  width: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: all 0.2s var(--ease);
+}
+
+.skill-chip:hover .chip-cat-select {
+  width: auto;
+  opacity: 1;
+  padding: 2px 4px;
+}
+
+.chip-level-tag {
+  font-size: 10px;
+}
+
+/* ---------- Profile item cards (Experiences, Education, Extras) ---------- */
+
+.profile-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.profile-item-card {
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  transition: border-color 0.15s;
+}
+
+.profile-item-card:hover {
+  border-color: var(--border-strong);
+}
+
+.profile-item-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.profile-item-header .btn-delete {
+  margin-left: auto;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.profile-item-card:hover .profile-item-header .btn-delete {
+  opacity: 1;
+}
+
+.profile-item-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.profile-item-dates {
+  font-size: 12px;
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.profile-item-desc {
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.profile-item-desc .editable-text {
+  display: block;
+}
+
+.profile-item-desc .editable-text:empty::after {
+  content: attr(data-placeholder);
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* ---------- Modal error ---------- */
+
+.modal-error {
+  color: var(--danger);
+  font-size: 12px;
+  font-weight: 500;
+  background: var(--danger-light);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: var(--radius-sm);
+  padding: 6px 12px;
+  margin: 0 0 4px;
+}
+
+@media (max-width: 640px) {
+  .skill-group {
+    flex-direction: column;
+    gap: 4px;
+  }
+  .skill-group-label {
+    min-width: unset;
+  }
+}
+
+/* ---------- CV Dropzone ---------- */
+
+.cv-dropzone {
+  border: 2px dashed var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  transition: all 0.25s var(--ease);
+  cursor: pointer;
+  margin-bottom: 20px;
+  min-height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cv-dropzone:hover {
+  border-color: var(--accent);
+  background: var(--accent-light);
+}
+
+.cv-dropzone-active {
+  border-color: var(--accent);
+  border-style: solid;
+  background: var(--accent-light);
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.12);
+}
+
+.cv-dropzone-has-file {
+  cursor: default;
+  border-style: solid;
+  border-color: var(--border-strong);
+  min-height: unset;
+}
+
+.cv-dropzone-has-file:hover {
+  background: var(--surface);
+}
+
+.cv-dropzone-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 32px 24px;
+  text-align: center;
+}
+
+.cv-dropzone-icon {
+  color: var(--text-muted);
+  opacity: 0.5;
+  margin-bottom: 4px;
+}
+
+.cv-dropzone-active .cv-dropzone-icon {
+  color: var(--accent);
+  opacity: 1;
+}
+
+.cv-dropzone-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-h);
+  margin: 0;
+}
+
+.cv-dropzone-hint {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.cv-dropzone-browse {
+  margin-top: 4px;
+}
+
+.cv-dropzone-formats {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin: 4px 0 0;
+}
+
+.cv-dropzone-selected {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px;
+  width: 100%;
+}
+
+.cv-dropzone-file-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.cv-dropzone-file-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-light);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+
+.cv-dropzone-file-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-h);
+  margin: 0;
+}
+
+.cv-dropzone-file-size {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.cv-dropzone-file-info .btn-icon {
+  margin-left: auto;
+  font-size: 18px;
+}
+
+.cv-dropzone-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ---------- CV card clickable + preview ---------- */
+
+.cv-card-clickable {
+  transition: all 0.2s var(--ease);
+}
+
+.cv-card-clickable:hover {
+  border-color: var(--accent);
+}
+
+.cv-card-expanded {
+  border-color: var(--accent);
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.cv-preview-panel {
+  border: 1px solid var(--accent);
+  border-top: none;
+  border-radius: 0 0 var(--radius) var(--radius);
+  background: #525659;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.cv-preview-iframe {
+  width: 100%;
+  height: 500px;
+  border: none;
+  display: block;
+}
+
+/* ---------- CV download icon ---------- */
+
+.cv-download-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  padding: 2px;
+  border-radius: 4px;
+  transition: all 0.15s;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.cv-download-icon:hover {
+  color: var(--accent);
+  background: var(--accent-light);
+}

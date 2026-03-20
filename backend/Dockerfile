@@ -2,6 +2,13 @@ FROM python:3.13-slim
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
+# Install pdflatex for LaTeX compilation
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+      texlive-latex-base texlive-latex-recommended texlive-fonts-recommended \
+      texlive-latex-extra texlive-fonts-extra && \
+    rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 COPY pyproject.toml uv.lock ./

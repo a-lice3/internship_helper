@@ -234,7 +234,7 @@ export default function App() {
           {/* Mon Profil section */}
           <Route path="/profile" element={<ProfilePage userId={user.id} />} />
           <Route path="/profile/cvs" element={<CVsPage userId={user.id} />} />
-          <Route path="/profile/templates" element={<TemplatesPage userId={user.id} />} />
+          <Route path="/profile/cover-letters" element={<TemplatesPage userId={user.id} />} />
 
           {/* Interview */}
           <Route path="/interview" element={<InterviewPage userId={user.id} />} />
