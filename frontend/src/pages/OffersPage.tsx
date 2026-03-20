@@ -1,65 +1,77 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import * as api from "../api";
+const mistralLogo = "/logo_mistral.png";
 
 const STATUSES = ["bookmarked", "applied", "screened", "interview", "rejected", "accepted"];
+
+const isUrl = (s: string) => /^https?:\/\/.+/i.test(s.trim());
 
 export default function OffersPage({ userId }: { userId: number }) {
   const navigate = useNavigate();
   const [offers, setOffers] = useState<api.Offer[]>([]);
-  const [filterStatus, setFilterStatus] = useState("");
-
-  // Add form
-  const [company, setCompany] = useState("");
-  const [title, setTitle] = useState("");
-  const [link, setLink] = useState("");
-  const [locations, setLocations] = useState("");
-  const [description, setDescription] = useState("");
+  const [filterStatuses, setFilterStatuses] = useState<Set<string>>(new Set());
 
   // Paste-and-parse
   const [pasteText, setPasteText] = useState("");
   const [parsing, setParsing] = useState(false);
 
-  // Show/hide add form
-  const [showAdd, setShowAdd] = useState(false);
+  // Ref to avoid double-firing
+  const parsingRef = useRef(false);
 
   const load = () => {
-    api.getOffers(userId, filterStatus || undefined).then(setOffers);
+    api.getOffers(userId).then(setOffers);
   };
 
-  useEffect(load, [userId, filterStatus]);
+  useEffect(load, [userId]);
 
-  const handleParse = async () => {
-    if (!pasteText.trim()) return;
+  const toggleStatus = (s: string) => {
+    setFilterStatuses((prev) => {
+      const next = new Set(prev);
+      if (next.has(s)) next.delete(s);
+      else next.add(s);
+      return next;
+    });
+  };
+
+  const filteredOffers = filterStatuses.size === 0
+    ? offers
+    : offers.filter((o) => filterStatuses.has(o.status));
+
+  const handleParseAndAdd = async (url: string) => {
+    if (parsingRef.current) return;
+    parsingRef.current = true;
     setParsing(true);
     try {
-      const parsed = await api.parseOffer(pasteText);
-      setCompany(parsed.company || "");
-      setTitle(parsed.title || "");
-      setLocations(parsed.locations || "");
-      setDescription(parsed.description || "");
+      const parsed = await api.parseOffer({ url: url.trim() });
+      const o = await api.createOffer(userId, {
+        company: parsed.company || "Unknown",
+        title: parsed.title || "Unknown",
+        link: url.trim(),
+        locations: parsed.locations || undefined,
+        description: parsed.description || undefined,
+      });
+      setOffers((prev) => [o, ...prev]);
       setPasteText("");
-      setShowAdd(true);
+
+      // Generate skill gap + cover letter in parallel
+      await Promise.allSettled([
+        api.analyzeSkillGap(userId, o.id),
+        api.generateCoverLetter(userId, o.id),
+      ]);
     } catch {
-      alert("Failed to parse offer text.");
+      alert("Failed to extract offer from this link — the page may be inaccessible.");
     } finally {
       setParsing(false);
+      parsingRef.current = false;
     }
   };
 
-  const handleAdd = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!company.trim() || !title.trim()) return;
-    const o = await api.createOffer(userId, {
-      company,
-      title,
-      link: link || undefined,
-      locations: locations || undefined,
-      description: description || undefined,
-    });
-    setOffers([o, ...offers]);
-    setCompany(""); setTitle(""); setLink(""); setLocations(""); setDescription("");
-    setShowAdd(false);
+  const handlePasteChange = (value: string) => {
+    setPasteText(value);
+    if (isUrl(value.trim()) && !parsingRef.current) {
+      handleParseAndAdd(value.trim());
+    }
   };
 
   const handleStatusChange = async (offer: api.Offer, newStatus: string) => {
@@ -73,7 +85,7 @@ export default function OffersPage({ userId }: { userId: number }) {
     setOffers(offers.filter((o) => o.id !== id));
   };
 
-  // Stats
+  // Stats — always computed from all offers, not filtered
   const counts = STATUSES.reduce<Record<string, number>>((acc, s) => {
     acc[s] = offers.filter((o) => o.status === s).length;
     return acc;
@@ -89,7 +101,6 @@ export default function OffersPage({ userId }: { userId: number }) {
       <nav className="pill-nav">
         <NavLink to="/offers" end className={({ isActive }) => `pill${isActive ? " active" : ""}`}>Mes offres</NavLink>
         <NavLink to="/offers/search" className={({ isActive }) => `pill${isActive ? " active" : ""}`}>Recherche</NavLink>
-        <NavLink to="/offers/calendar" className={({ isActive }) => `pill${isActive ? " active" : ""}`}>Calendrier</NavLink>
       </nav>
 
       {/* Stats bento row */}
@@ -98,8 +109,8 @@ export default function OffersPage({ userId }: { userId: number }) {
           <div
             key={s}
             className="glass-card stat-card"
-            style={{ cursor: "pointer", border: filterStatus === s ? `2px solid var(--accent)` : undefined }}
-            onClick={() => setFilterStatus(filterStatus === s ? "" : s)}
+            style={{ cursor: "pointer", border: filterStatuses.has(s) ? `2px solid var(--accent)` : undefined }}
+            onClick={() => toggleStatus(s)}
           >
             <span className="stat-value">{counts[s] || 0}</span>
             <span className="stat-label" style={{ textTransform: "capitalize" }}>{s}</span>
@@ -108,97 +119,73 @@ export default function OffersPage({ userId }: { userId: number }) {
       </div>
 
       {/* Actions row */}
-      <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-        <button className="btn-primary" onClick={() => setShowAdd(!showAdd)}>
-          {showAdd ? "Cancel" : "+ New offer"}
-        </button>
-        {filterStatus && (
-          <button className="btn-secondary" onClick={() => setFilterStatus("")}>
-            Clear filter
+      {filterStatuses.size > 0 && (
+        <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+          <button className="btn-secondary" onClick={() => setFilterStatuses(new Set())}>
+            Clear filters
           </button>
-        )}
-      </div>
-
-      {/* Add / Parse form */}
-      {showAdd && (
-        <div className="glass-card" style={{ marginBottom: 20 }}>
-          <div className="glass-card-body">
-            {/* Parse section */}
-            <div style={{ marginBottom: 16 }}>
-              <h4 style={{ marginBottom: 8, textTransform: "none", letterSpacing: 0, color: "var(--text-h)" }}>Paste a job description to auto-fill</h4>
-              <textarea
-                rows={3}
-                placeholder="Paste the full job description text here..."
-                value={pasteText}
-                onChange={(e) => setPasteText(e.target.value)}
-                style={{ width: "100%", marginBottom: 8 }}
-              />
-              <button onClick={handleParse} disabled={parsing || !pasteText.trim()} className="btn-secondary">
-                {parsing ? "Parsing..." : "Extract details"}
-              </button>
-            </div>
-
-            <div style={{ borderTop: "1px solid var(--border)", paddingTop: 16 }}>
-              <h4 style={{ marginBottom: 8, textTransform: "none", letterSpacing: 0, color: "var(--text-h)" }}>Or fill manually</h4>
-              <form onSubmit={handleAdd} className="form-grid">
-                <input placeholder="Company *" value={company} onChange={(e) => setCompany(e.target.value)} />
-                <input placeholder="Job title *" value={title} onChange={(e) => setTitle(e.target.value)} />
-                <input placeholder="Link (optional)" value={link} onChange={(e) => setLink(e.target.value)} />
-                <input placeholder="Location(s)" value={locations} onChange={(e) => setLocations(e.target.value)} />
-                <div style={{ gridColumn: "1 / -1" }}>
-                  <textarea
-                    placeholder="Description (optional)"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    rows={2}
-                  />
-                </div>
-                <button type="submit">Add offer</button>
-              </form>
-            </div>
-          </div>
         </div>
       )}
 
+      {/* Paste link card — same size as offer cards */}
+      <div className="paste-link-card">
+        {parsing ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <img src={mistralLogo} alt="Loading" className="mistral-spin-img" />
+            <span style={{ fontSize: 13, color: "var(--text-muted)" }}>Extracting offer &amp; generating analyses...</span>
+          </div>
+        ) : (
+          <input
+            type="text"
+            placeholder="Paste offer link"
+            value={pasteText}
+            onChange={(e) => handlePasteChange(e.target.value)}
+            className="paste-link-input"
+          />
+        )}
+      </div>
+
       {/* Offers list as cards — clickable to navigate to detail */}
-      {offers.length === 0 ? (
-        <p className="empty">No offers yet. Add your first one!</p>
+      {filteredOffers.length === 0 ? (
+        <p className="empty">{offers.length === 0 ? "No offers yet. Add your first one!" : "No offers match the selected filters."}</p>
       ) : (
         <div className="card-list">
-          {offers.map((o) => (
+          {filteredOffers.map((o) => (
             <div
               key={o.id}
               className="glass-card"
               style={{ padding: 0, cursor: "pointer" }}
               onClick={() => navigate(`/offers/${o.id}`)}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 18px" }}>
-                <span className={`status-dot ${o.status}`} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <strong style={{ color: "var(--text-h)", fontSize: 14 }}>{o.company}</strong>
-                    <span style={{ color: "var(--text-muted)", fontSize: 13 }}>{o.title}</span>
-                  </div>
-                  <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2, display: "flex", gap: 12 }}>
-                    {o.locations && <span>{o.locations}</span>}
-                    {o.date_applied && <span>{o.date_applied}</span>}
-                  </div>
+              <div style={{ padding: "14px 18px" }}>
+                {/* Row 1: Company, title, locations, link, date, delete */}
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <strong style={{ color: "var(--text-h)", fontSize: 14 }}>{o.company}</strong>
+                  {o.date_applied && <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{new Date(o.date_applied).getFullYear()}</span>}
+                  <span style={{ color: "var(--text-muted)", fontSize: 13 }}>{o.title}</span>
+                  {o.locations && <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{o.locations}</span>}
+                  {o.link && (
+                    <a href={o.link} target="_blank" rel="noreferrer" style={{ fontSize: 12 }} onClick={(e) => e.stopPropagation()}>
+                      Link
+                    </a>
+                  )}
+                  <span style={{ flex: 1 }} />
+                  {o.date_applied && <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{o.date_applied}</span>}
+                  <button onClick={(e) => handleDelete(o.id, e)} className="btn-icon" title="Delete">x</button>
                 </div>
-                <select
-                  value={o.status}
-                  onChange={(e) => { e.stopPropagation(); handleStatusChange(o, e.target.value); }}
-                  onClick={(e) => e.stopPropagation()}
-                  style={{ width: "auto", fontSize: 12, padding: "4px 8px" }}
-                  className={`status-${o.status}`}
-                >
-                  {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
-                {o.link && (
-                  <a href={o.link} target="_blank" rel="noreferrer" style={{ fontSize: 12 }} onClick={(e) => e.stopPropagation()}>
-                    Link
-                  </a>
-                )}
-                <button onClick={(e) => handleDelete(o.id, e)} className="btn-icon" title="Delete">x</button>
+                {/* Row 2: Status */}
+                <div style={{ marginTop: 4, display: "flex", alignItems: "center", gap: 6 }}>
+                  <span className={`status-dot ${o.status}`} />
+                  <select
+                    value={o.status}
+                    onChange={(e) => { e.stopPropagation(); handleStatusChange(o, e.target.value); }}
+                    onClick={(e) => e.stopPropagation()}
+                    style={{ width: "auto", fontSize: 11, padding: "2px 6px", border: "none", background: "transparent", color: "var(--text-muted)", cursor: "pointer", textTransform: "capitalize" }}
+                    className={`status-${o.status}`}
+                  >
+                    {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
               </div>
             </div>
           ))}
