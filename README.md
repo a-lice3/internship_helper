@@ -170,8 +170,14 @@ npm run dev
 ## Run Tests
 
 ```bash
+# Backend (pytest — integration tests with SQLite in-memory)
 cd backend
 uv run pytest -v
+
+# Frontend (vitest — unit + component tests with jsdom)
+cd frontend
+npm test              # single run
+npm run test:watch    # watch mode (re-runs on file changes)
 ```
 
 ## Run Quality Checks

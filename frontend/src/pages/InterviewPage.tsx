@@ -52,7 +52,7 @@ export default function InterviewPage({ userId }: { userId: number }) {
 
   const [view, setView] = useState<"setup" | "live" | "history" | "detail">("setup");
 
-  const interview = useInterview(activeSession?.session_id ?? null, userId);
+  const interview = useInterview(activeSession?.session_id ?? null);
   const speech = useSpeechRecognition(language);
 
   useEffect(() => {
@@ -89,6 +89,7 @@ export default function InterviewPage({ userId }: { userId: number }) {
     if (view === "live" && activeSession && interview.state.status === "idle") {
       interview.connect();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view, activeSession, interview.state.status]);
 
   useEffect(() => {
@@ -101,6 +102,7 @@ export default function InterviewPage({ userId }: { userId: number }) {
     if (interview.state.status === "thinking" || interview.state.status === "results") {
       speech.stop();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [interview.state.status, interview.state.questionNumber]);
 
   const handleSubmitAnswer = useCallback(async () => {

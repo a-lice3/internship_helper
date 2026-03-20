@@ -5,7 +5,8 @@ import { transcribeAudio } from "../api";
  * Hook that records audio via MediaRecorder and transcribes it
  * using Voxtral (via the backend /transcribe-audio endpoint).
  */
-export function useSpeechRecognition(_language: string) {
+export function useSpeechRecognition(_language?: string) {
+  void _language;
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
 
