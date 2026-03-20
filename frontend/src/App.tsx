@@ -141,7 +141,7 @@ function LoginScreen({ onLogin }: { onLogin: (user: api.User) => void }) {
 
 export default function App() {
   const [user, setUser] = useState<api.User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !!api.getToken());
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -153,8 +153,6 @@ export default function App() {
           api.setToken(null);
         })
         .finally(() => setLoading(false));
-    } else {
-      setLoading(false);
     }
   }, []);
 

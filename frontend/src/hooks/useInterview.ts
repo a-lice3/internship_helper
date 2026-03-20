@@ -28,7 +28,7 @@ type ServerMessage = {
 // Hook
 // ---------------------------------------------------------------------------
 
-export function useInterview(sessionId: string | null, userId?: number) {
+export function useInterview(sessionId: string | null) {
   const [state, setState] = useState<InterviewState>({
     status: "idle",
     currentQuestion: "",
@@ -50,45 +50,17 @@ export function useInterview(sessionId: string | null, userId?: number) {
   const currentTranscriptRef = useRef<string>("");
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Connect WebSocket
-  const connect = useCallback(() => {
-    if (!sessionId) return;
-
-    setState((s) => ({ ...s, status: "connecting", error: null }));
-
-    const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-    const token = getToken();
-    const tokenParam = token ? `?token=${encodeURIComponent(token)}` : "";
-    const ws = new WebSocket(
-      `${protocol}://${window.location.hostname}:8000/ws/interview/${sessionId}${tokenParam}`
-    );
-
-    ws.onopen = () => {
-      wsRef.current = ws;
-    };
-
-    ws.onmessage = (event) => {
-      const msg: ServerMessage = JSON.parse(event.data);
-      handleMessage(msg);
-    };
-
-    ws.onerror = () => {
-      setState((s) => ({
-        ...s,
-        status: "error",
-        error: "WebSocket connection failed",
-      }));
-    };
-
-    ws.onclose = () => {
-      wsRef.current = null;
-      stopRecording();
-    };
-
-    return () => {
-      ws.close();
-    };
-  }, [sessionId, userId]);
+  // Stop mic recording
+  const stopRecording = useCallback(() => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.stop();
+    }
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach((t) => t.stop());
+      mediaStreamRef.current = null;
+    }
+    mediaRecorderRef.current = null;
+  }, []);
 
   // Handle server messages
   const handleMessage = useCallback((msg: ServerMessage) => {
@@ -163,7 +135,47 @@ export function useInterview(sessionId: string | null, userId?: number) {
         }));
         break;
     }
-  }, []);
+  }, [stopRecording]);
+
+  // Connect WebSocket
+  const connect = useCallback(() => {
+    if (!sessionId) return;
+
+    setState((s) => ({ ...s, status: "connecting", error: null }));
+
+    const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+    const token = getToken();
+    const tokenParam = token ? `?token=${encodeURIComponent(token)}` : "";
+    const ws = new WebSocket(
+      `${protocol}://${window.location.hostname}:8000/ws/interview/${sessionId}${tokenParam}`
+    );
+
+    ws.onopen = () => {
+      wsRef.current = ws;
+    };
+
+    ws.onmessage = (event) => {
+      const msg: ServerMessage = JSON.parse(event.data);
+      handleMessage(msg);
+    };
+
+    ws.onerror = () => {
+      setState((s) => ({
+        ...s,
+        status: "error",
+        error: "WebSocket connection failed",
+      }));
+    };
+
+    ws.onclose = () => {
+      wsRef.current = null;
+      stopRecording();
+    };
+
+    return () => {
+      ws.close();
+    };
+  }, [sessionId, handleMessage, stopRecording]);
 
   // Start mic recording
   const startRecording = useCallback(async () => {
@@ -186,24 +198,12 @@ export function useInterview(sessionId: string | null, userId?: number) {
 
       recorder.start(500); // Collect data every 500ms
       recordingStartRef.current = Date.now();
-    } catch (err) {
+    } catch {
       setState((s) => ({
         ...s,
         error: "Microphone access denied",
       }));
     }
-  }, []);
-
-  // Stop mic recording
-  const stopRecording = useCallback(() => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
-      mediaRecorderRef.current.stop();
-    }
-    if (mediaStreamRef.current) {
-      mediaStreamRef.current.getTracks().forEach((t) => t.stop());
-      mediaStreamRef.current = null;
-    }
-    mediaRecorderRef.current = null;
   }, []);
 
   // Send turn.end with the transcript typed by user
@@ -295,6 +295,7 @@ export function useInterview(sessionId: string | null, userId?: number) {
 
   // Reset state when sessionId changes
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setState({
       status: "idle",
       currentQuestion: "",

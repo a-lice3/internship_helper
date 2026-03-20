@@ -66,7 +66,7 @@ export default function OfferDetailPage({ userId }: { userId: number }) {
 
   useEffect(() => {
     if (!id) return;
-    setLoading(true);
+    let cancelled = false;
     Promise.all([
       api.getOffer(userId, id),
       api.getOfferNotes(userId, id),
@@ -74,6 +74,7 @@ export default function OfferDetailPage({ userId }: { userId: number }) {
       api.getCVs(userId),
       api.getReminders(userId, false),
     ]).then(([o, n, t, c, r]) => {
+      if (cancelled) return;
       setOffer(o);
       setNotes(n);
       setTemplates(t);
@@ -81,8 +82,9 @@ export default function OfferDetailPage({ userId }: { userId: number }) {
       setReminders(r.filter((rem: api.Reminder) => rem.offer_id === id));
       setLoading(false);
     }).catch(() => {
-      setLoading(false);
+      if (!cancelled) setLoading(false);
     });
+    return () => { cancelled = true; };
   }, [userId, id]);
 
   const handleStatusChange = async (newStatus: string) => {
