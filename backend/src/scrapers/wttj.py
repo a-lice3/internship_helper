@@ -5,12 +5,14 @@ import re
 
 import httpx
 
-from src.config import ALGOLIA_APP_ID, ALGOLIA_API_KEY
 from src.scrapers.base import OfferSource, RawOffer
 
 logger = logging.getLogger(__name__)
 
-ALGOLIA_URL = f"https://{ALGOLIA_APP_ID}-dsn.algolia.net/1/indexes/*/queries"
+# Public Algolia credentials used by the WTTJ website (visible in their frontend JS)
+_ALGOLIA_APP_ID = "CSEKHVMS53"
+_ALGOLIA_API_KEY = "4bd8f6215d0cc52b26430765769e65a0"
+ALGOLIA_URL = f"https://{_ALGOLIA_APP_ID}-dsn.algolia.net/1/indexes/*/queries"
 
 # Major city coordinates for geo-filtering (avoids geocoding API calls)
 CITY_COORDS: dict[str, tuple[float, float]] = {
@@ -111,8 +113,8 @@ class WTTJSource(OfferSource):
                 params_str += f"&aroundRadius={radius_km * 1000}"
 
         headers = {
-            "X-Algolia-Application-Id": ALGOLIA_APP_ID,
-            "X-Algolia-API-Key": ALGOLIA_API_KEY,
+            "X-Algolia-Application-Id": _ALGOLIA_APP_ID,
+            "X-Algolia-API-Key": _ALGOLIA_API_KEY,
             "Referer": "https://www.welcometothejungle.com/",
             "Origin": "https://www.welcometothejungle.com",
         }

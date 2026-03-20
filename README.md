@@ -109,9 +109,9 @@ The fastest way to get everything running. No need to install Python, Node, or P
 git clone <repo-url>
 cd internship_helper
 
-# Create .env file with your secrets
+# Create .env file (see "Environment variables" section below)
 cp .env.example .env
-# Edit .env: add your MISTRAL_API_KEY and optionally a JWT_SECRET_KEY
+# Edit .env with your values (at minimum: POSTGRES_USER, POSTGRES_PASSWORD, MISTRAL_API_KEY)
 
 # Launch everything (backend + PostgreSQL + frontend)
 docker compose up --build
@@ -124,6 +124,27 @@ That's it. Database migrations run automatically on startup.
 
 To stop: `Ctrl+C` or `docker compose down`
 To reset the database: `docker compose down -v` then `docker compose up --build`
+
+### Environment variables
+
+#### Required
+
+| Variable | Description | How to get it |
+|----------|-------------|---------------|
+| `POSTGRES_USER` | PostgreSQL username (your choice) | — |
+| `POSTGRES_PASSWORD` | PostgreSQL password (your choice) | — |
+| `DATABASE_URL` | Connection string — must match `POSTGRES_USER` and `POSTGRES_PASSWORD` | — |
+| `MISTRAL_API_KEY` | API key for all AI features | Create an account on [console.mistral.ai](https://console.mistral.ai/), go to **API Keys** and generate one |
+| `JWT_SECRET_KEY` | Secret for signing auth tokens | Run: `python -c "import secrets; print(secrets.token_hex(32))"` |
+
+#### Optional — search sources
+
+These enable additional internship search sources. **The app works fine without them** — search will simply use the sources that are configured (Welcome to the Jungle and The Muse work without any key).
+
+| Variable | Description | How to get it |
+|----------|-------------|---------------|
+| `FRANCE_TRAVAIL_CLIENT_ID` | France Travail (ex-Pole Emploi) API | Create an app on [francetravail.io/data/api](https://francetravail.io/data/api), subscribe to the **Offres d'emploi v2** API, then copy the Client ID and Client Secret |
+| `FRANCE_TRAVAIL_CLIENT_SECRET` | | |
 
 ### Option 2 — Local development (without Docker)
 
@@ -147,10 +168,9 @@ cd ..
 # Database
 createdb career_db
 
-# Environment — create a .env file at the project root
+# Environment (see "Environment variables" section above)
 cp .env.example .env
-# Edit .env: add your MISTRAL_API_KEY and generate a JWT secret:
-python -c "import secrets; print(secrets.token_hex(32))"
+# Edit .env with your values (at minimum: POSTGRES_USER, POSTGRES_PASSWORD, MISTRAL_API_KEY)
 
 # Apply migrations
 cd backend

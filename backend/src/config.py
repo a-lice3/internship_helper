@@ -24,10 +24,6 @@ UPLOAD_DIR = Path(os.getenv("UPLOAD_DIR", "uploads"))
 FRANCE_TRAVAIL_CLIENT_ID = os.getenv("FRANCE_TRAVAIL_CLIENT_ID", "")
 FRANCE_TRAVAIL_CLIENT_SECRET = os.getenv("FRANCE_TRAVAIL_CLIENT_SECRET", "")
 
-# WTTJ / Algolia
-ALGOLIA_APP_ID = os.getenv("ALGOLIA_APP_ID", "")
-ALGOLIA_API_KEY = os.getenv("ALGOLIA_API_KEY", "")
-
 # JWT settings
 JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "")
 if not JWT_SECRET_KEY and not TESTING:
