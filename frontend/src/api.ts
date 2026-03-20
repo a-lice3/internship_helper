@@ -123,11 +123,13 @@ export interface CoverLetterResult {
 
 export interface StoredCoverLetter {
   id: number;
-  offer_id: number;
+  offer_id: number | null;
   template_id: number | null;
-  offer_title: string;
-  company: string;
+  name: string | null;
+  offer_title: string | null;
+  company: string | null;
   content: string;
+  saved: boolean;
   created_at: string | null;
 }
 
@@ -435,6 +437,17 @@ export const deleteCV = (uid: number, id: number) =>
 export const downloadCVUrl = (uid: number, id: number) =>
   `${BASE}/users/${uid}/cvs/${id}/download`;
 
+export const downloadCVBlob = async (uid: number, id: number): Promise<Blob> => {
+  const res = await fetchWithAuth(`${BASE}/users/${uid}/cvs/${id}/download`, {
+    method: "GET",
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail || `HTTP ${res.status}`);
+  }
+  return res.blob();
+};
+
 export const compileCVUrl = (uid: number, id: number) =>
   `${BASE}/users/${uid}/cvs/${id}/compile-pdf`;
 
@@ -459,10 +472,10 @@ export const analyzeSkillGap = (uid: number, offerId: number) =>
     method: "POST",
   });
 
-export const generateCoverLetter = (uid: number, offerId: number, templateId?: number) =>
+export const generateCoverLetter = (uid: number, offerId: number, opts?: { templateId?: number; coverLetterId?: number }) =>
   request<CoverLetterResult>(`/users/${uid}/offers/${offerId}/cover-letter`, {
     method: "POST",
-    body: JSON.stringify({ template_id: templateId ?? null }),
+    body: JSON.stringify({ template_id: opts?.templateId ?? null, cover_letter_id: opts?.coverLetterId ?? null }),
   });
 
 export const getStoredCoverLetters = (uid: number) =>
@@ -487,11 +500,34 @@ export const chatEditCoverLetter = (
     body: JSON.stringify({ content, message, conversation_history: conversationHistory ?? null }),
   });
 
-export const updateCoverLetterContent = (uid: number, letterId: number, content: string) =>
+export const updateCoverLetter = (uid: number, letterId: number, data: { content?: string; saved?: boolean }) =>
   request<StoredCoverLetter>(`/users/${uid}/cover-letters/${letterId}`, {
     method: "PATCH",
-    body: JSON.stringify({ content }),
+    body: JSON.stringify(data),
   });
+
+export const getSavedCoverLetters = (uid: number) =>
+  request<StoredCoverLetter[]>(`/users/${uid}/cover-letters?saved_only=true`);
+
+export const createCoverLetter = (uid: number, data: { name: string; content: string }) =>
+  request<StoredCoverLetter>(`/users/${uid}/cover-letters`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+
+export const uploadCoverLetterPdf = async (uid: number, file: File): Promise<StoredCoverLetter> => {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetchWithAuth(`${BASE}/users/${uid}/cover-letters/upload`, {
+    method: "POST",
+    body: form,
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail || `HTTP ${res.status}`);
+  }
+  return res.json();
+};
 
 export const getStoredSkillGaps = (uid: number) =>
   request<StoredSkillGap[]>(`/users/${uid}/skill-gaps`);

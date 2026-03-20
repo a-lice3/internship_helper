@@ -11,10 +11,10 @@ export default function AIPage({ userId }: { userId: number }) {
   const [tab, setTab] = useState<Tab>("generate");
 
   const [offers, setOffers] = useState<api.Offer[]>([]);
-  const [templates, setTemplates] = useState<api.Template[]>([]);
+  const [savedCoverLetters, setSavedCoverLetters] = useState<api.StoredCoverLetter[]>([]);
   const [cvs, setCvs] = useState<api.CV[]>([]);
   const [selectedOffer, setSelectedOffer] = useState<number | "">("");
-  const [selectedTemplate, setSelectedTemplate] = useState<number | "">("");
+  const [selectedCoverLetterId, setSelectedCoverLetterId] = useState<number | "">("");
   const [selectedCV, setSelectedCV] = useState<number | "">("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -41,7 +41,7 @@ export default function AIPage({ userId }: { userId: number }) {
 
   useEffect(() => {
     api.getOffers(userId).then(setOffers);
-    api.getTemplates(userId).then(setTemplates);
+    api.getSavedCoverLetters(userId).then(setSavedCoverLetters);
     api.getCVs(userId).then(setCvs);
     api.getStoredCoverLetters(userId).then(setStoredLetters);
     api.getStoredSkillGaps(userId).then(setStoredGaps);
@@ -63,7 +63,7 @@ export default function AIPage({ userId }: { userId: number }) {
     if (!selectedOffer) return;
     setLoading(true); setError(""); setCoverLetter(null);
     try {
-      const result = await api.generateCoverLetter(userId, Number(selectedOffer), selectedTemplate ? Number(selectedTemplate) : undefined);
+      const result = await api.generateCoverLetter(userId, Number(selectedOffer), selectedCoverLetterId ? { coverLetterId: Number(selectedCoverLetterId) } : undefined);
       setCoverLetter(result);
       api.getStoredCoverLetters(userId).then(setStoredLetters);
     } catch (e: unknown) { setError(e instanceof Error ? e.message : "Unknown error"); }
@@ -229,9 +229,9 @@ export default function AIPage({ userId }: { userId: number }) {
                 </label>
                 <label>
                   {t("aiPage.templateForCL")}
-                  <select value={selectedTemplate} onChange={(e) => setSelectedTemplate(e.target.value ? Number(e.target.value) : "")}>
+                  <select value={selectedCoverLetterId} onChange={(e) => setSelectedCoverLetterId(e.target.value ? Number(e.target.value) : "")}>
                     <option value="">{t("aiPage.noTemplate")}</option>
-                    {templates.map((tpl) => <option key={tpl.id} value={tpl.id}>{tpl.name}</option>)}
+                    {savedCoverLetters.map((cl) => <option key={cl.id} value={cl.id}>{cl.name || cl.offer_title || `#${cl.id}`}</option>)}
                   </select>
                 </label>
                 <label>
@@ -350,11 +350,11 @@ export default function AIPage({ userId }: { userId: number }) {
           {storedLetters.map((l) => (
             <CoverLetterAccordion
               key={l.id}
-              title={`${l.company} - ${l.offer_title}`}
+              title={l.name || (l.company && l.offer_title ? `${l.company} - ${l.offer_title}` : `Cover Letter #${l.id}`)}
               content={l.content}
               date={l.created_at ? new Date(l.created_at).toLocaleDateString() : undefined}
               templateId={l.template_id}
-              onDownload={() => downloadDocx(l.content, l.company)}
+              onDownload={() => downloadDocx(l.content, l.company || "cover_letter")}
               onDelete={() => handleDeleteLetter(l.id)}
             />
           ))}

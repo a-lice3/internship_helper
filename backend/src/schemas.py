@@ -296,6 +296,7 @@ class SkillGapResponse(BaseModel):
 
 class GenerateCoverLetterRequest(BaseModel):
     template_id: int | None = None
+    cover_letter_id: int | None = None
 
 
 class GenerateCoverLetterResponse(BaseModel):
@@ -324,6 +325,12 @@ class ChatEditCoverLetterResponse(BaseModel):
 
 
 class UpdateCoverLetterContentRequest(BaseModel):
+    content: str | None = None
+    saved: bool | None = None
+
+
+class CreateCoverLetterRequest(BaseModel):
+    name: str
     content: str
 
 
@@ -368,11 +375,13 @@ class AutoFillProfileResponse(BaseModel):
 
 class GeneratedCoverLetterResponse(BaseModel):
     id: int
-    offer_id: int
+    offer_id: int | None = None
     template_id: int | None = None
-    offer_title: str
-    company: str
+    name: str | None = None
+    offer_title: str | None = None
+    company: str | None = None
     content: str
+    saved: bool = False
     created_at: datetime | None = None
 
 
