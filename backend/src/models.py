@@ -85,6 +85,9 @@ class User(Base):
     )
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     ai_instructions: Mapped[str | None] = mapped_column(Text, nullable=True)
+    has_completed_onboarding: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false"
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
     # Relationships

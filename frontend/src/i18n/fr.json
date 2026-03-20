@@ -1,6 +1,6 @@
 {
   "app": {
-    "title": "Intern Helper",
+    "title": "Job Seeker",
     "subtitle": "Propulsé par l'IA",
     "loading": "Chargement..."
   },
@@ -13,8 +13,8 @@
     "logout": "Déconnexion"
   },
   "login": {
-    "title": "Internship Helper",
-    "subtitle": "Votre assistant IA pour la recherche de stage",
+    "title": "Job Seeker",
+    "subtitle": "Votre assistant IA pour la recherche d'emploi",
     "login": "Connexion",
     "signup": "Inscription",
     "email": "Email",
@@ -95,7 +95,7 @@
   },
   "dashboard": {
     "title": "Tableau de bord",
-    "description": "Aperçu de votre recherche de stage",
+    "description": "Aperçu de votre recherche d'emploi",
     "totalOffers": "Total offres",
     "avgScore": "Score moyen entretien",
     "totalInterviews": "Total entretiens",
@@ -590,5 +590,23 @@
     "delete": "Supprimer",
     "loading": "Chargement...",
     "error": "Erreur"
+  },
+  "onboarding": {
+    "title": "Job Seeker",
+    "subtitle": "Bienvenue sur Job Seeker",
+    "dropzoneText": "Glissez-d\u00e9posez votre CV pour trouver le job de vos r\u00eaves",
+    "dropzoneHint": "ou cliquez pour parcourir (PDF)",
+    "skip": "Passer",
+    "analyzing": "Analyse de votre personnalit\u00e9",
+    "continueAnyway": "Continuer",
+    "searchTitle": "Dites-nous ce que vous cherchez",
+    "searchPlaceholder": "D\u00e9crivez le job de vos r\u00eaves...",
+    "searchButton": "Rechercher",
+    "searching": "Recherche du job id\u00e9al",
+    "selectTitle": "S\u00e9lectionnez une offre qui vous int\u00e9resse",
+    "noResults": "Aucun r\u00e9sultat. Essayez une autre recherche.",
+    "select": "S\u00e9lectionner",
+    "newSearch": "Nouvelle recherche",
+    "matching": "Analyse de l'offre par rapport \u00e0 votre profil..."
   }
 }

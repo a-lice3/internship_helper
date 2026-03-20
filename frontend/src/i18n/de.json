@@ -1,6 +1,6 @@
 {
   "app": {
-    "title": "Intern Helper",
+    "title": "Job Seeker",
     "subtitle": "KI-gestützt",
     "loading": "Laden..."
   },
@@ -13,8 +13,8 @@
     "logout": "Abmelden"
   },
   "login": {
-    "title": "Internship Helper",
-    "subtitle": "Ihr KI-gestützter Begleiter für die Praktikumssuche",
+    "title": "Job Seeker",
+    "subtitle": "Ihr KI-gestützter Begleiter für die Jobsuche",
     "login": "Anmelden",
     "signup": "Registrieren",
     "email": "E-Mail",
@@ -95,7 +95,7 @@
   },
   "dashboard": {
     "title": "Dashboard",
-    "description": "Überblick über Ihre Praktikumssuche",
+    "description": "Überblick über Ihre Jobsuche",
     "totalOffers": "Angebote gesamt",
     "avgScore": "Ø Gesprächsbewertung",
     "totalInterviews": "Gespräche gesamt",
@@ -585,10 +585,28 @@
   "common": {
     "save": "Speichern",
     "cancel": "Abbrechen",
-    "add": "Hinzufügen",
+    "add": "Hinzuf\u00fcgen",
     "edit": "Bearbeiten",
-    "delete": "Löschen",
+    "delete": "L\u00f6schen",
     "loading": "Laden...",
     "error": "Fehler"
+  },
+  "onboarding": {
+    "title": "Job Seeker",
+    "subtitle": "Willkommen bei Job Seeker",
+    "dropzoneText": "Ziehen Sie Ihren Lebenslauf hierher, um Ihren Traumjob zu finden",
+    "dropzoneHint": "oder klicken Sie zum Durchsuchen (PDF)",
+    "skip": "\u00dcberspringen",
+    "analyzing": "Analyse Ihrer Pers\u00f6nlichkeit",
+    "continueAnyway": "Weiter",
+    "searchTitle": "Sagen Sie uns, was Sie suchen",
+    "searchPlaceholder": "Beschreiben Sie Ihren Traumjob...",
+    "searchButton": "Suchen",
+    "searching": "Suche nach Ihrem Traumjob",
+    "selectTitle": "W\u00e4hlen Sie ein Angebot, das Sie interessiert",
+    "noResults": "Keine Ergebnisse. Versuchen Sie eine andere Suche.",
+    "select": "Ausw\u00e4hlen",
+    "newSearch": "Neue Suche",
+    "matching": "Abgleich des Angebots mit Ihrem Profil..."
   }
 }

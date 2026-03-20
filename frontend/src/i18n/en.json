@@ -1,6 +1,6 @@
 {
   "app": {
-    "title": "Intern Helper",
+    "title": "Job Seeker",
     "subtitle": "AI-powered",
     "loading": "Loading..."
   },
@@ -13,8 +13,8 @@
     "logout": "Logout"
   },
   "login": {
-    "title": "Internship Helper",
-    "subtitle": "Your AI-powered internship search companion",
+    "title": "Job Seeker",
+    "subtitle": "Your AI-powered job search companion",
     "login": "Login",
     "signup": "Sign up",
     "email": "Email",
@@ -95,7 +95,7 @@
   },
   "dashboard": {
     "title": "Dashboard",
-    "description": "Overview of your internship search",
+    "description": "Overview of your job search",
     "totalOffers": "Total Offers",
     "avgScore": "Avg Interview Score",
     "totalInterviews": "Total Interviews",
@@ -590,5 +590,23 @@
     "delete": "Delete",
     "loading": "Loading...",
     "error": "Error"
+  },
+  "onboarding": {
+    "title": "Job Seeker",
+    "subtitle": "Welcome to Job Seeker",
+    "dropzoneText": "Drag and drop your CV to find your dream job",
+    "dropzoneHint": "or click to browse (PDF)",
+    "skip": "Skip",
+    "analyzing": "Analysing your personality",
+    "continueAnyway": "Continue",
+    "searchTitle": "Tell us what you want",
+    "searchPlaceholder": "Describe your dream job...",
+    "searchButton": "Search",
+    "searching": "Finding your dream job",
+    "selectTitle": "Pick an offer that interests you",
+    "noResults": "No results found. Try a different search.",
+    "select": "Select",
+    "newSearch": "New search",
+    "matching": "Matching the offer to your profile..."
   }
 }
