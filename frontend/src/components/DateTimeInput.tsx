@@ -59,13 +59,15 @@ export default function DateTimeInput({ value, onChange, mode = "datetime", styl
   const [viewYear, setViewYear] = useState(curYear || today.getFullYear());
   const [viewMonth, setViewMonth] = useState(curMonth ? curMonth - 1 : today.getMonth());
 
-  // Sync view when value changes externally
-  useEffect(() => {
-    if (curYear && curMonth) {
-      setViewYear(curYear);
-      setViewMonth(curMonth - 1);
-    }
-  }, [curYear, curMonth]);
+  // Sync view when value changes externally (without useEffect)
+  const [prevCurYear, setPrevCurYear] = useState(curYear);
+  const [prevCurMonth, setPrevCurMonth] = useState(curMonth);
+  if (curYear && curMonth && (curYear !== prevCurYear || curMonth !== prevCurMonth)) {
+    setPrevCurYear(curYear);
+    setPrevCurMonth(curMonth);
+    setViewYear(curYear);
+    setViewMonth(curMonth - 1);
+  }
 
   // Position the popover relative to the input
   useEffect(() => {
