@@ -15,12 +15,14 @@ La base contient une table `alembic_version` avec le hash de la derniere migrati
 
 ```
 internship_helper/
-├── alembic.ini              # Config Alembic (l'URL est vide, definie dans env.py)
-├── alembic/
-│   ├── env.py               # Importe Base.metadata et DATABASE_URL depuis src/
-│   ├── script.py.mako       # Template pour les fichiers de migration
-│   └── versions/            # Fichiers de migration (un par changement)
-│       └── xxxx_initial_schema.py
+├── backend/
+│   ├── alembic.ini              # Config Alembic (l'URL est vide, definie dans env.py)
+│   ├── alembic/
+│   │   ├── env.py               # Importe Base.metadata et DATABASE_URL depuis src/
+│   │   ├── script.py.mako       # Template pour les fichiers de migration
+│   │   └── versions/            # Fichiers de migration (un par changement)
+│   │       └── xxxx_initial_schema.py
+│   └── src/                     # Code Python backend
 ```
 
 ### Configuration
@@ -95,9 +97,10 @@ Les tests ne sont **pas affectes** par Alembic. Ils utilisent `Base.metadata.cre
 Pas besoin de refaire `alembic init` ni de generer les migrations — tout est deja dans le repo. Il suffit de :
 
 ```bash
-pip install -r requirements.txt
+cd backend
+uv sync                           # installer les dependances
 createdb career_db                # creer la base PostgreSQL si elle n'existe pas
-alembic upgrade head              # creer toutes les tables via les migrations
+uv run alembic upgrade head       # creer toutes les tables via les migrations
 ```
 
 C'est tout. `upgrade head` applique tous les fichiers de migration dans `alembic/versions/` pour construire le schema complet.
@@ -108,7 +111,7 @@ C'est tout. `upgrade head` applique tous les fichiers de migration dans `alembic
 
 Pour reference, voici ce qui a ete fait pour installer Alembic :
 
-1. Ajoute `alembic>=1.13.0` dans `requirements.txt`
+1. Ajoute `alembic>=1.13.0` dans `pyproject.toml`
 2. Lance `alembic init alembic`
 3. Vide `sqlalchemy.url` dans `alembic.ini`
 4. Configure `alembic/env.py` pour importer `Base.metadata` et `DATABASE_URL`
