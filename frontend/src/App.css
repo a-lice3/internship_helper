@@ -180,7 +180,7 @@
 
 .page {
   padding: 28px 32px;
-  max-width: 1100px;
+  max-width: 1200px;
 }
 
 .page-header {
@@ -1577,4 +1577,95 @@ button:disabled {
   .page {
     padding: 20px 16px;
   }
+}
+
+/* ---------- Paste link card ---------- */
+.paste-link-card {
+  padding: 14px 18px;
+  margin-bottom: 12px;
+  border-radius: 12px;
+  background: rgba(100, 149, 237, 0.08);
+  border: 2px dashed rgba(100, 149, 237, 0.5);
+  transition: border-color 0.2s;
+}
+
+.paste-link-card:focus-within {
+  border-color: rgba(100, 149, 237, 0.9);
+}
+
+.paste-link-input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: 14px;
+  color: var(--text-h);
+  padding: 0;
+}
+
+.paste-link-input::placeholder {
+  color: rgba(100, 149, 237, 0.7);
+  font-weight: 500;
+}
+
+/* ---------- Mistral spinner ---------- */
+@keyframes mistral-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.mistral-spin-img {
+  width: 24px;
+  height: 24px;
+  animation: mistral-spin 1.2s linear infinite;
+}
+
+.mistral-generating-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  margin-top: 12px;
+  border-radius: 12px;
+  background: rgba(134, 59, 255, 0.08);
+  border: 1px solid rgba(134, 59, 255, 0.25);
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* ---------- Reminder toggle (replaces checkbox) ---------- */
+
+.reminder-toggle {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--border-strong);
+  background: transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s var(--ease);
+  padding: 0;
+  color: transparent;
+  font-size: 11px;
+}
+
+.reminder-toggle:hover {
+  border-color: var(--accent);
+  background: var(--accent-light);
+  color: var(--accent);
+}
+
+.reminder-toggle.done {
+  border-color: var(--success);
+  background: var(--success);
+  color: #fff;
+}
+
+.reminder-toggle.done:hover {
+  border-color: var(--success);
+  background: transparent;
+  color: var(--success);
 }

@@ -93,7 +93,6 @@ export default function SearchPage({ userId }: { userId: number }) {
       <nav className="pill-nav">
         <NavLink to="/offers" end className={({ isActive }) => `pill${isActive ? " active" : ""}`}>Mes offres</NavLink>
         <NavLink to="/offers/search" className={({ isActive }) => `pill${isActive ? " active" : ""}`}>Recherche</NavLink>
-        <NavLink to="/offers/calendar" className={({ isActive }) => `pill${isActive ? " active" : ""}`}>Calendrier</NavLink>
       </nav>
 
       {/* Chat input */}

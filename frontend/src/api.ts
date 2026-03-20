@@ -471,6 +471,28 @@ export const getStoredCoverLetters = (uid: number) =>
 export const deleteStoredCoverLetter = (uid: number, id: number) =>
   request<void>(`/users/${uid}/cover-letters/${id}`, { method: "DELETE" });
 
+export interface ChatEditCoverLetterResponse {
+  updated_content: string;
+}
+
+export const chatEditCoverLetter = (
+  uid: number,
+  letterId: number,
+  content: string,
+  message: string,
+  conversationHistory?: { role: string; content: string }[],
+) =>
+  request<ChatEditCoverLetterResponse>(`/users/${uid}/cover-letters/${letterId}/chat-edit`, {
+    method: "POST",
+    body: JSON.stringify({ content, message, conversation_history: conversationHistory ?? null }),
+  });
+
+export const updateCoverLetterContent = (uid: number, letterId: number, content: string) =>
+  request<StoredCoverLetter>(`/users/${uid}/cover-letters/${letterId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ content }),
+  });
+
 export const getStoredSkillGaps = (uid: number) =>
   request<StoredSkillGap[]>(`/users/${uid}/skill-gaps`);
 
@@ -504,11 +526,21 @@ export const compileCVPdf = async (uid: number, cvId: number): Promise<Blob> => 
   return res.blob();
 };
 
-export const parseOffer = (text: string) =>
+export const parseOffer = ({ text, url }: { text?: string; url?: string }) =>
   request<ParsedOffer>("/parse-offer", {
     method: "POST",
-    body: JSON.stringify({ text }),
+    body: JSON.stringify({ text, url }),
   });
+
+export interface CompanyInfo {
+  description: string | null;
+  extract: string | null;
+  logo_url: string | null;
+  page_url: string | null;
+}
+
+export const getCompanyInfo = (name: string) =>
+  request<CompanyInfo>(`/company-info?name=${encodeURIComponent(name)}`);
 
 export const autoFillProfile = (uid: number, cvId?: number) =>
   request<AutoFillResult>(`/users/${uid}/auto-fill-profile${cvId != null ? `?cv_id=${cvId}` : ""}`, {

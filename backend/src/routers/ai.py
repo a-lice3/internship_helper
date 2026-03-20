@@ -12,7 +12,10 @@ from src.llm_service import (
     adapt_cv_latex,
     analyze_pitch,
     analyze_skill_gap,
+    chat_edit_cover_letter,
     extract_profile_from_cv,
+    fetch_company_info,
+    fetch_offer_from_url,
     generate_cover_letter,
     ask_mistral,
     parse_offer,
@@ -252,6 +255,53 @@ def delete_cover_letter(
     return {"detail": "Deleted"}
 
 
+@router.post(
+    "/users/{user_id}/cover-letters/{letter_id}/chat-edit",
+    response_model=schemas.ChatEditCoverLetterResponse,
+)
+def chat_edit_cover_letter_endpoint(
+    user_id: int,
+    letter_id: int,
+    body: schemas.ChatEditCoverLetterRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Apply a chat instruction to modify a cover letter via Mistral."""
+    _verify_owner(user_id, current_user)
+
+    updated_content = chat_edit_cover_letter(
+        cover_letter_content=body.content,
+        user_message=body.message,
+        conversation_history=body.conversation_history,
+        user_instructions=current_user.ai_instructions,
+    )
+
+    # Persist the updated content
+    crud.update_generated_cover_letter_content(db, letter_id, updated_content)
+
+    return schemas.ChatEditCoverLetterResponse(updated_content=updated_content)
+
+
+@router.patch(
+    "/users/{user_id}/cover-letters/{letter_id}",
+    response_model=schemas.GeneratedCoverLetterResponse,
+)
+def update_cover_letter_content(
+    user_id: int,
+    letter_id: int,
+    body: schemas.UpdateCoverLetterContentRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Update the cover letter content (manual edits from the textarea)."""
+    _verify_owner(user_id, current_user)
+
+    obj = crud.update_generated_cover_letter_content(db, letter_id, body.content)
+    if not obj:
+        raise HTTPException(status_code=404, detail="Cover letter not found")
+    return obj
+
+
 # ---------- Adapt CV LaTeX ----------
 
 
@@ -323,8 +373,21 @@ def parse_offer_endpoint(
     body: schemas.ParseOfferRequest,
     current_user: User = Depends(get_current_user),
 ):
+    if not body.text and not body.url:
+        raise HTTPException(status_code=422, detail="Provide either text or url")
+
+    text = body.text or ""
+    if body.url:
+        try:
+            text = fetch_offer_from_url(body.url)
+        except Exception as exc:
+            raise HTTPException(
+                status_code=502,
+                detail=f"Failed to fetch offer page: {exc}",
+            )
+
     try:
-        result = parse_offer(body.text)
+        result = parse_offer(text)
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Mistral API error: {exc}")
     return schemas.ParseOfferResponse(
@@ -333,6 +396,19 @@ def parse_offer_endpoint(
         locations=result.get("locations"),
         description=result.get("description"),
     )
+
+
+# ---------- Company Info (Wikipedia) ----------
+
+
+@router.get("/company-info", response_model=schemas.CompanyInfoResponse)
+def company_info_endpoint(
+    name: str,
+    current_user: User = Depends(get_current_user),
+):
+    """Fetch company description from Wikipedia."""
+    result = fetch_company_info(name)
+    return schemas.CompanyInfoResponse(**result)
 
 
 # ---------- Auto-fill Profile from CV ----------

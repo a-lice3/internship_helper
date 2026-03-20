@@ -422,6 +422,13 @@ def delete_offer(db: Session, offer_id: int) -> bool:
     )
     if not offer:
         return False
+    # Delete related records that lack ondelete CASCADE
+    db.query(models.GeneratedCoverLetter).filter(
+        models.GeneratedCoverLetter.offer_id == offer_id
+    ).delete()
+    db.query(models.SkillGapAnalysis).filter(
+        models.SkillGapAnalysis.offer_id == offer_id
+    ).delete()
     db.delete(offer)
     db.commit()
     return True
@@ -565,6 +572,22 @@ def get_generated_cover_letters(
         .order_by(models.GeneratedCoverLetter.created_at.desc())
         .all()
     )
+
+
+def update_generated_cover_letter_content(
+    db: Session, letter_id: int, content: str
+) -> models.GeneratedCoverLetter | None:
+    obj = (
+        db.query(models.GeneratedCoverLetter)
+        .filter(models.GeneratedCoverLetter.id == letter_id)
+        .first()
+    )
+    if not obj:
+        return None
+    obj.content = content
+    db.commit()
+    db.refresh(obj)
+    return obj
 
 
 def delete_generated_cover_letter(db: Session, letter_id: int) -> bool:
@@ -1193,6 +1216,8 @@ def get_recent_activity(db: Session, user_id: int, limit: int = 10) -> list[dict
         activities.append(
             {
                 "type": "offer",
+                "id": o.id,
+                "offer_id": o.id,
                 "title": f"{o.company} — {o.title}",
                 "status": o.status.value,
                 "date": o.created_at.isoformat() if o.created_at else None,
@@ -1211,6 +1236,8 @@ def get_recent_activity(db: Session, user_id: int, limit: int = 10) -> list[dict
         activities.append(
             {
                 "type": "interview",
+                "id": s.id,
+                "offer_id": s.offer_id,
                 "title": f"Interview: {s.offer_title or 'General'} ({s.interview_type.value})",
                 "status": s.status.value,
                 "date": s.created_at.isoformat() if s.created_at else None,
@@ -1229,6 +1256,8 @@ def get_recent_activity(db: Session, user_id: int, limit: int = 10) -> list[dict
         activities.append(
             {
                 "type": "reminder",
+                "id": r.id,
+                "offer_id": r.offer_id,
                 "title": r.title,
                 "status": "done" if r.is_done else "pending",
                 "date": r.created_at.isoformat() if r.created_at else None,

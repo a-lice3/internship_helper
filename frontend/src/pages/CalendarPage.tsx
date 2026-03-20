@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { NavLink } from "react-router-dom";
 import * as api from "../api";
+import DateTimeInput from "../components/DateTimeInput";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const MONTHS = [
@@ -143,7 +143,6 @@ export default function CalendarPage({ userId }: { userId: number }) {
   };
 
   const openAddForDay = (dayKey: string) => {
-    setSelectedDay(dayKey);
     setShowAdd(true);
     setDueAt(`${dayKey}T09:00`);
   };
@@ -188,15 +187,9 @@ export default function CalendarPage({ userId }: { userId: number }) {
   return (
     <div className="page">
       <div className="page-header">
-        <h2>Candidatures</h2>
+        <h2>Calendar</h2>
         <p className="page-desc">View your events and manage reminders in one place</p>
       </div>
-
-      <nav className="pill-nav">
-        <NavLink to="/offers" end className={({ isActive }) => `pill${isActive ? " active" : ""}`}>Mes offres</NavLink>
-        <NavLink to="/offers/search" className={({ isActive }) => `pill${isActive ? " active" : ""}`}>Recherche</NavLink>
-        <NavLink to="/offers/calendar" className={({ isActive }) => `pill${isActive ? " active" : ""}`}>Calendrier</NavLink>
-      </nav>
 
       {/* Navigation */}
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
@@ -237,7 +230,23 @@ export default function CalendarPage({ userId }: { userId: number }) {
                 return (
                   <div
                     key={key}
-                    onClick={() => setSelectedDay(isSelected ? null : key)}
+                    onClick={() => {
+                      if (isSelected) {
+                        setSelectedDay(null);
+                        setShowAdd(false);
+                      } else {
+                        setSelectedDay(key);
+                        // Check if this day has reminders
+                        const dayReminders = reminders.filter((r) => toDateKey(new Date(r.due_at)) === key);
+                        if (dayReminders.length === 0) {
+                          // No reminders: open add form directly
+                          setShowAdd(true);
+                          setDueAt(`${key}T09:00`);
+                        } else {
+                          setShowAdd(false);
+                        }
+                      }
+                    }}
                     style={{
                       minHeight: 64,
                       padding: 6,
@@ -297,9 +306,9 @@ export default function CalendarPage({ userId }: { userId: number }) {
             <div className="glass-card">
               <div className="glass-card-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <h3 style={{ margin: 0 }}>{new Date(selectedDay + "T00:00:00").toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}</h3>
-                {!showAdd && (
-                  <button className="btn-ghost" onClick={() => openAddForDay(selectedDay)} title="Add reminder on this day" style={{ fontSize: 18, padding: "2px 8px" }}>+</button>
-                )}
+                <button className="btn-ghost" onClick={() => { if (showAdd) { setShowAdd(false); } else { openAddForDay(selectedDay); } }} title={showAdd ? "Cancel" : "Add reminder on this day"} style={{ fontSize: 18, padding: "2px 8px" }}>
+                  {showAdd ? "x" : "+"}
+                </button>
               </div>
             </div>
 
@@ -341,7 +350,7 @@ export default function CalendarPage({ userId }: { userId: number }) {
                           <select value={editType} onChange={(e) => setEditType(e.target.value)} style={{ fontSize: 13 }}>
                             {REMINDER_TYPES.map((t) => <option key={t} value={t}>{t.replace("_", " ")}</option>)}
                           </select>
-                          <input type="datetime-local" value={editDueAt} onChange={(e) => setEditDueAt(e.target.value)} style={{ fontSize: 13 }} />
+                          <DateTimeInput value={editDueAt} onChange={setEditDueAt} style={{ fontSize: 13 }} />
                           <textarea rows={2} value={editDesc} onChange={(e) => setEditDesc(e.target.value)} placeholder="Description" style={{ fontSize: 13 }} />
                           <div style={{ display: "flex", gap: 8 }}>
                             <button className="btn-primary" onClick={handleSaveEdit} style={{ boxShadow: "none", fontSize: 12 }}>Save</button>
@@ -350,13 +359,12 @@ export default function CalendarPage({ userId }: { userId: number }) {
                         </li>
                       ) : (
                         <li key={r.id} style={{ padding: "8px 0", gap: 8 }}>
-                          <input
-                            type="checkbox"
-                            checked={r.is_done}
-                            onChange={() => handleToggleDone(r)}
-                            style={{ width: "auto", cursor: "pointer", flexShrink: 0 }}
-                          />
-                          <div style={{ flex: 1, minWidth: 0 }}>
+                          <button
+                            className={`reminder-toggle${r.is_done ? " done" : ""}`}
+                            onClick={() => handleToggleDone(r)}
+                            title={r.is_done ? "Mark undone" : "Mark done"}
+                          >{r.is_done ? "\u2713" : ""}</button>
+                          <div style={{ flex: 1, minWidth: 0, cursor: "pointer" }} onClick={() => startEdit(r)} title="Click to edit">
                             <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                               <span style={{
                                 fontWeight: 500,
@@ -376,7 +384,6 @@ export default function CalendarPage({ userId }: { userId: number }) {
                               {r.description && <span> — {r.description}</span>}
                             </div>
                           </div>
-                          <button onClick={() => startEdit(r)} className="btn-ghost" style={{ fontSize: 11, padding: "2px 6px" }}>Edit</button>
                           <button onClick={() => handleDelete(r.id)} className="btn-icon" style={{ fontSize: 11, padding: "2px 6px" }}>x</button>
                         </li>
                       )
@@ -396,7 +403,7 @@ export default function CalendarPage({ userId }: { userId: number }) {
                     <select value={reminderType} onChange={(e) => setReminderType(e.target.value)} style={{ fontSize: 13 }}>
                       {REMINDER_TYPES.map((t) => <option key={t} value={t}>{t.replace("_", " ")}</option>)}
                     </select>
-                    <input type="datetime-local" value={dueAt} onChange={(e) => setDueAt(e.target.value)} style={{ fontSize: 13 }} />
+                    <DateTimeInput value={dueAt} onChange={setDueAt} style={{ fontSize: 13 }} />
                     <select value={offerId} onChange={(e) => setOfferId(e.target.value ? Number(e.target.value) : "")} style={{ fontSize: 13 }}>
                       <option value="">Linked offer (optional)</option>
                       {offers.map((o) => <option key={o.id} value={o.id}>{o.company} — {o.title}</option>)}
@@ -439,7 +446,7 @@ export default function CalendarPage({ userId }: { userId: number }) {
                           {REMINDER_TYPES.map((t) => <option key={t} value={t}>{t.replace("_", " ")}</option>)}
                         </select>
                       </label>
-                      <label>Due date <input type="datetime-local" value={editDueAt} onChange={(e) => setEditDueAt(e.target.value)} /></label>
+                      <label>Due date <DateTimeInput value={editDueAt} onChange={setEditDueAt} /></label>
                       <label>Description <textarea rows={2} value={editDesc} onChange={(e) => setEditDesc(e.target.value)} /></label>
                     </div>
                     <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
@@ -461,14 +468,12 @@ export default function CalendarPage({ userId }: { userId: number }) {
                   }}
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 18px" }}>
-                    <input
-                      type="checkbox"
-                      checked={r.is_done}
-                      onChange={(e) => { e.stopPropagation(); handleToggleDone(r); }}
-                      onClick={(e) => e.stopPropagation()}
-                      style={{ width: "auto", cursor: "pointer" }}
-                    />
-                    <div style={{ flex: 1, minWidth: 0 }}>
+                    <button
+                      className={`reminder-toggle${r.is_done ? " done" : ""}`}
+                      onClick={(e) => { e.stopPropagation(); handleToggleDone(r); }}
+                      title={r.is_done ? "Mark undone" : "Mark done"}
+                    >{r.is_done ? "\u2713" : ""}</button>
+                    <div style={{ flex: 1, minWidth: 0, cursor: "pointer" }} onClick={(e) => { e.stopPropagation(); startEdit(r); }} title="Click to edit">
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <strong style={{ color: isOverdue(r) ? "var(--danger)" : "var(--text-h)", fontSize: 14 }}>
                           {r.title}
@@ -483,7 +488,6 @@ export default function CalendarPage({ userId }: { userId: number }) {
                         {r.description && <span> — {r.description}</span>}
                       </div>
                     </div>
-                    <button onClick={(e) => { e.stopPropagation(); startEdit(r); }} className="btn-ghost" title="Edit">Edit</button>
                     <button onClick={(e) => { e.stopPropagation(); handleDelete(r.id); }} className="btn-icon" title="Delete">x</button>
                   </div>
                 </div>
@@ -499,12 +503,11 @@ export default function CalendarPage({ userId }: { userId: number }) {
               {doneReminders.map((r) => (
                 <div key={r.id} className="glass-card" style={{ padding: 0, opacity: 0.6 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 18px" }}>
-                    <input
-                      type="checkbox"
-                      checked={r.is_done}
-                      onChange={() => handleToggleDone(r)}
-                      style={{ width: "auto", cursor: "pointer" }}
-                    />
+                    <button
+                      className="reminder-toggle done"
+                      onClick={() => handleToggleDone(r)}
+                      title="Mark undone"
+                    >{"\u2713"}</button>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ textDecoration: "line-through", fontSize: 14, color: "var(--text-muted)" }}>{r.title}</div>
                       <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{formatDate(r.due_at)}</div>

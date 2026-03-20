@@ -48,3 +48,6 @@ CLAUDE.md
 # OS
 .DS_Store
 Thumbs.db
+
+# Alembic 
+ALEMBIC.md

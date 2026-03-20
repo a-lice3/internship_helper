@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import * as api from "../api";
+import DateTimeInput from "../components/DateTimeInput";
 
 const REMINDER_TYPES = ["deadline", "follow_up", "interview", "custom"];
 
@@ -126,7 +127,7 @@ export default function RemindersPage({ userId }: { userId: number }) {
               </label>
               <label>
                 Due date *
-                <input type="datetime-local" value={dueAt} onChange={(e) => setDueAt(e.target.value)} />
+                <DateTimeInput value={dueAt} onChange={setDueAt} />
               </label>
               <label>
                 Linked offer (optional)
@@ -163,7 +164,7 @@ export default function RemindersPage({ userId }: { userId: number }) {
                         {REMINDER_TYPES.map((t) => <option key={t} value={t}>{t.replace("_", " ")}</option>)}
                       </select>
                     </label>
-                    <label>Due date <input type="datetime-local" value={editDueAt} onChange={(e) => setEditDueAt(e.target.value)} /></label>
+                    <label>Due date <DateTimeInput value={editDueAt} onChange={setEditDueAt} /></label>
                     <label>Description <textarea rows={2} value={editDesc} onChange={(e) => setEditDesc(e.target.value)} /></label>
                   </div>
                   <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
@@ -175,12 +176,11 @@ export default function RemindersPage({ userId }: { userId: number }) {
             ) : (
               <div key={r.id} className="glass-card" style={{ padding: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 18px" }}>
-                  <input
-                    type="checkbox"
-                    checked={r.is_done}
-                    onChange={() => handleToggleDone(r)}
-                    style={{ width: "auto", cursor: "pointer" }}
-                  />
+                  <button
+                    className={`reminder-toggle${r.is_done ? " done" : ""}`}
+                    onClick={() => handleToggleDone(r)}
+                    title={r.is_done ? "Mark undone" : "Mark done"}
+                  >{r.is_done ? "\u2713" : ""}</button>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <strong style={{ color: isOverdue(r) ? "var(--danger)" : "var(--text-h)", fontSize: 14 }}>
@@ -213,12 +213,11 @@ export default function RemindersPage({ userId }: { userId: number }) {
             {done.map((r) => (
               <div key={r.id} className="glass-card" style={{ padding: 0, opacity: 0.6 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 18px" }}>
-                  <input
-                    type="checkbox"
-                    checked={r.is_done}
-                    onChange={() => handleToggleDone(r)}
-                    style={{ width: "auto", cursor: "pointer" }}
-                  />
+                  <button
+                    className="reminder-toggle done"
+                    onClick={() => handleToggleDone(r)}
+                    title="Mark undone"
+                  >{"\u2713"}</button>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ textDecoration: "line-through", fontSize: 14, color: "var(--text-muted)" }}>{r.title}</div>
                     <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{formatDate(r.due_at)}</div>

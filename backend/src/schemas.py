@@ -307,11 +307,42 @@ class GenerateCoverLetterResponse(BaseModel):
     cover_letter: str
 
 
+# ---------- AI: Chat Edit Cover Letter ----------
+
+
+class ChatEditCoverLetterRequest(BaseModel):
+    content: str
+    message: str
+    conversation_history: list[dict[str, str]] | None = None
+
+
+class ChatEditCoverLetterResponse(BaseModel):
+    updated_content: str
+
+
+# ---------- AI: Update Cover Letter Content ----------
+
+
+class UpdateCoverLetterContentRequest(BaseModel):
+    content: str
+
+
+# ---------- Company Info ----------
+
+
+class CompanyInfoResponse(BaseModel):
+    description: str | None = None
+    extract: str | None = None
+    logo_url: str | None = None
+    page_url: str | None = None
+
+
 # ---------- AI: Parse Offer ----------
 
 
 class ParseOfferRequest(BaseModel):
-    text: str  # raw pasted job description
+    text: str | None = None  # raw pasted job description
+    url: str | None = None  # link to a job offer page
 
 
 class ParseOfferResponse(BaseModel):

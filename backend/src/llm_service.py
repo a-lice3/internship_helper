@@ -1,6 +1,10 @@
 import json
 import logging
+import urllib.request
+import urllib.error
+import urllib.parse
 
+from bs4 import BeautifulSoup
 from mistralai.client import Mistral
 from mistralai.client.models.assistantmessage import AssistantMessage
 from mistralai.client.models.systemmessage import SystemMessage
@@ -136,12 +140,155 @@ def analyze_skill_gap(
     }
 
 
+_EMPTY_COMPANY_INFO: dict[str, str | None] = {
+    "description": None,
+    "extract": None,
+    "logo_url": None,
+    "page_url": None,
+}
+
+_WIKI_HEADERS = {
+    "User-Agent": "InternshipHelper/1.0",
+    "Accept": "application/json",
+}
+
+
+def _wiki_summary(title: str) -> dict | None:
+    """Fetch a Wikipedia summary for a given page title. Returns parsed JSON or None."""
+    encoded = urllib.parse.quote(title)
+    url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{encoded}"
+    req = urllib.request.Request(url, headers=_WIKI_HEADERS)
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read().decode("utf-8", errors="replace"))
+        if data.get("type") == "standard" and data.get("extract"):
+            return data
+        return None
+    except Exception:
+        return None
+
+
+def _wiki_search(query: str) -> str | None:
+    """Search Wikipedia and return the title of the first result, or None."""
+    encoded = urllib.parse.quote(query)
+    url = (
+        f"https://en.wikipedia.org/w/api.php?action=query&list=search"
+        f"&srsearch={encoded}&srlimit=3&format=json"
+    )
+    req = urllib.request.Request(url, headers=_WIKI_HEADERS)
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read().decode("utf-8", errors="replace"))
+        results = data.get("query", {}).get("search", [])
+        if results:
+            return results[0]["title"]
+        return None
+    except Exception:
+        return None
+
+
+def _extract_result(data: dict) -> dict[str, str | None]:
+    """Extract the fields we care about from a Wikipedia summary response."""
+    return {
+        "description": data.get("description"),
+        "extract": data.get("extract"),
+        "logo_url": (data["thumbnail"]["source"] if data.get("thumbnail") else None),
+        "page_url": (data.get("content_urls", {}).get("desktop", {}).get("page")),
+    }
+
+
+def _clean_company_name(raw: str) -> list[str]:
+    """Generate candidate names to try on Wikipedia from a raw company name.
+
+    E.g. "Safran.AI (ex-Preligens)" -> ["Safran.AI (ex-Preligens)", "Safran.AI", "Safran", "Preligens"]
+    """
+    import re
+
+    candidates: list[str] = [raw]
+
+    # Strip parenthetical like "(ex-Preligens)", "(France)", etc.
+    without_parens = re.sub(r"\s*\(.*?\)\s*", " ", raw).strip()
+    if without_parens and without_parens != raw:
+        candidates.append(without_parens)
+
+    # Strip domain-like suffixes (.AI, .io, .com, etc.)
+    without_suffix = re.sub(r"\.\w{1,4}$", "", without_parens).strip()
+    if without_suffix and without_suffix not in candidates:
+        candidates.append(without_suffix)
+
+    # Extract names from parenthetical (ex-Name, formerly Name)
+    paren_match = re.search(r"\(((?:ex-|formerly\s*)?([\w\s&-]+))\)", raw)
+    if paren_match:
+        alt = paren_match.group(2).strip()
+        if alt and alt not in candidates:
+            candidates.append(alt)
+
+    return candidates
+
+
+def fetch_company_info(company_name: str) -> dict[str, str | None]:
+    """Fetch a short company description from Wikipedia.
+
+    Tries multiple name variants and falls back to Wikipedia search API.
+    Returns a dict with keys: description, extract, logo_url, page_url.
+    """
+    candidates = _clean_company_name(company_name)
+
+    # 1. Try direct summary lookup for each candidate name
+    for name in candidates:
+        data = _wiki_summary(name)
+        if data:
+            return _extract_result(data)
+
+    # 2. Try disambiguation suffix "(company)" for each candidate
+    for name in candidates:
+        data = _wiki_summary(f"{name} (company)")
+        if data:
+            return _extract_result(data)
+
+    # 3. Fallback: use Wikipedia search API
+    for name in candidates:
+        title = _wiki_search(f"{name} company")
+        if title:
+            data = _wiki_summary(title)
+            if data:
+                return _extract_result(data)
+
+    return dict(_EMPTY_COMPANY_INFO)
+
+
+def fetch_offer_from_url(url: str) -> str:
+    """Fetch a job offer page and return its text content."""
+    req = urllib.request.Request(
+        url,
+        headers={
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/125.0.0.0 Safari/537.36"
+            ),
+        },
+    )
+    with urllib.request.urlopen(req, timeout=15) as resp:
+        html = resp.read().decode("utf-8", errors="replace")
+    soup = BeautifulSoup(html, "html.parser")
+    for tag in soup(["script", "style", "nav", "footer", "header", "noscript"]):
+        tag.decompose()
+    text = soup.get_text(separator="\n", strip=True)
+    # Truncate to avoid exceeding LLM context limits
+    return text[:12000]
+
+
 def parse_offer(raw_text: str) -> dict[str, str | None]:
     """Extract structured offer data from raw pasted job description text."""
     system_prompt = (
         "You are an assistant that extracts structured data from job postings. "
         "Given the raw text of an internship/job offer, extract: "
-        "company, title (job title), locations (city/country), and description (the job description). "
+        "company, title (job title), locations (city/country), and description. "
+        "For the description, write a concise summary (3-5 sentences) that captures "
+        "the key responsibilities, required skills, and what makes this role interesting. "
+        "Do NOT copy the full job posting — summarize it. "
+        "Use plain text only, no markdown formatting. "
         "Respond in JSON with exactly these keys: "
         '"company" (string), "title" (string), "locations" (string or null), "description" (string or null). '
         "Return only valid JSON, no markdown."
@@ -218,7 +365,10 @@ def generate_cover_letter(
         "Write a professional cover letter for an internship application. "
         "Use the candidate's profile and the offer details. "
         "The tone should be professional but enthusiastic. "
-        "Keep it concise (about 300 words)."
+        "Keep it concise (about 300 words). "
+        "IMPORTANT: Return ONLY plain text. Do NOT use any markdown formatting — "
+        "no bold (**), no italics (*), no headers (#), no bullet points. "
+        "Write a natural letter with paragraphs separated by blank lines."
     )
     if template:
         system_prompt += (
@@ -238,6 +388,57 @@ def generate_cover_letter(
         user_prompt += f"\n\n## Cover Letter Template to Follow\n{template}"
 
     return _chat(system_prompt, user_prompt)
+
+
+_CHAT_EDIT_COVER_LETTER_SYSTEM_PROMPT = (
+    "You are a cover letter editing assistant. "
+    "The user will give you their current cover letter and a modification request. "
+    "Apply the requested change and return the COMPLETE modified cover letter.\n\n"
+    "RULES:\n"
+    "- Return ONLY the complete cover letter text, no explanations\n"
+    "- Return ONLY plain text — no markdown formatting (no **, *, #, bullet points)\n"
+    "- Write natural paragraphs separated by blank lines\n"
+    "- ONLY modify what the user asks — do not change anything else\n"
+    "- Keep the same professional tone unless the user asks otherwise\n"
+    "- If the user asks something impossible or unclear, still return the full letter "
+    "with your best attempt at the change"
+)
+
+
+def chat_edit_cover_letter(
+    cover_letter_content: str,
+    user_message: str,
+    conversation_history: list[dict[str, str]] | None = None,
+    user_instructions: str | None = None,
+) -> str:
+    """Apply a user's chat instruction to a cover letter and return the updated text."""
+    system_prompt = _append_user_instructions(
+        _CHAT_EDIT_COVER_LETTER_SYSTEM_PROMPT, user_instructions
+    )
+
+    user_prompt = (
+        f"## Current Cover Letter\n{cover_letter_content}\n\n"
+        f"## Modification Request\n{user_message}"
+    )
+
+    # Build messages with conversation history for context
+    messages: Messages = [SystemMessage(role="system", content=system_prompt)]
+
+    if conversation_history:
+        for msg in conversation_history:
+            if msg["role"] == "user":
+                messages.append(UserMessage(role="user", content=msg["content"]))
+            elif msg["role"] == "assistant":
+                messages.append(
+                    AssistantMessage(role="assistant", content=msg["content"])
+                )
+
+    messages.append(UserMessage(role="user", content=user_prompt))
+
+    response = client.chat.complete(model=MODEL, messages=messages)
+    content = response.choices[0].message.content
+    text = content if isinstance(content, str) else str(content)
+    return _strip_markdown_fences(text)
 
 
 _ADAPT_CV_SYSTEM_PROMPT = (
