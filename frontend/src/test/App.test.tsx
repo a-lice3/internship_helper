@@ -49,6 +49,9 @@ vi.mock("../pages/InterviewPage", () => ({
 vi.mock("../pages/SettingsPage", () => ({
   default: () => <div data-testid="settings-page">Settings</div>,
 }));
+vi.mock("../pages/OnboardingFlow", () => ({
+  default: () => <div data-testid="onboarding-flow">Onboarding</div>,
+}));
 
 function renderApp() {
   return render(
@@ -69,7 +72,7 @@ describe("App - unauthenticated", () => {
     renderApp();
 
     await waitFor(() => {
-      expect(screen.getByText("Internship Helper")).toBeInTheDocument();
+      expect(screen.getByText("Job Seeker")).toBeInTheDocument();
     });
     // Login toggle button + submit button both exist
     expect(screen.getAllByRole("button", { name: /Login/ })).toHaveLength(2);
@@ -81,7 +84,7 @@ describe("App - unauthenticated", () => {
     renderApp();
 
     await waitFor(() => {
-      expect(screen.getByText("Internship Helper")).toBeInTheDocument();
+      expect(screen.getByText("Job Seeker")).toBeInTheDocument();
     });
 
     // Default is login — has Email and Password fields
@@ -98,7 +101,7 @@ describe("App - unauthenticated", () => {
     const user = userEvent.setup();
     const api = await import("../api");
 
-    const mockUser = { id: 1, name: "Alice", email: "alice@test.com", created_at: null };
+    const mockUser = { id: 1, name: "Alice", email: "alice@test.com", has_completed_onboarding: true, created_at: null };
     vi.mocked(api.login).mockResolvedValue({
       access_token: "new-token",
       token_type: "bearer",
@@ -108,7 +111,7 @@ describe("App - unauthenticated", () => {
     renderApp();
 
     await waitFor(() => {
-      expect(screen.getByText("Internship Helper")).toBeInTheDocument();
+      expect(screen.getByText("Job Seeker")).toBeInTheDocument();
     });
 
     await user.type(screen.getByPlaceholderText("you@example.com"), "alice@test.com");
@@ -138,7 +141,7 @@ describe("App - unauthenticated", () => {
     renderApp();
 
     await waitFor(() => {
-      expect(screen.getByText("Internship Helper")).toBeInTheDocument();
+      expect(screen.getByText("Job Seeker")).toBeInTheDocument();
     });
 
     await user.type(screen.getByPlaceholderText("you@example.com"), "bad@test.com");
@@ -157,7 +160,7 @@ describe("App - unauthenticated", () => {
     const user = userEvent.setup();
     const api = await import("../api");
 
-    const mockUser = { id: 2, name: "Bob", email: "bob@test.com", created_at: null };
+    const mockUser = { id: 2, name: "Bob", email: "bob@test.com", has_completed_onboarding: true, created_at: null };
     vi.mocked(api.register).mockResolvedValue({
       access_token: "signup-token",
       token_type: "bearer",
@@ -167,7 +170,7 @@ describe("App - unauthenticated", () => {
     renderApp();
 
     await waitFor(() => {
-      expect(screen.getByText("Internship Helper")).toBeInTheDocument();
+      expect(screen.getByText("Job Seeker")).toBeInTheDocument();
     });
 
     // Switch to signup
@@ -194,7 +197,7 @@ describe("App - authenticated", () => {
     const api = await import("../api");
     api.setToken("valid-token");
 
-    const mockUser = { id: 1, name: "Alice Dupont", email: "alice@test.com", created_at: null };
+    const mockUser = { id: 1, name: "Alice Dupont", email: "alice@test.com", has_completed_onboarding: true, created_at: null };
     vi.mocked(api.getMe).mockResolvedValue(mockUser);
   });
 
@@ -202,7 +205,7 @@ describe("App - authenticated", () => {
     renderApp();
 
     await waitFor(() => {
-      expect(screen.getByText("Intern Helper")).toBeInTheDocument();
+      expect(screen.getByText("Job Seeker")).toBeInTheDocument();
     });
 
     // Check navigation links exist in the sidebar
@@ -234,7 +237,7 @@ describe("App - authenticated", () => {
     await user.click(screen.getByTitle("Logout"));
 
     await waitFor(() => {
-      expect(screen.getByText("Internship Helper")).toBeInTheDocument();
+      expect(screen.getByText("Job Seeker")).toBeInTheDocument();
     });
   });
 });

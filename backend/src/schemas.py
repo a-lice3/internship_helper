@@ -37,6 +37,7 @@ class UserResponse(BaseModel):
     name: str
     email: str
     ai_instructions: str | None = None
+    has_completed_onboarding: bool = False
     created_at: datetime | None = None
 
 

@@ -23,6 +23,7 @@ export interface User {
   id: number;
   name: string;
   email: string;
+  has_completed_onboarding: boolean;
   created_at: string | null;
 }
 
@@ -221,6 +222,9 @@ export const login = (email: string, password: string) =>
   });
 
 export const getMe = () => request<User>("/auth/me");
+
+export const completeOnboarding = () =>
+  request<{ detail: string }>("/auth/complete-onboarding", { method: "PATCH" });
 
 // ---------- Users ----------
 

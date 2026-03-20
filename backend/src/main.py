@@ -16,7 +16,7 @@ from src.routers import (
     dashboard,
 )
 
-app = FastAPI(title="Internship Helper API")
+app = FastAPI(title="Job Seeker API")
 
 app.add_middleware(
     CORSMiddleware,

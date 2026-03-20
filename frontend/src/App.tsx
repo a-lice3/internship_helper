@@ -12,7 +12,9 @@ import CVsPage from "./pages/CVsPage";
 import TemplatesPage from "./pages/TemplatesPage";
 import InterviewPage from "./pages/InterviewPage";
 import SettingsPage from "./pages/SettingsPage";
+import OnboardingFlow from "./pages/OnboardingFlow";
 import "./App.css";
+import sittingCat from "./assets/animated-sitting-cat.gif";
 
 const NAV_KEYS = [
   { to: "/dashboard", labelKey: "nav.dashboard", icon: "\uD83D\uDCCA" },
@@ -179,6 +181,25 @@ export default function App() {
     return <LoginScreen onLogin={setUser} />;
   }
 
+  const onboardingDone =
+    user.has_completed_onboarding ||
+    localStorage.getItem(`onboarding_done_${user.id}`) === "1";
+
+  if (!onboardingDone) {
+    return (
+      <OnboardingFlow
+        userId={user.id}
+        onComplete={(redirectTo?: string) => {
+          localStorage.setItem(`onboarding_done_${user.id}`, "1");
+          // Navigate BEFORE updating state so the URL is already set
+          // when React re-renders the router
+          if (redirectTo) navigate(redirectTo, { replace: true });
+          setUser({ ...user, has_completed_onboarding: true });
+        }}
+      />
+    );
+  }
+
   const initials = user.name
     .split(" ")
     .map((w) => w[0])
@@ -203,6 +224,10 @@ export default function App() {
             <SidebarLink key={item.to} to={item.to} icon={item.icon} label={t(item.labelKey)} />
           ))}
         </nav>
+
+        <div className="sidebar-cat">
+          <img src={sittingCat} alt="Mistral cat" className="sidebar-cat-img" />
+        </div>
 
         <div className="sidebar-user">
           <div className="sidebar-avatar">{initials}</div>

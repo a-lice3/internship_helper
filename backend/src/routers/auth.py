@@ -37,6 +37,7 @@ def register(body: schemas.UserRegister, db: Session = Depends(get_db)):
             name=user.name,
             email=user.email,
             ai_instructions=user.ai_instructions,
+            has_completed_onboarding=user.has_completed_onboarding,
             created_at=user.created_at,
         ),
     )
@@ -57,6 +58,7 @@ def login(body: schemas.UserLogin, db: Session = Depends(get_db)):
             name=user.name,
             email=user.email,
             ai_instructions=user.ai_instructions,
+            has_completed_onboarding=user.has_completed_onboarding,
             created_at=user.created_at,
         ),
     )
@@ -66,3 +68,14 @@ def login(body: schemas.UserLogin, db: Session = Depends(get_db)):
 def get_me(current_user: User = Depends(get_current_user)):
     """Return the currently authenticated user."""
     return current_user
+
+
+@router.patch("/complete-onboarding")
+def complete_onboarding(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Mark onboarding as completed for the current user."""
+    current_user.has_completed_onboarding = True
+    db.commit()
+    return {"detail": "Onboarding completed"}

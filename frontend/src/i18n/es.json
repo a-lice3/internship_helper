@@ -1,6 +1,6 @@
 {
   "app": {
-    "title": "Intern Helper",
+    "title": "Job Seeker",
     "subtitle": "Impulsado por IA",
     "loading": "Cargando..."
   },
@@ -13,8 +13,8 @@
     "logout": "Cerrar sesión"
   },
   "login": {
-    "title": "Internship Helper",
-    "subtitle": "Tu asistente de IA para la búsqueda de prácticas",
+    "title": "Job Seeker",
+    "subtitle": "Tu asistente de IA para la búsqueda de empleo",
     "login": "Iniciar sesión",
     "signup": "Registrarse",
     "email": "Correo electrónico",
@@ -95,7 +95,7 @@
   },
   "dashboard": {
     "title": "Panel",
-    "description": "Resumen de tu búsqueda de prácticas",
+    "description": "Resumen de tu búsqueda de empleo",
     "totalOffers": "Total de ofertas",
     "avgScore": "Puntuación media de entrevistas",
     "totalInterviews": "Total de entrevistas",
@@ -585,10 +585,28 @@
   "common": {
     "save": "Guardar",
     "cancel": "Cancelar",
-    "add": "Añadir",
+    "add": "A\u00f1adir",
     "edit": "Editar",
     "delete": "Eliminar",
     "loading": "Cargando...",
     "error": "Error"
+  },
+  "onboarding": {
+    "title": "Job Seeker",
+    "subtitle": "Bienvenido a Job Seeker",
+    "dropzoneText": "Arrastra y suelta tu CV para encontrar el trabajo de tus sue\u00f1os",
+    "dropzoneHint": "o haz clic para buscar (PDF)",
+    "skip": "Omitir",
+    "analyzing": "Analizando tu personalidad",
+    "continueAnyway": "Continuar",
+    "searchTitle": "Dinos qu\u00e9 buscas",
+    "searchPlaceholder": "Describe el trabajo de tus sue\u00f1os...",
+    "searchButton": "Buscar",
+    "searching": "Buscando tu trabajo ideal",
+    "selectTitle": "Elige una oferta que te interese",
+    "noResults": "Sin resultados. Prueba otra b\u00fasqueda.",
+    "select": "Seleccionar",
+    "newSearch": "Nueva búsqueda",
+    "matching": "Comparando la oferta con tu perfil..."
   }
 }
