@@ -133,9 +133,7 @@ To reset the database: `docker compose down -v` then `docker compose up --build`
 # Clone and setup
 git clone <repo-url>
 cd internship_helper
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+uv sync
 
 # Frontend
 cd src/frontend
@@ -151,10 +149,10 @@ cp .env.example .env
 python -c "import secrets; print(secrets.token_hex(32))"
 
 # Apply migrations
-alembic upgrade head
+uv run alembic upgrade head
 
 # Run backend
-uvicorn src.main:app --reload
+uv run uvicorn src.main:app --reload
 
 # Run frontend (separate terminal)
 cd src/frontend
@@ -236,7 +234,7 @@ internship_helper/
 │   └── versions/
 ├── alembic.ini
 ├── tests/                  # 11 test files (pytest + httpx)
-├── requirements.txt
+├── pyproject.toml          # Python dependencies (managed by uv)
 ├── mypy.ini
 ├── Dockerfile              # Backend Docker image
 ├── docker-compose.yml      # Multi-service orchestration (backend + db + frontend)
