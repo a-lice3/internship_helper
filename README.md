@@ -133,12 +133,16 @@ To reset the database: `docker compose down -v` then `docker compose up --build`
 # Clone and setup
 git clone <repo-url>
 cd internship_helper
+
+# Backend
+cd backend
 uv sync
+cd ..
 
 # Frontend
-cd src/frontend
+cd frontend
 npm install
-cd ../..
+cd ..
 
 # Database
 createdb career_db
@@ -149,13 +153,14 @@ cp .env.example .env
 python -c "import secrets; print(secrets.token_hex(32))"
 
 # Apply migrations
+cd backend
 uv run alembic upgrade head
 
 # Run backend
 uv run uvicorn src.main:app --reload
 
 # Run frontend (separate terminal)
-cd src/frontend
+cd frontend
 npm run dev
 ```
 
@@ -165,82 +170,87 @@ npm run dev
 ## Run Tests
 
 ```bash
-pytest -v
+cd backend
+uv run pytest -v
 ```
 
 ## Run Quality Checks
 
 ```bash
-black --check .
-ruff check .
-mypy .
+cd backend
+uv run black --check .
+uv run ruff check .
+uv run mypy .
 ```
 
 ## Project Structure
 
 ```
 internship_helper/
-├── src/
-│   ├── main.py                # FastAPI app, router registration, CORS
-│   ├── config.py              # Environment variables
-│   ├── auth.py                # JWT authentication (password hashing, token creation/verification)
-│   ├── database.py            # SQLAlchemy engine & session
-│   ├── models.py              # 18 SQLAlchemy models
-│   ├── schemas.py             # 40+ Pydantic schemas
-│   ├── crud.py                # Database operations
-│   ├── llm_service.py         # Mistral AI functions (CV, cover letter, pitch, etc.)
-│   ├── interview_service.py   # Interview AI functions (questions, analysis, hints)
-│   ├── file_service.py        # PDF extraction, LaTeX compilation
-│   ├── routers/
-│   │   ├── auth.py            # Register, login, current user
-│   │   ├── users.py           # User CRUD
-│   │   ├── profile.py         # Skills, experiences, education, languages, extracurriculars
-│   │   ├── offers.py          # Internship offer management
-│   │   ├── cvs.py             # CV upload, edit, compile
-│   │   ├── templates.py       # Cover letter templates
-│   │   ├── ai.py              # AI endpoints (adapt, generate, analyze)
-│   │   ├── interview.py       # Interview REST + WebSocket endpoints
-│   │   ├── search.py          # Offer search/scraping (France Travail, WTTJ, The Muse)
-│   │   ├── dashboard.py       # Dashboard stats
-│   │   ├── reminders.py       # Reminder CRUD
-│   │   └── notes.py           # Offer notes CRUD
-│   ├── scrapers/
-│   │   ├── base.py            # Abstract OfferSource, RawOffer dataclass
-│   │   ├── francetravail.py   # France Travail API (OAuth2 + token caching)
-│   │   ├── wttj.py            # WTTJ / Algolia search
-│   │   └── themuse.py         # The Muse API
-│   └── frontend/
-│       └── src/
-│           ├── App.tsx         # Login, routing, sidebar navigation
-│           ├── api.ts          # API client (REST + WebSocket)
-│           ├── hooks/
-│           │   ├── useInterview.ts        # WebSocket interview state machine
-│           │   └── useSpeechRecognition.ts # Mic recording + Voxtral transcription
-│           └── pages/
-│               ├── DashboardPage.tsx      # Stats, activity feed
-│               ├── OffersPage.tsx         # Offer list with status filtering
-│               ├── OfferDetailPage.tsx    # Full offer view + notes + AI actions
-│               ├── SearchPage.tsx         # External offer search + smart matching
-│               ├── ProfilePage.tsx        # Profile management
-│               ├── CVsPage.tsx            # CV management
-│               ├── TemplatesPage.tsx      # Cover letter templates
-│               ├── AIPage.tsx             # AI features hub
-│               ├── InterviewPage.tsx      # Mock interviews
-│               ├── CalendarPage.tsx       # Calendar view
-│               ├── RemindersPage.tsx      # Reminders management
-│               └── SettingsPage.tsx       # User settings
-├── alembic/                # Database migrations
-│   ├── env.py
-│   └── versions/
-├── alembic.ini
-├── tests/                  # 11 test files (pytest + httpx)
-├── pyproject.toml          # Python dependencies (managed by uv)
-├── mypy.ini
-├── Dockerfile              # Backend Docker image
-├── docker-compose.yml      # Multi-service orchestration (backend + db + frontend)
-├── .dockerignore
+├── backend/
+│   ├── src/
+│   │   ├── main.py                # FastAPI app, router registration, CORS
+│   │   ├── config.py              # Environment variables
+│   │   ├── auth.py                # JWT authentication (password hashing, token creation/verification)
+│   │   ├── database.py            # SQLAlchemy engine & session
+│   │   ├── models.py              # 18 SQLAlchemy models
+│   │   ├── schemas.py             # 40+ Pydantic schemas
+│   │   ├── crud.py                # Database operations
+│   │   ├── llm_service.py         # Mistral AI functions (CV, cover letter, pitch, etc.)
+│   │   ├── interview_service.py   # Interview AI functions (questions, analysis, hints)
+│   │   ├── file_service.py        # PDF extraction, LaTeX compilation
+│   │   ├── routers/
+│   │   │   ├── auth.py            # Register, login, current user
+│   │   │   ├── users.py           # User CRUD
+│   │   │   ├── profile.py         # Skills, experiences, education, languages, extracurriculars
+│   │   │   ├── offers.py          # Internship offer management
+│   │   │   ├── cvs.py             # CV upload, edit, compile
+│   │   │   ├── templates.py       # Cover letter templates
+│   │   │   ├── ai.py              # AI endpoints (adapt, generate, analyze)
+│   │   │   ├── interview.py       # Interview REST + WebSocket endpoints
+│   │   │   ├── search.py          # Offer search/scraping (France Travail, WTTJ, The Muse)
+│   │   │   ├── dashboard.py       # Dashboard stats
+│   │   │   ├── reminders.py       # Reminder CRUD
+│   │   │   └── notes.py           # Offer notes CRUD
+│   │   └── scrapers/
+│   │       ├── base.py            # Abstract OfferSource, RawOffer dataclass
+│   │       ├── francetravail.py   # France Travail API (OAuth2 + token caching)
+│   │       ├── wttj.py            # WTTJ / Algolia search
+│   │       └── themuse.py         # The Muse API
+│   ├── tests/                     # 11 test files (pytest + httpx)
+│   ├── alembic/                   # Database migrations
+│   │   ├── env.py
+│   │   └── versions/
+│   ├── alembic.ini
+│   ├── pyproject.toml             # Python dependencies (managed by uv)
+│   ├── uv.lock
+│   ├── mypy.ini
+│   └── Dockerfile
+├── frontend/
+│   ├── src/
+│   │   ├── App.tsx                # Login, routing, sidebar navigation
+│   │   ├── api.ts                 # API client (REST + WebSocket)
+│   │   ├── hooks/
+│   │   │   ├── useInterview.ts        # WebSocket interview state machine
+│   │   │   └── useSpeechRecognition.ts # Mic recording + Voxtral transcription
+│   │   └── pages/
+│   │       ├── DashboardPage.tsx      # Stats, activity feed
+│   │       ├── OffersPage.tsx         # Offer list with status filtering
+│   │       ├── OfferDetailPage.tsx    # Full offer view + notes + AI actions
+│   │       ├── SearchPage.tsx         # External offer search + smart matching
+│   │       ├── ProfilePage.tsx        # Profile management
+│   │       ├── CVsPage.tsx            # CV management
+│   │       ├── TemplatesPage.tsx      # Cover letter templates
+│   │       ├── AIPage.tsx             # AI features hub
+│   │       ├── InterviewPage.tsx      # Mock interviews
+│   │       ├── CalendarPage.tsx       # Calendar view
+│   │       ├── RemindersPage.tsx      # Reminders management
+│   │       └── SettingsPage.tsx       # User settings
+│   ├── package.json
+│   └── Dockerfile
+├── docker-compose.yml             # Multi-service orchestration (backend + db + frontend)
 ├── .github/workflows/ci.yml
-└── CLAUDE.md
+└── README.md
 ```
 
 ## API Endpoints (~80+)

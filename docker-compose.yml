@@ -17,7 +17,7 @@ services:
 
 
   backend:
-    build: .
+    build: backend
     ports:
       - "8000:8000"
     environment:
@@ -39,7 +39,7 @@ services:
       start_period: 10s
 
   frontend:
-    build: src/frontend
+    build: frontend
     ports:
       - "5173:5173"
     environment:

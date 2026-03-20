@@ -3,10 +3,10 @@
 ## High-Level Architecture
 
 ```
-React Frontend (Vite + TypeScript)
+React Frontend (frontend/)
         │
         ▼  REST + WebSocket
-   FastAPI Backend (src/main.py)
+   FastAPI Backend (backend/src/)
         │
    ┌────┴─────────────┐
    ▼                   ▼
@@ -20,69 +20,78 @@ PostgreSQL          Mistral API
 ## Project Structure
 
 ```
-src/
-├── main.py                # FastAPI app, CORS, router registration
-├── config.py              # Environment variables (DATABASE_URL, MISTRAL_API_KEY, UPLOAD_DIR, JWT)
-├── auth.py                # JWT authentication (password hashing, token creation/verification, get_current_user)
-├── database.py            # SQLAlchemy engine, Base, session, get_db()
-├── models.py              # SQLAlchemy ORM models (18 tables)
-├── schemas.py             # Pydantic request/response schemas
-├── crud.py                # Database read/write operations
-├── llm_service.py         # Mistral chat/transcription wrapper
-├── interview_service.py   # Interview simulation prompts & analysis pipeline
-├── file_service.py        # File upload, PDF extraction, LaTeX compilation
-├── routers/
-│   ├── auth.py            # Authentication endpoints (register, login, current user)
-│   ├── users.py           # User CRUD
-│   ├── profile.py         # Skills, experiences, education, languages, extracurriculars, AI instructions
-│   ├── offers.py          # Internship offers CRUD + status filter
-│   ├── cvs.py             # CV CRUD, file upload (PDF/TeX/ZIP), LaTeX compilation, chat edit
-│   ├── templates.py       # Cover letter templates (text + PDF upload)
-│   ├── ai.py              # AI endpoints: adapt CV, skill gap, cover letter, parse offer, auto-fill profile, pitch analysis
-│   ├── interview.py       # Interview simulation: sessions, WebSocket, analysis, question prediction, progress
-│   ├── search.py          # Offer search/scraping from external sources + smart matching
-│   ├── dashboard.py       # Dashboard stats endpoint
-│   ├── reminders.py       # Reminder CRUD
-│   └── notes.py           # Offer notes CRUD
-└── scrapers/
-    ├── base.py            # Abstract OfferSource, RawOffer dataclass
-    ├── francetravail.py   # France Travail API (OAuth2 + token caching)
-    ├── wttj.py            # WTTJ / Algolia search
-    └── themuse.py         # The Muse API
-
-src/frontend/              # React + TypeScript (Vite)
-├── src/
-│   ├── App.tsx            # Main app with routing + sidebar navigation
-│   ├── api.ts             # API client (REST + WebSocket)
-│   ├── pages/
-│   │   ├── DashboardPage.tsx      # Stats, activity feed, reminders
-│   │   ├── OffersPage.tsx         # Offer list with status filtering
-│   │   ├── OfferDetailPage.tsx    # Full offer view + notes + AI actions
-│   │   ├── SearchPage.tsx         # External offer search + smart matching
-│   │   ├── ProfilePage.tsx        # Profile management
-│   │   ├── CVsPage.tsx            # CV management
-│   │   ├── TemplatesPage.tsx      # Cover letter templates
-│   │   ├── AIPage.tsx             # AI features hub
-│   │   ├── InterviewPage.tsx      # Mock interviews
-│   │   ├── CalendarPage.tsx       # Calendar view of deadlines/interviews
-│   │   ├── RemindersPage.tsx      # Reminders management
-│   │   └── SettingsPage.tsx       # User settings
-│   └── hooks/
-│       ├── useInterview.ts
-│       └── useSpeechRecognition.ts
-
-tests/
-├── conftest.py            # Shared fixtures (SQLite in-memory, test client)
-├── test_users.py
-├── test_profile.py
-├── test_offers.py
-├── test_cvs.py
-├── test_templates.py
-├── test_dashboard.py
-├── test_notes.py
-├── test_reminders.py
-├── test_scrapers.py
-└── test_search.py
+internship_helper/
+├── backend/
+│   ├── src/
+│   │   ├── main.py                # FastAPI app, CORS, router registration
+│   │   ├── config.py              # Environment variables (DATABASE_URL, MISTRAL_API_KEY, UPLOAD_DIR, JWT)
+│   │   ├── auth.py                # JWT authentication (password hashing, token creation/verification, get_current_user)
+│   │   ├── database.py            # SQLAlchemy engine, Base, session, get_db()
+│   │   ├── models.py              # SQLAlchemy ORM models (18 tables)
+│   │   ├── schemas.py             # Pydantic request/response schemas
+│   │   ├── crud.py                # Database read/write operations
+│   │   ├── llm_service.py         # Mistral chat/transcription wrapper
+│   │   ├── interview_service.py   # Interview simulation prompts & analysis pipeline
+│   │   ├── file_service.py        # File upload, PDF extraction, LaTeX compilation
+│   │   ├── routers/
+│   │   │   ├── auth.py            # Authentication endpoints (register, login, current user)
+│   │   │   ├── users.py           # User CRUD
+│   │   │   ├── profile.py         # Skills, experiences, education, languages, extracurriculars, AI instructions
+│   │   │   ├── offers.py          # Internship offers CRUD + status filter
+│   │   │   ├── cvs.py             # CV CRUD, file upload (PDF/TeX/ZIP), LaTeX compilation, chat edit
+│   │   │   ├── templates.py       # Cover letter templates (text + PDF upload)
+│   │   │   ├── ai.py              # AI endpoints: adapt CV, skill gap, cover letter, parse offer, auto-fill profile, pitch analysis
+│   │   │   ├── interview.py       # Interview simulation: sessions, WebSocket, analysis, question prediction, progress
+│   │   │   ├── search.py          # Offer search/scraping from external sources + smart matching
+│   │   │   ├── dashboard.py       # Dashboard stats endpoint
+│   │   │   ├── reminders.py       # Reminder CRUD
+│   │   │   └── notes.py           # Offer notes CRUD
+│   │   └── scrapers/
+│   │       ├── base.py            # Abstract OfferSource, RawOffer dataclass
+│   │       ├── francetravail.py   # France Travail API (OAuth2 + token caching)
+│   │       ├── wttj.py            # WTTJ / Algolia search
+│   │       └── themuse.py         # The Muse API
+│   ├── tests/
+│   │   ├── conftest.py            # Shared fixtures (SQLite in-memory, test client)
+│   │   ├── test_users.py
+│   │   ├── test_profile.py
+│   │   ├── test_offers.py
+│   │   ├── test_cvs.py
+│   │   ├── test_templates.py
+│   │   ├── test_dashboard.py
+│   │   ├── test_notes.py
+│   │   ├── test_reminders.py
+│   │   ├── test_scrapers.py
+│   │   └── test_search.py
+│   ├── alembic/
+│   ├── alembic.ini
+│   ├── pyproject.toml
+│   ├── uv.lock
+│   └── Dockerfile
+├── frontend/
+│   ├── src/
+│   │   ├── App.tsx                # Main app with routing + sidebar navigation
+│   │   ├── api.ts                 # API client (REST + WebSocket)
+│   │   ├── pages/
+│   │   │   ├── DashboardPage.tsx      # Stats, activity feed, reminders
+│   │   │   ├── OffersPage.tsx         # Offer list with status filtering
+│   │   │   ├── OfferDetailPage.tsx    # Full offer view + notes + AI actions
+│   │   │   ├── SearchPage.tsx         # External offer search + smart matching
+│   │   │   ├── ProfilePage.tsx        # Profile management
+│   │   │   ├── CVsPage.tsx            # CV management
+│   │   │   ├── TemplatesPage.tsx      # Cover letter templates
+│   │   │   ├── AIPage.tsx             # AI features hub
+│   │   │   ├── InterviewPage.tsx      # Mock interviews
+│   │   │   ├── CalendarPage.tsx       # Calendar view of deadlines/interviews
+│   │   │   ├── RemindersPage.tsx      # Reminders management
+│   │   │   └── SettingsPage.tsx       # User settings
+│   │   └── hooks/
+│   │       ├── useInterview.ts
+│   │       └── useSpeechRecognition.ts
+│   ├── package.json
+│   └── Dockerfile
+├── docker-compose.yml
+└── README.md
 ```
 
 ### Separation of Concerns
@@ -98,7 +107,7 @@ tests/
 | Data access | `crud.py` | Database queries |
 | Models | `models.py`, `database.py` | ORM table definitions |
 | Config | `config.py` | Environment variables |
-| Frontend | `src/frontend/` | React SPA (Vite + TypeScript + React Router) |
+| Frontend | `frontend/` | React SPA (Vite + TypeScript + React Router) |
 
 ---
 
@@ -356,10 +365,10 @@ docker compose up --build
 
 | File | Role |
 |------|------|
-| `Dockerfile` | Backend image: Python 3.13, pip install, auto-runs `alembic upgrade head` before uvicorn |
-| `src/frontend/Dockerfile` | Frontend image: Node 22, npm install, Vite dev server |
+| `backend/Dockerfile` | Backend image: Python 3.13, uv sync, auto-runs `alembic upgrade head` before uvicorn |
+| `frontend/Dockerfile` | Frontend image: Node 22, npm install, Vite dev server |
 | `docker-compose.yml` | Orchestrates all 3 services, PostgreSQL healthcheck, volume for DB persistence |
-| `.dockerignore` | Excludes `.venv`, `node_modules`, `.env`, `__pycache__`, etc. |
+| `backend/.dockerignore` | Excludes `.venv`, `node_modules`, `.env`, `__pycache__`, etc. |
 
 ### Key design decisions
 
@@ -374,7 +383,7 @@ docker compose up --build
 ## Database Migrations (Alembic)
 
 - Schema changes are managed by **Alembic** (not `Base.metadata.create_all`)
-- Config in `alembic.ini` + `alembic/env.py` (imports `DATABASE_URL` and `Base.metadata` from src/)
+- Config in `backend/alembic.ini` + `backend/alembic/env.py` (imports `DATABASE_URL` and `Base.metadata` from src/)
 - Migration files in `alembic/versions/`
 - In Docker, migrations run automatically at container startup
 - See `ALEMBIC.md` for usage guide
