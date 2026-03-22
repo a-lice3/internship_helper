@@ -40,7 +40,6 @@ export default function OfferDetailPage({ userId }: { userId: number }) {
   // AI actions
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState("");
-  const [activeAI, setActiveAI] = useState<"cover-letter" | "skill-gap" | "adapt-cv" | "pitch" | null>(null);
 
   // Company info (Wikipedia)
   const [companyInfo, setCompanyInfo] = useState<api.CompanyInfo | null>(null);
@@ -67,16 +66,8 @@ export default function OfferDetailPage({ userId }: { userId: number }) {
   const [latexResult, setLatexResult] = useState<api.AdaptCVLatexResult | null>(null);
   const [editedLatex, setEditedLatex] = useState("");
   const [savingLatex, setSavingLatex] = useState(false);
-
-  // Pitch
-  const [pitchMode, setPitchMode] = useState<"upload" | "record">("upload");
-  const [pitchFile, setPitchFile] = useState<File | null>(null);
-  const [recording, setRecording] = useState(false);
-  const [recordingTime, setRecordingTime] = useState(0);
-  const [pitchResult, setPitchResult] = useState<api.PitchAnalysisResult | null>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [latexSaved, setLatexSaved] = useState(false);
+  const [cvSuggestions, setCvSuggestions] = useState<api.CVSuggestionsResult | null>(null);
 
   // Editing offer
   const [editing, setEditing] = useState(false);
@@ -86,6 +77,13 @@ export default function OfferDetailPage({ userId }: { userId: number }) {
 
   // Auto-generate on first visit
   const [autoGenerating, setAutoGenerating] = useState(false);
+
+  // CV upload modal
+  const [showCVUpload, setShowCVUpload] = useState(false);
+  const [cvUploadFile, setCvUploadFile] = useState<File | null>(null);
+  const [cvUploadName, setCvUploadName] = useState("");
+  const [cvUploading, setCvUploading] = useState(false);
+  const cvFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -98,7 +96,8 @@ export default function OfferDetailPage({ userId }: { userId: number }) {
       api.getReminders(userId, true),
       api.getStoredSkillGaps(userId),
       api.getStoredCoverLetters(userId),
-    ]).then(([o, n, scls, c, r, sgs, cls]) => {
+      api.getStoredCVOfferAnalyses(userId),
+    ]).then(([o, n, scls, c, r, sgs, cls, coas]) => {
       if (cancelled) return;
       setOffer(o);
       setNotes(n);
@@ -111,33 +110,89 @@ export default function OfferDetailPage({ userId }: { userId: number }) {
       setCvs(c);
       setReminders(r.filter((rem: api.Reminder) => rem.offer_id === id));
 
+      // Auto-select default CV
+      const defaultCV = c.find((cv: api.CV) => cv.is_default);
+      if (defaultCV) setSelectedCV(defaultCV.id);
+
       // Find existing generations for this offer
       const existingSG = sgs.find((sg: api.StoredSkillGap) => sg.offer_id === id) || null;
       const existingCL = cls.find((cl: api.StoredCoverLetter) => cl.offer_id === id) || null;
       setStoredSkillGap(existingSG);
       setStoredCoverLetter(existingCL);
+
+      // Restore the most recent CV offer analysis for this offer
+      const offerCOAs = (coas as api.StoredCVOfferAnalysis[])
+        .filter((a) => a.offer_id === id)
+        .sort((a, b) => {
+          const da = a.created_at ? new Date(a.created_at).getTime() : 0;
+          const db = b.created_at ? new Date(b.created_at).getTime() : 0;
+          return db - da;
+        });
+      const latestCOA = offerCOAs[0] || null;
+      if (latestCOA) {
+        setCvSuggestions({
+          id: latestCOA.id,
+          cv_id: latestCOA.cv_id,
+          score: latestCOA.score,
+          suggested_title: latestCOA.suggested_title,
+          suggested_profile: latestCOA.suggested_profile,
+          other_suggestions: latestCOA.other_suggestions,
+          offer_title: latestCOA.offer_title,
+          company: latestCOA.company,
+        });
+        // Select the CV that was last analyzed
+        const lastAnalyzedCV = c.find((cv: api.CV) => cv.id === latestCOA.cv_id);
+        if (lastAnalyzedCV) setSelectedCV(lastAnalyzedCV.id);
+      }
       if (existingCL) setEditableCoverLetter(existingCL.content);
 
-      // If no generations exist, auto-generate
-      if (!existingSG && !existingCL) {
+      // Auto-generate on first visit only (when skill gap & cover letter don't exist yet)
+      const needsSG = !existingSG;
+      const needsCL = !existingCL;
+      const existingDefaultCOA = defaultCV
+        ? (coas as api.StoredCVOfferAnalysis[]).find((a) => a.offer_id === id && a.cv_id === defaultCV.id)
+        : null;
+      const needsCV = !!(defaultCV && !existingDefaultCOA);
+      if (needsSG || needsCL) {
         setAutoGenerating(true);
-        Promise.allSettled([
-          api.analyzeSkillGap(userId, id),
-          api.generateCoverLetter(userId, id),
-        ]).then(([sgResult, clResult]) => {
+        const sgTask = needsSG ? api.analyzeSkillGap(userId, id) : Promise.resolve(null);
+        const clTask = needsCL ? api.generateCoverLetter(userId, id) : Promise.resolve(null);
+        Promise.allSettled([sgTask, clTask]).then((results) => {
           if (cancelled) return;
-          if (sgResult.status === "fulfilled") {
-            const sg = sgResult.value;
+          const [sgResult, clResult] = results;
+          if (needsSG && sgResult.status === "fulfilled" && sgResult.value) {
+            const sg = sgResult.value as api.SkillGapResult;
             setStoredSkillGap({ id: sg.id, offer_id: id, offer_title: sg.offer_title, company: sg.company, missing_hard_skills: sg.missing_hard_skills, missing_soft_skills: sg.missing_soft_skills, recommendations: sg.recommendations, created_at: null });
             setSkillGap(sg);
           }
-          if (clResult.status === "fulfilled") {
-            const cl = clResult.value;
+          if (needsCL && clResult.status === "fulfilled" && clResult.value) {
+            const cl = clResult.value as api.CoverLetterResult;
             setStoredCoverLetter({ id: cl.id, offer_id: id, template_id: null, name: null, offer_title: cl.offer_title, company: cl.company, content: cl.cover_letter, saved: false, created_at: null });
             setCoverLetter(cl);
             setEditableCoverLetter(cl.cover_letter);
           }
-          setAutoGenerating(false);
+          if (!needsCV) setAutoGenerating(false);
+        });
+      }
+      // Auto-analyze default CV for this offer (independent of skill gap / cover letter)
+      if (needsCV && defaultCV) {
+        if (!needsSG && !needsCL) setAutoGenerating(true);
+        const cvPromise = defaultCV.latex_content
+          ? Promise.all([
+              api.suggestCVChanges(userId, id, defaultCV.id),
+              api.adaptCVLatex(userId, id, defaultCV.id),
+            ]).then(([suggestions, adapted]) => {
+              if (cancelled) return;
+              setCvSuggestions(suggestions);
+              setLatexResult(adapted);
+              setEditedLatex(adapted.adapted_latex);
+            })
+          : api.suggestCVChanges(userId, id, defaultCV.id).then((result) => {
+              if (cancelled) return;
+              setCvSuggestions(result);
+            });
+        cvPromise.catch(() => {}).finally(() => {
+          if (!cancelled) setAutoGenerating(false);
         });
       }
 
@@ -325,70 +380,80 @@ export default function OfferDetailPage({ userId }: { userId: number }) {
   };
 
   // AI: Adapt CV
-  const handleAdaptCV = async () => {
-    if (!selectedCV) return;
-    setAiLoading(true); setAiError(""); setLatexResult(null);
+  const handleCVUpload = async () => {
+    if (!cvUploadFile) return;
+    setCvUploading(true);
     try {
-      const result = await api.adaptCVLatex(userId, id, Number(selectedCV));
-      setLatexResult(result);
-      setEditedLatex(result.adapted_latex);
+      const cv = await api.uploadCVFile(userId, cvUploadFile, cvUploadName || cvUploadFile.name, offer?.company || "", offer?.title || "");
+      setCvs((prev) => [cv, ...prev]);
+      setSelectedCV(cv.id);
+      setShowCVUpload(false);
+      setCvUploadFile(null);
+      setCvUploadName("");
+      // Trigger general analysis in background (displayed only in CVs page)
+      api.analyzeCVGeneral(userId, cv.id).catch(() => {});
+      // Trigger offer-specific CV analysis immediately
+      runCVAnalysis(cv);
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : t("cvsPage.uploadFailed"));
+    } finally {
+      setCvUploading(false);
+    }
+  };
+
+  const runCVAnalysis = async (cv: api.CV) => {
+    setAiLoading(true); setAiError(""); setLatexResult(null); setCvSuggestions(null); setLatexSaved(false);
+    try {
+      if (cv.latex_content) {
+        // For LaTeX CVs: get suggestions (same as PDF) + adapted LaTeX in parallel
+        const [suggestions, adapted] = await Promise.all([
+          api.suggestCVChanges(userId, id, cv.id),
+          api.adaptCVLatex(userId, id, cv.id),
+        ]);
+        setCvSuggestions(suggestions);
+        setLatexResult(adapted);
+        setEditedLatex(adapted.adapted_latex);
+      } else {
+        const result = await api.suggestCVChanges(userId, id, cv.id);
+        setCvSuggestions(result);
+      }
     } catch (e: unknown) { setAiError(e instanceof Error ? e.message : "Unknown error"); }
     setAiLoading(false);
+  };
+
+  const handleAdaptCV = async () => {
+    if (!selectedCV) return;
+    const cv = cvs.find((c) => c.id === Number(selectedCV));
+    if (!cv) return;
+    await runCVAnalysis(cv);
+  };
+
+  const handleCVSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value ? Number(e.target.value) : "";
+    setSelectedCV(val);
+    setLatexResult(null);
+    setCvSuggestions(null);
+    if (val) {
+      const cv = cvs.find((c) => c.id === val);
+      if (cv) runCVAnalysis(cv);
+    }
   };
 
   const handleSaveAdaptedCV = async () => {
     if (!latexResult || !offer) return;
-    setSavingLatex(true); setAiError("");
+    setSavingLatex(true); setAiError(""); setLatexSaved(false);
     try {
       const saved = await api.saveCVWithLatex(userId, {
         name: `CV adapted - ${offer.company}`,
         content: "(LaTeX CV)",
-        latex_content: editedLatex,
+        latex_content: latexResult.adapted_latex,
         support_files_dir: latexResult.support_files_dir,
         company: offer.company, job_title: offer.title, offer_id: id,
       });
-      const blob = await api.compileCVPdf(userId, saved.id);
-      saveAs(blob, `CV_${offer.company.replace(/\s+/g, "_")}.pdf`);
-    } catch (e: unknown) { setAiError(e instanceof Error ? e.message : "Save/compile failed"); }
+      setCvs((prev) => [saved, ...prev]);
+      setLatexSaved(true);
+    } catch (e: unknown) { setAiError(e instanceof Error ? e.message : "Save failed"); }
     setSavingLatex(false);
-  };
-
-  // AI: Pitch
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
-      mediaRecorderRef.current = mediaRecorder;
-      chunksRef.current = [];
-      mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
-      mediaRecorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
-        setPitchFile(new File([blob], "pitch-recording.webm", { type: "audio/webm" }));
-        stream.getTracks().forEach((t) => t.stop());
-        if (timerRef.current) clearInterval(timerRef.current);
-        setRecordingTime(0);
-      };
-      mediaRecorder.start();
-      setRecording(true); setRecordingTime(0);
-      timerRef.current = setInterval(() => setRecordingTime((t) => t + 1), 1000);
-    } catch { setAiError(t("offerDetail.micDenied")); }
-  };
-
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
-      mediaRecorderRef.current.stop();
-    }
-    setRecording(false);
-  };
-
-  const handlePitchAnalysis = async () => {
-    if (!pitchFile) return;
-    setAiLoading(true); setAiError(""); setPitchResult(null);
-    try {
-      const result = await api.analyzePitchForOffer(userId, id, pitchFile);
-      setPitchResult(result);
-    } catch (e: unknown) { setAiError(e instanceof Error ? e.message : "Unknown error"); }
-    setAiLoading(false);
   };
 
   const stripMarkdown = useCallback((text: string) => {
@@ -412,12 +477,6 @@ export default function OfferDetailPage({ userId }: { userId: number }) {
     saveAs(blob, `Cover_Letter_${company.replace(/\s+/g, "_")}.docx`);
   }, [stripMarkdown]);
 
-  const formatTime = (seconds: number) => {
-    const m = Math.floor(seconds / 60).toString().padStart(2, "0");
-    const s = (seconds % 60).toString().padStart(2, "0");
-    return `${m}:${s}`;
-  };
-
   // Helper to get the cover letter content to display
   const displayCoverLetter = coverLetter?.cover_letter || storedCoverLetter?.content || null;
   const displayCoverLetterCompany = coverLetter?.company || storedCoverLetter?.company || offer?.company || "";
@@ -434,8 +493,6 @@ export default function OfferDetailPage({ userId }: { userId: number }) {
 
   if (loading) return <div className="page"><p>{t("offerDetail.loading")}</p></div>;
   if (!offer) return <div className="page"><p>{t("offerDetail.notFound")}</p> <button className="btn-secondary" onClick={() => navigate("/offers")}>{t("offerDetail.backToOffers")}</button></div>;
-
-  const latexCvs = cvs.filter((c) => c.latex_content);
 
   return (
     <div className="page">
@@ -553,7 +610,7 @@ export default function OfferDetailPage({ userId }: { userId: number }) {
               disabled={aiLoading}
               style={{ fontSize: 12, padding: "2px 8px" }}
             >
-              {aiLoading && activeAI === "skill-gap" ? t("offerDetail.generating") : t("offerDetail.regenerate")}
+              {aiLoading ? t("offerDetail.generating") : t("offerDetail.regenerate")}
             </button>
           </div>
           <div className="glass-card-body" style={{ maxHeight: 300, overflowY: "auto" }}>
@@ -609,7 +666,7 @@ export default function OfferDetailPage({ userId }: { userId: number }) {
               disabled={aiLoading}
               style={{ fontSize: 12, padding: "2px 8px" }}
             >
-              {aiLoading && activeAI === "cover-letter" ? t("offerDetail.generating") : t("offerDetail.regenerate")}
+              {aiLoading ? t("offerDetail.generating") : t("offerDetail.regenerate")}
             </button>
           </div>
         </div>
@@ -671,7 +728,84 @@ export default function OfferDetailPage({ userId }: { userId: number }) {
         </div>
       </div>
 
-      {/* Row 3: Notes + Reminders/AI Actions side by side */}
+      {/* Row 2b: CV Analysis — full width */}
+      <div className="glass-card" style={{ marginTop: 16 }}>
+        <div className="glass-card-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <h3 style={{ margin: 0 }}>{t("offerDetail.cvAnalysis")}</h3>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {cvs.length > 0 && (
+              <>
+                <select value={selectedCV} onChange={handleCVSelectChange} style={{ width: "auto", fontSize: 11, padding: "2px 6px" }}>
+                  {cvs.map((c) => <option key={c.id} value={c.id}>{c.name} {c.is_default ? "\u2605" : ""}</option>)}
+                </select>
+                <button
+                  className="btn-ghost"
+                  onClick={handleAdaptCV}
+                  disabled={!selectedCV || aiLoading}
+                  style={{ fontSize: 12, padding: "2px 8px" }}
+                >
+                  {aiLoading ? t("offerDetail.adapting") : t("offerDetail.regenerate")}
+                </button>
+              </>
+            )}
+            <button
+              className="btn-ghost"
+              onClick={() => setShowCVUpload(true)}
+              title={t("offerDetail.uploadNewCV")}
+              style={{ fontSize: 16, padding: "0 6px", lineHeight: 1 }}
+            >
+              +
+            </button>
+          </div>
+        </div>
+        <div className="glass-card-body">
+          {cvs.length === 0 ? (
+            <p className="empty" style={{ margin: 0, fontSize: 13 }}>{t("offerDetail.uploadCVPrompt")}</p>
+          ) : cvSuggestions ? (
+            <div style={{ fontSize: 13 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                <strong>{t("offerDetail.cvScore")} {cvSuggestions.score}/10</strong>
+              </div>
+              {cvSuggestions.suggested_title && (
+                <div style={{ marginBottom: 10, padding: "8px 12px", background: "var(--surface-solid)", borderRadius: 8, border: "1px solid var(--border)" }}>
+                  <strong>{t("offerDetail.suggestedTitle")}</strong>
+                  <p style={{ margin: "4px 0 0" }}>{cvSuggestions.suggested_title}</p>
+                </div>
+              )}
+              {cvSuggestions.suggested_profile && (
+                <div style={{ marginBottom: 10, padding: "8px 12px", background: "var(--surface-solid)", borderRadius: 8, border: "1px solid var(--border)" }}>
+                  <strong>{t("offerDetail.suggestedProfile")}</strong>
+                  <p style={{ margin: "4px 0 0", whiteSpace: "pre-wrap" }}>{cvSuggestions.suggested_profile}</p>
+                </div>
+              )}
+              {cvSuggestions.other_suggestions.length > 0 && (
+                <div style={{ padding: "8px 12px", background: "var(--surface-solid)", borderRadius: 8, border: "1px solid var(--border)" }}>
+                  <strong>{t("offerDetail.otherSuggestions")}</strong>
+                  <ul style={{ margin: "4px 0 0", paddingLeft: 20 }}>
+                    {cvSuggestions.other_suggestions.map((s, i) => <li key={i}>{s}</li>)}
+                  </ul>
+                </div>
+              )}
+              {latexResult && (
+                <div style={{ marginTop: 12 }}>
+                  <button onClick={handleSaveAdaptedCV} disabled={savingLatex || latexSaved} className="btn-primary" style={{ boxShadow: "none", fontSize: 12 }}>
+                    {savingLatex ? t("offerDetail.saving") : latexSaved ? "✓ Saved!" : t("offerDetail.saveToCV")}
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : autoGenerating ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <img src={mistralLogo} alt="Loading" className="mistral-spin-img" style={{ width: 20, height: 20 }} />
+              <span style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("offerDetail.generating")}</span>
+            </div>
+          ) : (
+            <p className="empty" style={{ margin: 0, fontSize: 13 }}>{t("offerDetail.notGenerated")}</p>
+          )}
+        </div>
+      </div>
+
+      {/* Row 3: Notes + Reminders side by side */}
       <div className="bento-grid-2" style={{ marginTop: 16 }}>
         {/* Notes */}
         <div className="glass-card">
@@ -813,120 +947,62 @@ export default function OfferDetailPage({ userId }: { userId: number }) {
             </div>
           )}
 
-          {/* AI Actions */}
-          <div className="glass-card">
-            <div className="glass-card-header"><h3>{t("offerDetail.aiActions")}</h3></div>
-            <div className="glass-card-body">
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <button
-                  onClick={() => { setActiveAI(activeAI === "adapt-cv" ? null : "adapt-cv"); }}
-                  className={activeAI === "adapt-cv" ? "btn-primary" : "btn-secondary"}
-                  style={{ boxShadow: "none", textAlign: "left" }}
-                >
-                  {t("offerDetail.adaptCV")}
-                </button>
-                <button
-                  onClick={() => { setActiveAI(activeAI === "pitch" ? null : "pitch"); }}
-                  className={activeAI === "pitch" ? "btn-primary" : "btn-secondary"}
-                  style={{ boxShadow: "none", textAlign: "left" }}
-                >
-                  {t("offerDetail.analyzePitch")}
-                </button>
-              </div>
-            </div>
-          </div>
-
           {aiError && <p className="error" style={{ marginTop: 12 }}>{aiError}</p>}
-
-          {/* Adapt CV panel */}
-          {activeAI === "adapt-cv" && (
-            <div className="glass-card" style={{ marginTop: 16 }}>
-              <div className="glass-card-header"><h3>{t("offerDetail.adaptCV")}</h3></div>
-              <div className="glass-card-body">
-                <label style={{ marginBottom: 8, display: "block" }}>
-                  {t("offerDetail.selectLatexCV")}
-                  <select value={selectedCV} onChange={(e) => setSelectedCV(e.target.value ? Number(e.target.value) : "")} style={{ width: "100%" }}>
-                    <option value="">{t("offerDetail.select")}</option>
-                    {latexCvs.map((c) => <option key={c.id} value={c.id}>{c.name} {c.company ? `(${c.company})` : ""}</option>)}
-                  </select>
-                </label>
-                <button onClick={handleAdaptCV} disabled={!selectedCV || aiLoading} className="btn-primary" style={{ boxShadow: "none", width: "100%" }}>
-                  {aiLoading ? t("offerDetail.adapting") : t("offerDetail.adapt")}
-                </button>
-                {latexResult && (
-                  <div style={{ marginTop: 12 }}>
-                    <textarea className="latex-editor" value={editedLatex} onChange={(e) => setEditedLatex(e.target.value)} spellCheck={false} style={{ height: 200, width: "100%" }} />
-                    <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                      <button onClick={handleSaveAdaptedCV} disabled={savingLatex} className="btn-primary" style={{ boxShadow: "none", fontSize: 12 }}>
-                        {savingLatex ? t("offerDetail.compiling") : t("offerDetail.saveDownloadPDF")}
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Pitch panel */}
-          {activeAI === "pitch" && (
-            <div className="glass-card" style={{ marginTop: 16 }}>
-              <div className="glass-card-header"><h3>{t("offerDetail.analyzePitch")}</h3></div>
-              <div className="glass-card-body">
-                <div className="pitch-mode-toggle" style={{ marginBottom: 8 }}>
-                  <button className={pitchMode === "upload" ? "active" : ""} onClick={() => { setPitchMode("upload"); setPitchFile(null); }} disabled={recording}>{t("aiPage.upload")}</button>
-                  <button className={pitchMode === "record" ? "active" : ""} onClick={() => { setPitchMode("record"); setPitchFile(null); }} disabled={recording}>{t("aiPage.record")}</button>
-                </div>
-                {pitchMode === "upload" && (
-                  <input type="file" accept=".mp3,.wav,.webm,.ogg,.m4a,.flac" onChange={(e) => setPitchFile(e.target.files?.[0] ?? null)} style={{ marginBottom: 8, width: "100%" }} />
-                )}
-                {pitchMode === "record" && (
-                  <div style={{ marginBottom: 8 }}>
-                    {!recording && !pitchFile && (
-                      <button className="btn-secondary" onClick={startRecording} style={{ width: "100%" }}>{t("offerDetail.startRecording")}</button>
-                    )}
-                    {recording && (
-                      <div className="recording-indicator" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <span className="recording-dot" />
-                        <span>{formatTime(recordingTime)}</span>
-                        <button className="btn-danger" onClick={stopRecording} style={{ marginLeft: "auto" }}>{t("aiPage.stop")}</button>
-                      </div>
-                    )}
-                    {!recording && pitchFile && (
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
-                        <span>{t("offerDetail.recordingReady")}</span>
-                        <button onClick={() => setPitchFile(null)} className="btn-ghost" style={{ fontSize: 12 }}>{t("offerDetail.discardBtn")}</button>
-                      </div>
-                    )}
-                  </div>
-                )}
-                <button onClick={handlePitchAnalysis} disabled={!pitchFile || aiLoading} className="btn-primary" style={{ boxShadow: "none", width: "100%" }}>
-                  {aiLoading ? t("interviewPage.analyzing") : t("offerDetail.analyze")}
-                </button>
-                {pitchResult && (
-                  <div style={{ marginTop: 12, fontSize: 13 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                      <strong>{t("offerDetail.score")} {pitchResult.overall_score}/10</strong>
-                    </div>
-                    <p style={{ margin: "0 0 8px" }}>{pitchResult.summary}</p>
-                    {pitchResult.strengths.length > 0 && (
-                      <>
-                        <h4 style={{ margin: "0 0 4px", textTransform: "none", letterSpacing: 0, color: "var(--text-h)" }}>{t("offerDetail.strengths")}</h4>
-                        <ul style={{ margin: "0 0 8px", paddingLeft: 20 }}>{pitchResult.strengths.map((s, i) => <li key={i}>{s}</li>)}</ul>
-                      </>
-                    )}
-                    {pitchResult.improvements.length > 0 && (
-                      <>
-                        <h4 style={{ margin: "0 0 4px", textTransform: "none", letterSpacing: 0, color: "var(--text-h)" }}>{t("offerDetail.improvements")}</h4>
-                        <ul style={{ margin: 0, paddingLeft: 20 }}>{pitchResult.improvements.map((s, i) => <li key={i}>{s}</li>)}</ul>
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
         </div>
       </div>
+
+      {/* CV Upload Modal */}
+      {showCVUpload && (
+        <div className="modal-overlay" onClick={() => { setShowCVUpload(false); setCvUploadFile(null); setCvUploadName(""); }}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <h3 style={{ margin: 0 }}>{t("offerDetail.uploadNewCV")}</h3>
+              <button className="btn-icon" onClick={() => { setShowCVUpload(false); setCvUploadFile(null); setCvUploadName(""); }}>&times;</button>
+            </div>
+            <input
+              ref={cvFileInputRef}
+              type="file"
+              accept=".pdf,.tex,.zip"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) setCvUploadFile(f); if (cvFileInputRef.current) cvFileInputRef.current.value = ""; }}
+              style={{ display: "none" }}
+            />
+            {!cvUploadFile ? (
+              <div
+                onClick={() => cvFileInputRef.current?.click()}
+                style={{ border: "2px dashed var(--border)", borderRadius: 10, padding: "32px 16px", textAlign: "center", cursor: "pointer", color: "var(--text-muted)" }}
+              >
+                <p style={{ margin: "0 0 4px", fontSize: 14 }}>{t("cvsPage.dropzoneTitle")}</p>
+                <p style={{ margin: 0, fontSize: 12 }}>{t("cvsPage.acceptedFormats")}</p>
+              </div>
+            ) : (
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, padding: "8px 12px", background: "var(--surface-solid)", borderRadius: 8, border: "1px solid var(--border)" }}>
+                  <span style={{ fontWeight: 600, fontSize: 12, color: "var(--accent)" }}>
+                    {cvUploadFile.name.endsWith(".pdf") ? "PDF" : cvUploadFile.name.endsWith(".tex") ? "TEX" : "ZIP"}
+                  </span>
+                  <span style={{ flex: 1, fontSize: 13 }}>{cvUploadFile.name}</span>
+                  <button className="btn-icon" onClick={() => setCvUploadFile(null)} style={{ fontSize: 14 }}>&times;</button>
+                </div>
+                <label style={{ display: "block", marginBottom: 12, fontSize: 13 }}>
+                  {t("cvsPage.cvName")}
+                  <input
+                    value={cvUploadName}
+                    onChange={(e) => setCvUploadName(e.target.value)}
+                    placeholder={t("cvsPage.cvNamePlaceholder")}
+                    style={{ width: "100%", marginTop: 4 }}
+                  />
+                </label>
+                <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                  <button className="btn-cancel" onClick={() => { setShowCVUpload(false); setCvUploadFile(null); setCvUploadName(""); }}>{t("offerDetail.cancel")}</button>
+                  <button className="btn-primary" onClick={handleCVUpload} disabled={cvUploading} style={{ boxShadow: "none" }}>
+                    {cvUploading ? t("cvsPage.uploading") : t("cvsPage.uploadCV")}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

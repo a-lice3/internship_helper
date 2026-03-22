@@ -300,7 +300,16 @@
     "acceptedFormats": "PDF, LaTeX (.tex) o ZIP",
     "uploadFailed": "Error al subir",
     "saveFailed": "Error al guardar",
-    "compileFailed": "Error de compilación"
+    "compileFailed": "Error de compilación",
+    "setDefault": "Establecer como CV predeterminado",
+    "removeDefault": "Quitar CV predeterminado",
+    "analyze": "Analizar",
+    "analyzing": "Analizando...",
+    "generalScore": "Puntuación general:",
+    "strengths": "Puntos fuertes",
+    "improvements": "Mejoras",
+    "viewAnalysis": "Ver analisis",
+    "analysisOf": "Analisis de"
   },
   "templatesPage": {
     "title": "Mi Perfil",
@@ -563,23 +572,18 @@
     "typeLabel": "Tipo",
     "dueDateRequired": "Fecha límite *",
     "addReminder": "Añadir recordatorio",
-    "aiActions": "Acciones IA",
-    "adaptCV": "Adaptar CV",
-    "analyzePitch": "Analizar pitch",
-    "selectLatexCV": "Seleccionar un CV LaTeX",
-    "select": "-- Seleccionar --",
-    "adapting": "Adaptando...",
-    "adapt": "Adaptar",
+    "cvAnalysis": "Análisis del CV",
+    "cvScore": "Puntuación de coincidencia:",
+    "uploadCVPrompt": "Sube un CV en tu perfil para obtener un análisis automático.",
+    "uploadNewCV": "Agregar un CV",
+    "adapting": "Analizando...",
     "saveDownloadPDF": "Guardar y descargar PDF",
+    "saveToCV": "Guardar en mis CV",
+    "saving": "Guardando...",
     "compiling": "Compilando...",
-    "startRecording": "Iniciar grabación",
-    "recordingReady": "Grabación lista",
-    "discardBtn": "Descartar",
-    "analyze": "Analizar",
-    "score": "Puntuación:",
-    "strengths": "Puntos fuertes",
-    "improvements": "Mejoras",
-    "micDenied": "Acceso al micrófono denegado"
+    "suggestedTitle": "Título de puesto sugerido",
+    "suggestedProfile": "Perfil / resumen sugerido",
+    "otherSuggestions": "Otras sugerencias"
   },
   "dateTimeInput": {
     "pickDate": "Elegir una fecha",
@@ -594,7 +598,8 @@
     "edit": "Editar",
     "delete": "Eliminar",
     "loading": "Cargando...",
-    "error": "Error"
+    "error": "Error",
+    "close": "Cerrar"
   },
   "onboarding": {
     "title": "Job Seeker",

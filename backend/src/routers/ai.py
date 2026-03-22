@@ -19,6 +19,7 @@ from src.llm_service import (
     generate_cover_letter,
     ask_mistral,
     parse_offer,
+    suggest_cv_changes,
     transcribe_audio,
 )
 from src.models import User
@@ -77,6 +78,170 @@ def adapt_cv_endpoint(
         offer_title=offer.title,
         company=offer.company,
     )
+
+
+# ---------- CV Suggestions (non-LaTeX) ----------
+
+
+@router.post(
+    "/users/{user_id}/offers/{offer_id}/suggest-cv-changes",
+    response_model=schemas.CVSuggestionsResponse,
+)
+def suggest_cv_changes_endpoint(
+    user_id: int,
+    offer_id: int,
+    body: schemas.CVSuggestionsRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    _verify_owner(user_id, current_user)
+
+    offer = crud.get_offer(db, offer_id)
+    if not offer:
+        raise HTTPException(status_code=404, detail="Offer not found")
+
+    cv = crud.get_cv(db, body.cv_id)
+    if not cv:
+        raise HTTPException(status_code=404, detail="CV not found")
+
+    cv_text = cv.latex_content or cv.content
+    result = suggest_cv_changes(
+        cv_text,
+        offer.title,
+        offer.company,
+        offer.description or "",
+        user_instructions=current_user.ai_instructions,
+    )
+
+    import json
+
+    db_obj = crud.create_or_update_cv_offer_analysis(
+        db,
+        user_id=user_id,
+        offer_id=offer_id,
+        cv_id=body.cv_id,
+        offer_title=offer.title,
+        company=offer.company,
+        score=result["score"],
+        suggested_title=result["suggested_title"],
+        suggested_profile=result["suggested_profile"],
+        other_suggestions=json.dumps(result["other_suggestions"]),
+    )
+
+    return schemas.CVSuggestionsResponse(
+        id=db_obj.id,
+        cv_id=body.cv_id,
+        score=result["score"],
+        suggested_title=result["suggested_title"],
+        suggested_profile=result["suggested_profile"],
+        other_suggestions=result["other_suggestions"],
+        offer_title=offer.title,
+        company=offer.company,
+    )
+
+
+@router.get(
+    "/users/{user_id}/cv-offer-analyses",
+    response_model=list[schemas.StoredCVOfferAnalysisResponse],
+)
+def get_cv_offer_analyses_endpoint(
+    user_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    _verify_owner(user_id, current_user)
+    import json
+
+    rows = crud.get_cv_offer_analyses(db, user_id)
+    return [
+        schemas.StoredCVOfferAnalysisResponse(
+            id=r.id,
+            offer_id=r.offer_id,
+            cv_id=r.cv_id,
+            offer_title=r.offer_title,
+            company=r.company,
+            score=r.score,
+            suggested_title=r.suggested_title,
+            suggested_profile=r.suggested_profile,
+            other_suggestions=json.loads(r.other_suggestions),
+            created_at=r.created_at,
+        )
+        for r in rows
+    ]
+
+
+# ---------- CV General Analysis ----------
+
+
+@router.post(
+    "/users/{user_id}/cvs/{cv_id}/analyze",
+    response_model=schemas.CVAnalysisResponse,
+)
+def analyze_cv_endpoint(
+    user_id: int,
+    cv_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    _verify_owner(user_id, current_user)
+
+    cv = crud.get_cv(db, cv_id)
+    if not cv:
+        raise HTTPException(status_code=404, detail="CV not found")
+
+    from src.llm_service import analyze_cv_general
+
+    result = analyze_cv_general(
+        cv.content,
+        user_instructions=current_user.ai_instructions,
+    )
+
+    # Persist the analysis
+    import json
+
+    crud.create_or_update_cv_general_analysis(
+        db,
+        user_id=user_id,
+        cv_id=cv_id,
+        score=result["score"],
+        summary=result["summary"],
+        strengths=json.dumps(result["strengths"]),
+        improvements=json.dumps(result["improvements"]),
+    )
+
+    return schemas.CVAnalysisResponse(
+        score=result["score"],
+        summary=result["summary"],
+        strengths=result["strengths"],
+        improvements=result["improvements"],
+    )
+
+
+@router.get(
+    "/users/{user_id}/cv-analyses",
+    response_model=list[schemas.StoredCVAnalysisResponse],
+)
+def get_cv_analyses_endpoint(
+    user_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    _verify_owner(user_id, current_user)
+    import json
+
+    rows = crud.get_cv_general_analyses(db, user_id)
+    return [
+        schemas.StoredCVAnalysisResponse(
+            id=r.id,
+            cv_id=r.cv_id,
+            score=r.score,
+            summary=r.summary,
+            strengths=json.loads(r.strengths),
+            improvements=json.loads(r.improvements),
+            created_at=r.created_at,
+        )
+        for r in rows
+    ]
 
 
 # ---------- Skill Gap (persisted) ----------

@@ -300,7 +300,16 @@
     "acceptedFormats": "PDF, LaTeX (.tex) ou ZIP",
     "uploadFailed": "Échec de l'upload",
     "saveFailed": "Échec de l'enregistrement",
-    "compileFailed": "Échec de la compilation"
+    "compileFailed": "Échec de la compilation",
+    "setDefault": "Définir comme CV par défaut",
+    "removeDefault": "Retirer le CV par défaut",
+    "analyze": "Analyser",
+    "analyzing": "Analyse...",
+    "generalScore": "Score général :",
+    "strengths": "Points forts",
+    "improvements": "Points à améliorer",
+    "viewAnalysis": "Voir l'analyse",
+    "analysisOf": "Analyse de"
   },
   "templatesPage": {
     "title": "Mon Profil",
@@ -563,23 +572,18 @@
     "typeLabel": "Type",
     "dueDateRequired": "Date d'échéance *",
     "addReminder": "Ajouter le rappel",
-    "aiActions": "Actions IA",
-    "adaptCV": "Adapter le CV",
-    "analyzePitch": "Analyser le pitch",
-    "selectLatexCV": "Sélectionner un CV LaTeX",
-    "select": "-- Sélectionner --",
-    "adapting": "Adaptation...",
-    "adapt": "Adapter",
+    "cvAnalysis": "Analyse du CV",
+    "cvScore": "Score de correspondance :",
+    "uploadCVPrompt": "Uploadez un CV dans votre profil pour obtenir une analyse automatique.",
+    "uploadNewCV": "Ajouter un CV",
+    "adapting": "Analyse...",
     "saveDownloadPDF": "Enregistrer et télécharger PDF",
+    "saveToCV": "Enregistrer dans mes CV",
+    "saving": "Enregistrement...",
     "compiling": "Compilation...",
-    "startRecording": "Démarrer l'enregistrement",
-    "recordingReady": "Enregistrement prêt",
-    "discardBtn": "Supprimer",
-    "analyze": "Analyser",
-    "score": "Score :",
-    "strengths": "Points forts",
-    "improvements": "Points à améliorer",
-    "micDenied": "Accès au microphone refusé"
+    "suggestedTitle": "Titre de poste suggéré",
+    "suggestedProfile": "Profil / résumé suggéré",
+    "otherSuggestions": "Autres suggestions"
   },
   "dateTimeInput": {
     "pickDate": "Choisir une date",
@@ -594,7 +598,8 @@
     "edit": "Modifier",
     "delete": "Supprimer",
     "loading": "Chargement...",
-    "error": "Erreur"
+    "error": "Erreur",
+    "close": "Fermer"
   },
   "onboarding": {
     "title": "Job Seeker",
