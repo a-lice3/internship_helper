@@ -20,13 +20,12 @@ As a bonus, it also offers pitch and interview simulation and evaluation, calend
 ### Profile Management
 - Store your complete profile: skills (by category), experiences, education, languages (with levels), extracurriculars
 - Auto-fill your profile from an uploaded CV (PDF) using AI extraction
-- Custom AI instructions to control how Mistral adapts your documents
 
 ### Application Tracking
 - Create and manage internship offers (company, title, description, link, locations)
 - Track application status: bookmarked, applied, screened, interview, rejected, accepted
 - Detailed offer view with notes, linked interviews, and AI actions
-- Parse job descriptions automatically from pasted text
+- Parse job descriptions automatically from pasted link
 
 ### Offer Search & Scraping
 - Search for internship offers from **3 external sources**:
@@ -40,15 +39,14 @@ As a bonus, it also offers pitch and interview simulation and evaluation, calend
 - Overview stats: total offers, average interview score, interview count
 - Offers breakdown by status with visual progress bars
 - Upcoming reminders with type and due date
-- Recent activity feed (offers, interviews, reminders)
-
-### Calendar & Reminders
 - Visual calendar view of application deadlines and interview dates
-- Reminders: deadline, follow-up, interview, and custom types with due dates
-- Mark reminders as done
 
-### Offer Notes
+### Offer Pages
+- Read the generated description of the company when Wikipedia found it 
+- Check your generated skill gaps 
+- Manage your generated Cover Letter and use feedback about your CV 
 - Add notes to any offer to track thoughts, feedback, or follow-up info
+- Add reminders linked to your offer
 
 ### CV Management
 - Upload CVs in multiple formats: PDF, LaTeX (.tex), or LaTeX project (.zip)
@@ -63,22 +61,22 @@ As a bonus, it also offers pitch and interview simulation and evaluation, calend
 - **Live mock interviews** via WebSocket with AI-generated questions in real time
 - Configurable: type (HR, technical, behavioral, pitch), difficulty (junior/intermediate/advanced), language (EN/FR), duration (5–30 min)
 - Optionally linked to a specific offer for tailored questions based on the job description and your profile
-- **Voice recording**: record your answers with the mic, transcribed via Voxtral — timer pauses automatically during transcription
+- **Voice recording**: record your answers with the mic, transcribed via Voxtral - timer pauses automatically during transcription
 - **Real-time hints**: opt-in hints from the AI while you answer
 - **Question prediction**: generate likely interview questions for a given offer before the session
 - **Post-interview AI analysis**: overall, communication, confidence, technical, and behavioral scores; strengths, weaknesses, improvements; filler words analysis, STAR method feedback, per-question breakdown with suggested better answers
 - **Progress tracking**: total sessions, average score, practice minutes, sessions this week, best/worst category, score trend
 
 ### AI-Powered Features
-- **CV Adaptation**: adapt a CV (plain text or LaTeX) to match a specific offer while preserving your style and structure. LaTeX adaptation includes auto-compilation and page count validation (1-page target with iterative shortening)
+- **CV Analysis**: evaluate your CV for an offer or just in general
 - **Cover Letter Generation**: generate a professional cover letter from your profile, an offer, and an optional template (~300 words)
 - **Skill Gap Analysis**: compare your skills against an offer's requirements — get missing hard/soft skills and actionable recommendations
-- **Pitch Analysis**: record or upload an audio pitch, get it transcribed and scored (structure, strengths, improvements, overall score 1-10). Works with or without offer context
+- **Offer Parsing**: practice your interviews with AI-generated questions
 - **Offer Parsing**: paste a raw job description, get structured data (company, title, locations, description)
 
 ### Cover Letter Templates
-- Create templates from text or upload PDFs (auto-extracted)
-- Use templates as a base for AI-generated cover letters
+- Store your cover letters by uploading PDFs (auto-extracted)
+- Use them as a base for AI-generated cover letters
 
 ### History & Export
 - All AI-generated content (cover letters, skill gaps, pitch analyses, interview analyses) is persisted and browsable

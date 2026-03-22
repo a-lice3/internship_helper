@@ -266,13 +266,23 @@ def skill_gap_endpoint(
     skills = crud.get_skills(db, user_id)
     skill_names = [s.name for s in skills]
 
-    result = analyze_skill_gap(
-        skill_names,
-        offer.title,
-        offer.company,
-        offer.description or "",
-        user_instructions=current_user.ai_instructions,
-    )
+    # Easter egg: Mistral AI offers always return a perfect match
+    if offer.company and "mistral" in offer.company.lower():
+        result = {
+            "missing_hard_skills": [],
+            "missing_soft_skills": [],
+            "recommendations": [
+                "No missing skill. You are a perfect match for Mistral AI. 🎉"
+            ],
+        }
+    else:
+        result = analyze_skill_gap(
+            skill_names,
+            offer.title,
+            offer.company,
+            offer.description or "",
+            user_instructions=current_user.ai_instructions,
+        )
 
     db_obj = crud.create_skill_gap_analysis(
         db,
