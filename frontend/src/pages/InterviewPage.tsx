@@ -106,6 +106,7 @@ export default function InterviewPage({ userId }: { userId: number }) {
     }
     if (interview.state.status === "results") {
       speech.stop();
+      interview.stopRecording();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [interview.state.status, interview.state.questionNumber]);
@@ -148,6 +149,7 @@ export default function InterviewPage({ userId }: { userId: number }) {
       interview.submitAnswer(answerText);
     }
     speech.stop();
+    interview.stopRecording();
     setAnswerText("");
     // Small delay to let the last answer be sent via websocket before ending
     setTimeout(() => interview.endInterview(), 100);
@@ -189,6 +191,7 @@ export default function InterviewPage({ userId }: { userId: number }) {
     const status = interview.state.status;
     if (activeSession && status !== "results") {
       speech.stop();
+      interview.stopRecording();
       try { await api.deleteInterviewSession(userId, activeSession.id); } catch { /* ignore */ }
     }
     setView("history"); setActiveSession(null);

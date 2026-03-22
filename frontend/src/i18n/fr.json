@@ -623,5 +623,30 @@
     "title": "C'est parti !",
     "text": "Votre profil est prêt et votre première offre est enregistrée. À vous de décrocher le stage de vos rêves — bonne chance !",
     "button": "C'est parti !"
+  },
+  "guidedTour": {
+    "skip": "Passer",
+    "next": "Suivant",
+    "done": "C'est parti !",
+    "dashboard": {
+      "title": "Tableau de bord",
+      "desc": "Consultez un aperçu de votre recherche : statistiques, calendrier et rappels à venir."
+    },
+    "offers": {
+      "title": "Candidatures",
+      "desc": "Gérez vos offres, recherchez-en de nouvelles par IA et suivez l'avancement de chaque candidature."
+    },
+    "profile": {
+      "title": "Mon Profil",
+      "desc": "Complétez vos compétences, expériences et formation. Uploadez et modifiez vos CVs et lettres de motivation."
+    },
+    "interview": {
+      "title": "Entretien",
+      "desc": "Entraînez-vous avec des entretiens simulés par l'IA et obtenez une analyse détaillée de vos réponses."
+    },
+    "settings": {
+      "title": "Paramètres",
+      "desc": "Configurez votre compte, la langue d'affichage et les instructions personnalisées pour l'IA."
+    }
   }
 }

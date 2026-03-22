@@ -623,5 +623,30 @@
     "title": "Alles bereit!",
     "text": "Ihr Profil ist fertig und Ihr erstes Angebot ist gespeichert. Viel Erfolg bei der Suche nach Ihrem Traumjob!",
     "button": "Los geht's!"
+  },
+  "guidedTour": {
+    "skip": "Überspringen",
+    "next": "Weiter",
+    "done": "Los geht's!",
+    "dashboard": {
+      "title": "Dashboard",
+      "desc": "Erhalten Sie einen Überblick über Ihre Jobsuche: Statistiken, Kalender und Erinnerungen."
+    },
+    "offers": {
+      "title": "Bewerbungen",
+      "desc": "Verwalten Sie Ihre Angebote, suchen Sie mit KI und verfolgen Sie jede Bewerbung."
+    },
+    "profile": {
+      "title": "Mein Profil",
+      "desc": "Ergänzen Sie Ihre Fähigkeiten, Erfahrung und Ausbildung. Laden Sie CVs und Anschreiben hoch."
+    },
+    "interview": {
+      "title": "Vorstellungsgespräch",
+      "desc": "Üben Sie mit KI-gestützten Probeinterviews und erhalten Sie detailliertes Feedback."
+    },
+    "settings": {
+      "title": "Einstellungen",
+      "desc": "Konfigurieren Sie Ihr Konto, die Anzeigesprache und benutzerdefinierte KI-Anweisungen."
+    }
   }
 }

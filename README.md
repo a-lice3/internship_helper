@@ -1,6 +1,9 @@
-# Internship Helper
+# Job Seeker
 
-A full-stack web application that helps students manage and optimize their internship search using AI (Mistral). Track applications, manage CVs, generate cover letters, analyze skill gaps, practice mock interviews, and refine your pitch — all in one place.
+Internship search assistant designed by the user, for the user. Its key feature? It allows you to generate, evaluate, and manage resumes and cover letters by tailoring them to each job posting. Above all, it is a version management tool for these documents.
+
+As a bonus, it also offers pitch and interview simulation and evaluation, calendar management with reminders, and analysis of skill gaps for each opportunity.
+
 
 ## Features
 

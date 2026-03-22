@@ -2636,3 +2636,105 @@ button:disabled {
     opacity: 0;
   }
 }
+
+/* ============ Guided Tour ============ */
+
+.guided-tour-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+}
+
+.guided-tour-spotlight {
+  position: fixed;
+  border-radius: var(--radius-sm, 8px);
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.55);
+  z-index: 10001;
+  pointer-events: none;
+  transition: top 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+              left 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+              width 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+              height 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.guided-tour-tooltip {
+  position: fixed;
+  z-index: 10002;
+  background: var(--surface-solid, #1e1e2e);
+  border-radius: var(--radius, 12px);
+  padding: 20px 24px 16px;
+  min-width: 260px;
+  max-width: 340px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  animation: tour-tooltip-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.guided-tour-tooltip::before {
+  content: "";
+  position: absolute;
+  left: -8px;
+  top: 14px;
+  width: 16px;
+  height: 16px;
+  background: var(--surface-solid, #1e1e2e);
+  border-radius: 3px;
+  transform: rotate(45deg);
+}
+
+@keyframes tour-tooltip-pop {
+  from { opacity: 0; transform: translateX(10px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.guided-tour-tooltip-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-h);
+  margin-bottom: 6px;
+}
+
+.guided-tour-tooltip-desc {
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+
+.guided-tour-tooltip-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.guided-tour-step-indicator {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.guided-tour-tooltip-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.guided-tour-skip {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm, 8px);
+  transition: all 0.15s;
+}
+
+.guided-tour-skip:hover {
+  color: var(--text-h);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.guided-tour-next {
+  padding: 7px 18px !important;
+  font-size: 13px !important;
+}
