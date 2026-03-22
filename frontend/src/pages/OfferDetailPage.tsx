@@ -501,7 +501,7 @@ export default function OfferDetailPage({ userId }: { userId: number }) {
       )}
 
       {/* Company info from Wikipedia */}
-      {companyInfo && companyInfo.extract && (
+      {companyInfo && (companyInfo.extract || companyInfo.page_url) && (
         <div className="glass-card" style={{ marginTop: 20 }}>
           <div className="glass-card-header">
             <h3 style={{ margin: 0 }}>{t("offerDetail.about", { company: offer.company })}</h3>
@@ -511,13 +511,19 @@ export default function OfferDetailPage({ userId }: { userId: number }) {
               <img src={companyInfo.logo_url} alt={offer.company} style={{ width: 60, height: 60, objectFit: "contain", borderRadius: 8, flexShrink: 0 }} />
             )}
             <div style={{ flex: 1 }}>
-              {companyInfo.description && (
+              {companyInfo.description && companyInfo.extract && (
                 <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 4, fontStyle: "italic" }}>{companyInfo.description}</div>
               )}
-              <p style={{ fontSize: 13, margin: 0, lineHeight: 1.5 }}>{companyInfo.extract}</p>
+              {companyInfo.extract ? (
+                <p style={{ fontSize: 13, margin: 0, lineHeight: 1.5 }}>{companyInfo.extract}</p>
+              ) : (
+                <p style={{ fontSize: 13, margin: 0, lineHeight: 1.5, color: "var(--text-muted)" }}>
+                  {t("offerDetail.about", { company: offer.company })}
+                </p>
+              )}
               {companyInfo.page_url && (
                 <a href={companyInfo.page_url} target="_blank" rel="noreferrer" style={{ fontSize: 12, marginTop: 6, display: "inline-block" }}>
-                  {t("offerDetail.wikipedia")}
+                  {companyInfo.extract ? t("offerDetail.wikipedia") : t("offerDetail.searchOnline")}
                 </a>
               )}
             </div>

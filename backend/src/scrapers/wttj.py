@@ -103,6 +103,9 @@ class WTTJSource(OfferSource):
             f"query={keywords}"
             f"&hitsPerPage={min(max_results, 50)}"
             f"&facetFilters=%5B%5B%22contract_type%3Ainternship%22%5D%5D"
+            f"&attributesToRetrieve=name,slug,reference,body,profile,description"
+            f",organization.name,organization.slug,office.city"
+            f",salary,contract_type,published_at_date"
         )
 
         if location:
@@ -174,7 +177,9 @@ class WTTJSource(OfferSource):
                     source_id=hit.get("reference", slug),
                     company=org.get("name", "Entreprise"),
                     title=hit.get("name", ""),
-                    description=hit.get("body"),
+                    description=hit.get("body")
+                    or hit.get("profile")
+                    or hit.get("description"),
                     locations=city,
                     link=link,
                     contract_type="Stage",

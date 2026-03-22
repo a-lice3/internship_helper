@@ -8,7 +8,7 @@ type Step = "welcome" | "analyzing" | "search" | "results" | "matching";
 
 interface Props {
   userId: number;
-  onComplete: (redirectTo?: string) => void;
+  onComplete: (redirectTo?: string, skipped?: boolean) => void;
 }
 
 export default function OnboardingFlow({ userId, onComplete }: Props) {
@@ -28,7 +28,7 @@ export default function OnboardingFlow({ userId, onComplete }: Props) {
   // ---- Skip ----
   const handleSkip = async () => {
     try { await api.completeOnboarding(); } catch { /* ignore */ }
-    onComplete();
+    onComplete(undefined, true);
   };
 
   // ---- Drag & Drop ----

@@ -1,24 +1,14 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import * as api from "../api";
 import { getStatusLabel, STATUSES } from "../i18n/helpers";
-const mistralLogo = "/logo_mistral.png";
-
-const isUrl = (s: string) => /^https?:\/\/.+/i.test(s.trim());
 
 export default function OffersPage({ userId }: { userId: number }) {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [offers, setOffers] = useState<api.Offer[]>([]);
   const [filterStatuses, setFilterStatuses] = useState<Set<string>>(new Set());
-
-  // Paste-and-parse
-  const [pasteText, setPasteText] = useState("");
-  const [parsing, setParsing] = useState(false);
-
-  // Ref to avoid double-firing
-  const parsingRef = useRef(false);
 
   const load = () => {
     api.getOffers(userId).then(setOffers);
@@ -38,42 +28,6 @@ export default function OffersPage({ userId }: { userId: number }) {
   const filteredOffers = filterStatuses.size === 0
     ? offers
     : offers.filter((o) => filterStatuses.has(o.status));
-
-  const handleParseAndAdd = async (url: string) => {
-    if (parsingRef.current) return;
-    parsingRef.current = true;
-    setParsing(true);
-    try {
-      const parsed = await api.parseOffer({ url: url.trim() });
-      const o = await api.createOffer(userId, {
-        company: parsed.company || "Unknown",
-        title: parsed.title || "Unknown",
-        link: url.trim(),
-        locations: parsed.locations || undefined,
-        description: parsed.description || undefined,
-      });
-      setOffers((prev) => [o, ...prev]);
-      setPasteText("");
-
-      // Generate skill gap + cover letter in parallel
-      await Promise.allSettled([
-        api.analyzeSkillGap(userId, o.id),
-        api.generateCoverLetter(userId, o.id),
-      ]);
-    } catch {
-      alert(t("offers.extractFailed"));
-    } finally {
-      setParsing(false);
-      parsingRef.current = false;
-    }
-  };
-
-  const handlePasteChange = (value: string) => {
-    setPasteText(value);
-    if (isUrl(value.trim()) && !parsingRef.current) {
-      handleParseAndAdd(value.trim());
-    }
-  };
 
   const handleStatusChange = async (offer: api.Offer, newStatus: string) => {
     const updated = await api.updateOffer(userId, offer.id, { status: newStatus });
@@ -127,24 +81,6 @@ export default function OffersPage({ userId }: { userId: number }) {
           </button>
         </div>
       )}
-
-      {/* Paste link card — same size as offer cards */}
-      <div className="paste-link-card">
-        {parsing ? (
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <img src={mistralLogo} alt="Loading" className="mistral-spin-img" />
-            <span style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("offers.extracting")}</span>
-          </div>
-        ) : (
-          <input
-            type="text"
-            placeholder={t("offers.pasteLink")}
-            value={pasteText}
-            onChange={(e) => handlePasteChange(e.target.value)}
-            className="paste-link-input"
-          />
-        )}
-      </div>
 
       {/* Offers list as cards — clickable to navigate to detail */}
       {filteredOffers.length === 0 ? (

@@ -2513,3 +2513,126 @@ button:disabled {
     grid-template-columns: 1fr;
   }
 }
+
+/* ---------- Congrats Popup ---------- */
+
+.congrats-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: congrats-fade-in 0.3s ease;
+}
+
+@keyframes congrats-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.congrats-card {
+  position: relative;
+  background: var(--card-bg, #fff);
+  border-radius: 20px;
+  padding: 48px 40px 36px;
+  text-align: center;
+  max-width: 420px;
+  width: 90%;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.25);
+  animation: congrats-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes congrats-pop {
+  from { transform: scale(0.7); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.congrats-emoji {
+  font-size: 56px;
+  margin-bottom: 12px;
+}
+
+.congrats-title {
+  font-size: 24px;
+  font-weight: 800;
+  margin: 0 0 8px;
+  color: var(--text-h);
+}
+
+.congrats-text {
+  font-size: 15px;
+  color: var(--text);
+  margin: 0 0 24px;
+  line-height: 1.5;
+}
+
+.congrats-btn {
+  padding: 10px 32px;
+  font-size: 15px;
+  border-radius: 10px;
+}
+
+/* Stars burst */
+
+.congrats-stars {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  z-index: 10001;
+}
+
+.congrats-star {
+  position: absolute;
+  width: var(--size);
+  height: var(--size);
+  background: gold;
+  clip-path: polygon(
+    50% 0%, 61% 35%, 98% 35%, 68% 57%,
+    79% 91%, 50% 70%, 21% 91%, 32% 57%,
+    2% 35%, 39% 35%
+  );
+  animation: star-burst 1.8s var(--delay) ease-out forwards;
+}
+
+.congrats-star:nth-child(odd) {
+  background: #ff6b6b;
+}
+
+.congrats-star:nth-child(3n) {
+  background: #845ef7;
+}
+
+.congrats-star:nth-child(4n) {
+  background: #ffd43b;
+}
+
+.congrats-star:nth-child(5n) {
+  background: #22b8cf;
+}
+
+.congrats-star:nth-child(7n) {
+  background: #51cf66;
+}
+
+@keyframes star-burst {
+  0% {
+    transform: translate(0, 0) rotate(0deg) scale(0);
+    opacity: 1;
+  }
+  20% {
+    opacity: 1;
+    transform: translate(calc(var(--x) * 0.3), calc(var(--y) * 0.3)) rotate(calc(var(--rot) * 0.3)) scale(1.2);
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--x), var(--y)) rotate(var(--rot)) scale(0.6);
+    opacity: 0;
+  }
+}
