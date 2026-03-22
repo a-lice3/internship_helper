@@ -249,6 +249,7 @@ class CVResponse(BaseModel):
     job_title: str | None = None
     offer_id: int | None = None
     is_adapted: bool
+    is_default: bool = False
     created_at: datetime | None = None
 
 
@@ -276,6 +277,57 @@ class AdaptCVResponse(BaseModel):
     adapted_cv: str
     offer_title: str
     company: str
+
+
+# ---------- AI: CV Suggestions (non-LaTeX) ----------
+
+
+class CVSuggestionsRequest(BaseModel):
+    cv_id: int
+
+
+class CVSuggestionsResponse(BaseModel):
+    id: int | None = None
+    cv_id: int | None = None
+    score: int = 5
+    suggested_title: str | None = None
+    suggested_profile: str | None = None
+    other_suggestions: list[str] = []
+    offer_title: str
+    company: str
+
+
+class StoredCVOfferAnalysisResponse(BaseModel):
+    id: int
+    offer_id: int
+    cv_id: int
+    offer_title: str
+    company: str
+    score: int
+    suggested_title: str | None = None
+    suggested_profile: str | None = None
+    other_suggestions: list[str] = []
+    created_at: datetime | None = None
+
+
+# ---------- AI: CV General Analysis ----------
+
+
+class CVAnalysisResponse(BaseModel):
+    score: int = 5
+    summary: str = ""
+    strengths: list[str] = []
+    improvements: list[str] = []
+
+
+class StoredCVAnalysisResponse(BaseModel):
+    id: int
+    cv_id: int
+    score: int
+    summary: str
+    strengths: list[str]
+    improvements: list[str]
+    created_at: datetime | None = None
 
 
 # ---------- AI: Skill Gap ----------

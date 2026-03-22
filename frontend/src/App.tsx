@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Routes, Route, Link, Navigate, useNavigate, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import * as api from "./api";
@@ -16,6 +16,18 @@ import OnboardingFlow from "./pages/OnboardingFlow";
 import GuidedTour, { type TourStep } from "./components/GuidedTour";
 import "./App.css";
 import sittingCat from "./assets/animated-sitting-cat.gif";
+
+const CONGRATS_STAR_STYLES: React.CSSProperties[] = Array.from({ length: 40 }, (_, i) => {
+  const angle = (i / 40) * 2 * Math.PI + (Math.random() - 0.5) * 0.5;
+  const dist = 150 + Math.random() * 250;
+  return {
+    "--delay": `${Math.random() * 0.6}s`,
+    "--x": `${Math.cos(angle) * dist}px`,
+    "--y": `${Math.sin(angle) * dist}px`,
+    "--rot": `${Math.random() * 720}deg`,
+    "--size": `${14 + Math.random() * 18}px`,
+  } as React.CSSProperties;
+});
 
 const NAV_KEYS = [
   { to: "/dashboard", labelKey: "nav.dashboard", icon: "\uD83D\uDCCA" },
@@ -149,8 +161,34 @@ export default function App() {
   const [user, setUser] = useState<api.User | null>(null);
   const [loading, setLoading] = useState(() => !!api.getToken());
   const [showCongrats, setShowCongrats] = useState(false);
+  const [catPaused, setCatPaused] = useState(false);
+  const [frozenCatSrc, setFrozenCatSrc] = useState<string | null>(null);
+  const catImgRef = useRef<HTMLImageElement>(null);
   const navigate = useNavigate();
   const pendingRedirect = useRef<string | null>(null);
+
+  const handleCatClick = useCallback(() => {
+    if (!catPaused) {
+      // Freeze: capture current frame onto a canvas
+      const img = catImgRef.current;
+      if (img) {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(img, 0, 0);
+          setFrozenCatSrc(canvas.toDataURL());
+        }
+      }
+      setCatPaused(true);
+    } else {
+      // Unfreeze: reload the GIF to restart animation
+      setFrozenCatSrc(null);
+      setCatPaused(false);
+    }
+  }, [catPaused]);
+
 
   useEffect(() => {
     const token = api.getToken();
@@ -240,8 +278,13 @@ export default function App() {
           ))}
         </nav>
 
-        <div className="sidebar-cat">
-          <img src={sittingCat} alt="Mistral cat" className="sidebar-cat-img" />
+        <div className="sidebar-cat" onClick={handleCatClick} style={{ cursor: "pointer" }}>
+          <img
+            ref={catImgRef}
+            src={frozenCatSrc ?? sittingCat}
+            alt="Mistral cat"
+            className="sidebar-cat-img"
+          />
         </div>
 
         <div className="sidebar-user">
@@ -291,23 +334,9 @@ export default function App() {
       {showCongrats && (
         <div className="congrats-overlay" onClick={() => setShowCongrats(false)}>
           <div className="congrats-stars">
-            {Array.from({ length: 40 }).map((_, i) => {
-              const angle = (i / 40) * 2 * Math.PI + (Math.random() - 0.5) * 0.5;
-              const dist = 150 + Math.random() * 250;
-              return (
-                <span
-                  key={i}
-                  className="congrats-star"
-                  style={{
-                    "--delay": `${Math.random() * 0.6}s`,
-                    "--x": `${Math.cos(angle) * dist}px`,
-                    "--y": `${Math.sin(angle) * dist}px`,
-                    "--rot": `${Math.random() * 720}deg`,
-                    "--size": `${14 + Math.random() * 18}px`,
-                  } as React.CSSProperties}
-                />
-              );
-            })}
+            {CONGRATS_STAR_STYLES.map((style, i) => (
+              <span key={i} className="congrats-star" style={style} />
+            ))}
           </div>
           <div className="congrats-card" onClick={(e) => e.stopPropagation()}>
             <div className="congrats-emoji">{"\uD83C\uDF89"}</div>

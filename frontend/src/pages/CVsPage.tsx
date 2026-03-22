@@ -38,7 +38,22 @@ export default function CVsPage({ userId }: { userId: number }) {
   const [previewCvId, setPreviewCvId] = useState<number | null>(null);
   const [previewBlobUrl, setPreviewBlobUrl] = useState<string | null>(null);
 
-  useEffect(() => { api.getCVs(userId).then(setCvs); }, [userId]);
+  // CV general analysis
+  const [cvAnalyses, setCvAnalyses] = useState<Record<number, api.CVAnalysisResult>>({});
+  const [analyzingCvId, setAnalyzingCvId] = useState<number | null>(null);
+  const [analysisPopupCvId, setAnalysisPopupCvId] = useState<number | null>(null);
+
+  useEffect(() => {
+    api.getCVs(userId).then(setCvs);
+    // Load stored analyses
+    api.getStoredCVAnalyses(userId).then((stored) => {
+      const map: Record<number, api.CVAnalysisResult> = {};
+      for (const a of stored) {
+        map[a.cv_id] = { score: a.score, summary: a.summary, strengths: a.strengths, improvements: a.improvements };
+      }
+      setCvAnalyses(map);
+    }).catch(() => {});
+  }, [userId]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -118,6 +133,22 @@ export default function CVsPage({ userId }: { userId: number }) {
     }
   };
 
+  const handleAnalyzeCV = async (cvId: number) => {
+    // If already stored, just open popup
+    if (cvAnalyses[cvId]) {
+      setAnalysisPopupCvId(cvId);
+      return;
+    }
+    // Otherwise generate, store, then open popup
+    setAnalyzingCvId(cvId);
+    try {
+      const result = await api.analyzeCVGeneral(userId, cvId);
+      setCvAnalyses((prev) => ({ ...prev, [cvId]: result }));
+      setAnalysisPopupCvId(cvId);
+    } catch { /* ignore */ }
+    setAnalyzingCvId(null);
+  };
+
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!file) return;
@@ -126,6 +157,8 @@ export default function CVsPage({ userId }: { userId: number }) {
       const cv = await api.uploadCVFile(userId, file, cvName || file.name, company, jobTitle);
       setCvs([cv, ...cvs]);
       setFile(null); setCvName(""); setCompany(""); setJobTitle("");
+      // Auto-analyze the uploaded CV
+      handleAnalyzeCV(cv.id);
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : t("cvsPage.uploadFailed"));
     } finally { setUploading(false); }
@@ -135,6 +168,20 @@ export default function CVsPage({ userId }: { userId: number }) {
     await api.deleteCV(userId, id);
     setCvs(cvs.filter((c) => c.id !== id));
     if (editingCV?.id === id) closeEditor();
+  };
+
+  const handleToggleDefault = async (cvId: number) => {
+    const cv = cvs.find((c) => c.id === cvId);
+    if (cv?.is_default) return; // Cannot unset — must always have a default
+    try {
+      const updated = await api.toggleDefaultCV(userId, cvId);
+      setCvs(cvs.map((c) => {
+        if (c.id === cvId) return updated;
+        return { ...c, is_default: false };
+      }));
+    } catch {
+      alert(t("cvsPage.uploadFailed"));
+    }
   };
 
   const openEditor = (cv: api.CV) => {
@@ -361,6 +408,14 @@ export default function CVsPage({ userId }: { userId: number }) {
                 <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 18px" }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleToggleDefault(cv.id); }}
+                        className="btn-icon"
+                        title={cv.is_default ? t("cvsPage.removeDefault") : t("cvsPage.setDefault")}
+                        style={{ fontSize: 16, color: cv.is_default ? "var(--accent)" : "var(--text-muted)", opacity: cv.is_default ? 1 : 0.5, padding: 0 }}
+                      >
+                        {cv.is_default ? "\u2605" : "\u2606"}
+                      </button>
                       <strong style={{ color: "var(--text-h)", fontSize: 14 }}>{cv.name}</strong>
                       {cv.latex_content ? (
                         <span className="tag">LaTeX</span>
@@ -411,6 +466,14 @@ export default function CVsPage({ userId }: { userId: number }) {
                         {t("cvsPage.compilePDF")}
                       </a>
                     )}
+                    <button
+                      onClick={() => handleAnalyzeCV(cv.id)}
+                      className="btn-ghost"
+                      disabled={analyzingCvId === cv.id}
+                      style={{ fontSize: 12, padding: "2px 8px" }}
+                    >
+                      {analyzingCvId === cv.id ? t("cvsPage.analyzing") : cvAnalyses[cv.id] ? t("cvsPage.viewAnalysis") : t("cvsPage.analyze")}
+                    </button>
                     <button onClick={() => handleDelete(cv.id)} className="btn-icon" title="Delete">x</button>
                   </div>
                 </div>
@@ -431,6 +494,43 @@ export default function CVsPage({ userId }: { userId: number }) {
           ))}
         </div>
       )}
+
+      {/* Analysis popup */}
+      {analysisPopupCvId !== null && cvAnalyses[analysisPopupCvId] && (() => {
+        const a = cvAnalyses[analysisPopupCvId];
+        const cvName = cvs.find((c) => c.id === analysisPopupCvId)?.name || "CV";
+        return (
+          <div className="modal-overlay" onClick={() => setAnalysisPopupCvId(null)}>
+            <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 520 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                <h3 style={{ margin: 0 }}>{t("cvsPage.analysisOf")} {cvName}</h3>
+                <button className="btn-icon" onClick={() => setAnalysisPopupCvId(null)}>&times;</button>
+              </div>
+              <div style={{ fontSize: 13 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                  <strong>{t("cvsPage.generalScore")} {a.score}/10</strong>
+                </div>
+                <p style={{ margin: "0 0 10px", color: "var(--text-muted)" }}>{a.summary}</p>
+                {a.strengths.length > 0 && (
+                  <>
+                    <strong style={{ fontSize: 12 }}>{t("cvsPage.strengths")}</strong>
+                    <ul style={{ margin: "2px 0 10px", paddingLeft: 20 }}>{a.strengths.map((s, i) => <li key={i}>{s}</li>)}</ul>
+                  </>
+                )}
+                {a.improvements.length > 0 && (
+                  <>
+                    <strong style={{ fontSize: 12 }}>{t("cvsPage.improvements")}</strong>
+                    <ul style={{ margin: "2px 0 0", paddingLeft: 20 }}>{a.improvements.map((s, i) => <li key={i}>{s}</li>)}</ul>
+                  </>
+                )}
+              </div>
+              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
+                <button className="btn-primary" onClick={() => setAnalysisPopupCvId(null)} style={{ boxShadow: "none" }}>{t("common.close")}</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
