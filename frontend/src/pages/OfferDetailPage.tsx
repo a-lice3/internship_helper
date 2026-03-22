@@ -64,7 +64,6 @@ export default function OfferDetailPage({ userId }: { userId: number }) {
   const [cvs, setCvs] = useState<api.CV[]>([]);
   const [selectedCV, setSelectedCV] = useState<number | "">("");
   const [latexResult, setLatexResult] = useState<api.AdaptCVLatexResult | null>(null);
-  const [editedLatex, setEditedLatex] = useState("");
   const [savingLatex, setSavingLatex] = useState(false);
   const [latexSaved, setLatexSaved] = useState(false);
   const [cvSuggestions, setCvSuggestions] = useState<api.CVSuggestionsResult | null>(null);
@@ -185,7 +184,6 @@ export default function OfferDetailPage({ userId }: { userId: number }) {
               if (cancelled) return;
               setCvSuggestions(suggestions);
               setLatexResult(adapted);
-              setEditedLatex(adapted.adapted_latex);
             })
           : api.suggestCVChanges(userId, id, defaultCV.id).then((result) => {
               if (cancelled) return;
