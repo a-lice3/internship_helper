@@ -92,7 +92,7 @@ function LoginScreen({ onLogin }: { onLogin: (user: api.User) => void }) {
   return (
     <div className="login-screen">
       <div className="login-card">
-        <div className="login-icon">{"\u2728"}</div>
+        <div className="login-icon">{"\uD83D\uDC54"}</div>
         <h1>{t("login.title")}</h1>
         <p className="subtitle">{t("login.subtitle")}</p>
 
@@ -296,7 +296,7 @@ export default function App() {
       {/* Sidebar */}
       <aside className="sidebar">
         <div className="sidebar-brand">
-          <div className="sidebar-brand-icon">{"\u2728"}</div>
+          <div className="sidebar-brand-icon">{"\uD83D\uDC54"}</div>
           <div>
             <h1>{t("app.title")}</h1>
             <div className="brand-sub">{t("app.subtitle")}</div>

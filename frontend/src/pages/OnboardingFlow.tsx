@@ -50,14 +50,14 @@ export default function OnboardingFlow({ userId, onComplete }: Props) {
 
   const handleFile = useCallback(async (file: File) => {
     const ext = file.name.split(".").pop()?.toLowerCase();
-    if (ext !== "pdf") return;
+    if (!ext || !["pdf", "zip", "tex"].includes(ext)) return;
 
     setStep("analyzing");
     setError("");
 
     try {
-      await api.uploadCVFile(userId, file, file.name, "", "");
-      await api.autoFillProfile(userId);
+      const cv = await api.uploadCVFile(userId, file, file.name, "", "");
+      await api.autoFillProfile(userId, cv.id);
       setStep("search");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Analysis failed");
@@ -177,7 +177,7 @@ export default function OnboardingFlow({ userId, onComplete }: Props) {
             <input
               ref={fileInputRef}
               type="file"
-              accept=".pdf"
+              accept=".pdf,.zip,.tex"
               style={{ display: "none" }}
               onChange={handleFileInput}
             />
