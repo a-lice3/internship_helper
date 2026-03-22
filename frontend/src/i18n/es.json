@@ -623,5 +623,30 @@
     "title": "Todo listo!",
     "text": "Tu perfil está listo y tu primera oferta está guardada. A buscar el trabajo de tus sueños — buena suerte!",
     "button": "Vamos!"
+  },
+  "guidedTour": {
+    "skip": "Omitir",
+    "next": "Siguiente",
+    "done": "Vamos!",
+    "dashboard": {
+      "title": "Panel",
+      "desc": "Obtén una visión general de tu búsqueda de empleo: estadísticas, calendario y recordatorios."
+    },
+    "offers": {
+      "title": "Candidaturas",
+      "desc": "Gestiona tus ofertas, busca con IA y sigue el progreso de cada candidatura."
+    },
+    "profile": {
+      "title": "Mi Perfil",
+      "desc": "Completa tus habilidades, experiencia y formación. Sube y edita tus CVs y cartas de presentación."
+    },
+    "interview": {
+      "title": "Entrevista",
+      "desc": "Practica con entrevistas simuladas por IA y obtén un análisis detallado de tus respuestas."
+    },
+    "settings": {
+      "title": "Ajustes",
+      "desc": "Configura tu cuenta, el idioma de la interfaz y las instrucciones personalizadas para la IA."
+    }
   }
 }

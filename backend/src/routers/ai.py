@@ -744,17 +744,24 @@ def _save_extracted_profile(
     existing_skill_names = {s.name.lower() for s in existing_skills}
 
     for s in extracted.get("skills", []):
-        name: str = s.get("name") or ""
+        s["name"] = s.get("name") or ""
+        name = s["name"]
         if name.lower() not in existing_skill_names:
             crud.create_skill(db, user_id, schemas.SkillCreate(**s))  # type: ignore[arg-type]
             existing_skill_names.add(name.lower())
     for exp in extracted.get("experiences", []):
+        exp["title"] = exp.get("title") or ""
         crud.create_experience(db, user_id, schemas.ExperienceCreate(**exp))  # type: ignore[arg-type]
     for ed in extracted.get("education", []):
+        ed["school"] = ed.get("school") or ""
+        ed["degree"] = ed.get("degree") or ""
         crud.create_education(db, user_id, schemas.EducationCreate(**ed))  # type: ignore[arg-type]
     for lang in extracted.get("languages", []):
+        lang["language"] = lang.get("language") or ""
+        lang["level"] = lang.get("level") or "intermediate"
         crud.create_language(db, user_id, schemas.LanguageCreate(**lang))  # type: ignore[arg-type]
     for ex in extracted.get("extracurriculars", []):
+        ex["name"] = ex.get("name") or ""
         crud.create_extracurricular(db, user_id, schemas.ExtracurricularCreate(**ex))  # type: ignore[arg-type]
 
 

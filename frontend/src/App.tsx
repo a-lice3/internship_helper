@@ -39,16 +39,18 @@ const NAV_KEYS = [
 
 // ---------- Sidebar Link (matches prefix for nested routes) ----------
 
-function SidebarLink({ to, icon, label }: { to: string; icon: string; label: string }) {
-  const location = useLocation();
-  const isActive = location.pathname === to || location.pathname.startsWith(to + "/");
-  return (
-    <Link to={to} className={isActive ? "active" : ""}>
-      <span className="nav-icon">{icon}</span>
-      <span>{label}</span>
-    </Link>
-  );
-}
+const SidebarLink = React.forwardRef<HTMLAnchorElement, { to: string; icon: string; label: string }>(
+  ({ to, icon, label }, ref) => {
+    const location = useLocation();
+    const isActive = location.pathname === to || location.pathname.startsWith(to + "/");
+    return (
+      <Link to={to} ref={ref} className={isActive ? "active" : ""}>
+        <span className="nav-icon">{icon}</span>
+        <span>{label}</span>
+      </Link>
+    );
+  },
+);
 
 // ---------- Login ----------
 
@@ -161,11 +163,33 @@ export default function App() {
   const [user, setUser] = useState<api.User | null>(null);
   const [loading, setLoading] = useState(() => !!api.getToken());
   const [showCongrats, setShowCongrats] = useState(false);
+  const [showGuidedTour, setShowGuidedTour] = useState(false);
   const [catPaused, setCatPaused] = useState(false);
   const [frozenCatSrc, setFrozenCatSrc] = useState<string | null>(null);
   const catImgRef = useRef<HTMLImageElement>(null);
   const navigate = useNavigate();
   const pendingRedirect = useRef<string | null>(null);
+
+  const refDashboard = useRef<HTMLAnchorElement>(null);
+  const refOffers = useRef<HTMLAnchorElement>(null);
+  const refProfile = useRef<HTMLAnchorElement>(null);
+  const refInterview = useRef<HTMLAnchorElement>(null);
+  const refSettings = useRef<HTMLAnchorElement>(null);
+  const navRefMap: Record<string, React.RefObject<HTMLAnchorElement | null>> = {
+    "/dashboard": refDashboard,
+    "/offers": refOffers,
+    "/profile": refProfile,
+    "/interview": refInterview,
+    "/settings": refSettings,
+  };
+
+  const tourSteps: TourStep[] = [
+    { targetRef: refDashboard, titleKey: "guidedTour.dashboard.title", descriptionKey: "guidedTour.dashboard.desc" },
+    { targetRef: refOffers, titleKey: "guidedTour.offers.title", descriptionKey: "guidedTour.offers.desc" },
+    { targetRef: refProfile, titleKey: "guidedTour.profile.title", descriptionKey: "guidedTour.profile.desc" },
+    { targetRef: refInterview, titleKey: "guidedTour.interview.title", descriptionKey: "guidedTour.interview.desc" },
+    { targetRef: refSettings, titleKey: "guidedTour.settings.title", descriptionKey: "guidedTour.settings.desc" },
+  ];
 
   const handleCatClick = useCallback(() => {
     if (!catPaused) {
@@ -202,14 +226,21 @@ export default function App() {
     }
   }, []);
 
-  // After onboarding completes and congrats is dismissed, navigate to the pending redirect
+  // After onboarding completes and congrats + tour are dismissed, navigate to the pending redirect
   useEffect(() => {
-    if (pendingRedirect.current && user?.has_completed_onboarding && !showCongrats) {
+    if (pendingRedirect.current && user?.has_completed_onboarding && !showCongrats && !showGuidedTour) {
       const dest = pendingRedirect.current;
       pendingRedirect.current = null;
       navigate(dest, { replace: true });
     }
-  }, [user, navigate, showCongrats]);
+  }, [user, navigate, showCongrats, showGuidedTour]);
+
+  const handleCongratsClose = () => {
+    setShowCongrats(false);
+    if (!localStorage.getItem(`guided_tour_done_${user?.id}`)) {
+      setShowGuidedTour(true);
+    }
+  };
 
   const handleLogout = () => {
     api.setToken(null);
@@ -274,7 +305,7 @@ export default function App() {
 
         <nav className="sidebar-nav">
           {NAV_KEYS.map((item) => (
-            <SidebarLink key={item.to} to={item.to} icon={item.icon} label={t(item.labelKey)} />
+            <SidebarLink key={item.to} ref={navRefMap[item.to]} to={item.to} icon={item.icon} label={t(item.labelKey)} />
           ))}
         </nav>
 
@@ -332,7 +363,7 @@ export default function App() {
 
       {/* Congrats popup after onboarding */}
       {showCongrats && (
-        <div className="congrats-overlay" onClick={() => setShowCongrats(false)}>
+        <div className="congrats-overlay" onClick={handleCongratsClose}>
           <div className="congrats-stars">
             {CONGRATS_STAR_STYLES.map((style, i) => (
               <span key={i} className="congrats-star" style={style} />
@@ -342,11 +373,22 @@ export default function App() {
             <div className="congrats-emoji">{"\uD83C\uDF89"}</div>
             <h2 className="congrats-title">{t("congrats.title")}</h2>
             <p className="congrats-text">{t("congrats.text")}</p>
-            <button className="btn-primary congrats-btn" onClick={() => setShowCongrats(false)}>
+            <button className="btn-primary congrats-btn" onClick={handleCongratsClose}>
               {t("congrats.button")}
             </button>
           </div>
         </div>
+      )}
+
+      {/* Guided tour after congrats */}
+      {showGuidedTour && (
+        <GuidedTour
+          steps={tourSteps}
+          onComplete={() => {
+            setShowGuidedTour(false);
+            localStorage.setItem(`guided_tour_done_${user.id}`, "1");
+          }}
+        />
       )}
     </div>
   );

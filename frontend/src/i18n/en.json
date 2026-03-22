@@ -623,5 +623,30 @@
     "title": "You're all set!",
     "text": "Your profile is ready and your first offer is saved. Time to land your dream job — good luck!",
     "button": "Let's go!"
+  },
+  "guidedTour": {
+    "skip": "Skip",
+    "next": "Next",
+    "done": "Let's go!",
+    "dashboard": {
+      "title": "Dashboard",
+      "desc": "Get an overview of your job search: statistics, calendar, and upcoming reminders."
+    },
+    "offers": {
+      "title": "Applications",
+      "desc": "Manage your offers, search with AI, and track each application's progress."
+    },
+    "profile": {
+      "title": "My Profile",
+      "desc": "Fill in your skills, experience, and education. Upload and edit your CVs and cover letters."
+    },
+    "interview": {
+      "title": "Interview",
+      "desc": "Practice with AI-powered mock interviews and get detailed feedback on your answers."
+    },
+    "settings": {
+      "title": "Settings",
+      "desc": "Configure your account, display language, and custom AI instructions."
+    }
   }
 }

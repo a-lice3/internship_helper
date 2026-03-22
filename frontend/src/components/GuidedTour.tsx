@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useReducer } from "react";
 import { useTranslation } from "react-i18next";
 
 export interface TourStep {
@@ -15,23 +15,21 @@ interface Props {
 export default function GuidedTour({ steps, onComplete }: Props) {
   const { t } = useTranslation();
   const [current, setCurrent] = useState(0);
-  const [rect, setRect] = useState<DOMRect | null>(null);
+  const [, forceUpdate] = useReducer((x: number) => x + 1, 0);
 
-  const updateRect = useCallback(() => {
+  const getRect = useCallback(() => {
     const el = steps[current]?.targetRef.current;
-    if (el) setRect(el.getBoundingClientRect());
+    return el ? el.getBoundingClientRect() : null;
   }, [current, steps]);
 
+  // Recalculate on resize
   useEffect(() => {
-    updateRect();
-  }, [updateRect]);
-
-  useEffect(() => {
-    const onResize = () => updateRect();
+    const onResize = () => forceUpdate();
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
-  }, [updateRect]);
+  }, []);
 
+  // Keyboard navigation
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onComplete();
@@ -44,6 +42,7 @@ export default function GuidedTour({ steps, onComplete }: Props) {
     return () => window.removeEventListener("keydown", onKey);
   }, [current, steps.length, onComplete]);
 
+  const rect = getRect();
   if (!rect) return null;
 
   const PAD = 6;
