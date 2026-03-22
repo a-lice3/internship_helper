@@ -27,7 +27,7 @@ internship_helper/
 │   │   ├── config.py              # Environment variables (DATABASE_URL, MISTRAL_API_KEY, UPLOAD_DIR, JWT)
 │   │   ├── auth.py                # JWT authentication (password hashing, token creation/verification, get_current_user)
 │   │   ├── database.py            # SQLAlchemy engine, Base, session, get_db()
-│   │   ├── models.py              # SQLAlchemy ORM models (18 tables)
+│   │   ├── models.py              # SQLAlchemy ORM models (20 tables)
 │   │   ├── schemas.py             # Pydantic request/response schemas
 │   │   ├── crud.py                # Database read/write operations
 │   │   ├── llm_service.py         # Mistral chat/transcription wrapper
@@ -70,21 +70,28 @@ internship_helper/
 │   └── Dockerfile
 ├── frontend/
 │   ├── src/
-│   │   ├── App.tsx                # Main app with routing + sidebar navigation
+│   │   ├── App.tsx                # Main app: routing, sidebar, onboarding gate, guided tour
 │   │   ├── api.ts                 # API client (REST + WebSocket)
+│   │   ├── i18n/                  # Internationalization (EN, FR, DE, ES)
+│   │   │   ├── index.ts               # i18next config + language detection
+│   │   │   ├── helpers.ts             # Translation helper functions
+│   │   │   ├── en.json, fr.json, de.json, es.json
+│   │   ├── components/
+│   │   │   └── GuidedTour.tsx         # Interactive post-onboarding tour (spotlight, keyboard nav)
 │   │   ├── pages/
+│   │   │   ├── OnboardingFlow.tsx     # 5-step guided onboarding (CV upload → search → match)
 │   │   │   ├── DashboardPage.tsx      # Stats, activity feed, reminders
 │   │   │   ├── OffersPage.tsx         # Offer list with status filtering
 │   │   │   ├── OfferDetailPage.tsx    # Full offer view + notes + AI actions
 │   │   │   ├── SearchPage.tsx         # External offer search + smart matching
 │   │   │   ├── ProfilePage.tsx        # Profile management
-│   │   │   ├── CVsPage.tsx            # CV management
+│   │   │   ├── CVsPage.tsx            # CV management + general/offer analysis
 │   │   │   ├── TemplatesPage.tsx      # Cover letter templates
 │   │   │   ├── AIPage.tsx             # AI features hub
 │   │   │   ├── InterviewPage.tsx      # Mock interviews
 │   │   │   ├── CalendarPage.tsx       # Calendar view of deadlines/interviews
 │   │   │   ├── RemindersPage.tsx      # Reminders management
-│   │   │   └── SettingsPage.tsx       # User settings
+│   │   │   └── SettingsPage.tsx       # User settings (language selector)
 │   │   └── hooks/
 │   │       ├── useInterview.ts
 │   │       └── useSpeechRecognition.ts
@@ -107,7 +114,7 @@ internship_helper/
 | Data access | `crud.py` | Database queries |
 | Models | `models.py`, `database.py` | ORM table definitions |
 | Config | `config.py` | Environment variables |
-| Frontend | `frontend/` | React SPA (Vite + TypeScript + React Router) |
+| Frontend | `frontend/` | React SPA (Vite + TypeScript + React Router + i18next) |
 
 ---
 
@@ -115,7 +122,7 @@ internship_helper/
 
 ```
 users
-├── id, name, email, ai_instructions, created_at
+├── id, name, email, ai_instructions, has_completed_onboarding, created_at
 
 skills
 ├── id, user_id (FK), name, category (enum), level
@@ -142,7 +149,7 @@ internship_offers
 cvs
 ├── id, user_id (FK), offer_id (FK, nullable)
 ├── name, company, job_title, content, latex_content, file_path, support_files_dir
-├── is_adapted, created_at
+├── is_adapted, is_default, created_at
 
 generated_cover_letters
 ├── id, user_id (FK), offer_id (FK), template_id (FK, nullable)
@@ -190,6 +197,15 @@ reminders
 offer_notes
 ├── id, user_id (FK), offer_id (FK)
 ├── content, created_at, updated_at
+
+cv_general_analyses
+├── id, user_id (FK), cv_id (FK, cascade)
+├── score, summary, strengths (JSON), improvements (JSON), created_at
+
+cv_offer_analyses
+├── id, user_id (FK), offer_id (FK), cv_id (FK)
+├── offer_title, company, score, suggested_title, suggested_profile
+├── other_suggestions (JSON), created_at
 ```
 
 ---
@@ -202,6 +218,7 @@ offer_notes
 | POST | `/auth/register` | Register new user |
 | POST | `/auth/login` | Login (returns JWT token) |
 | GET | `/auth/me` | Get current user from token |
+| PATCH | `/auth/complete-onboarding` | Mark onboarding as complete |
 
 ### Users
 | Method | Path | Description |
@@ -245,6 +262,10 @@ offer_notes
 | POST | `/users/{id}/cvs/{cv_id}/compile-pdf` | Compile LaTeX to PDF |
 | PATCH | `/users/{id}/cvs/{cv_id}` | Update CV metadata |
 | POST | `/users/{id}/cvs/{cv_id}/chat-edit` | Chat-based LaTeX editing |
+| POST | `/users/{id}/cvs/{cv_id}/toggle-default` | Toggle default CV |
+| POST | `/users/{id}/cvs/{cv_id}/analyze` | General CV analysis (score, strengths, improvements) |
+| GET | `/users/{id}/cv-analyses` | List stored CV analyses |
+| GET | `/users/{id}/cv-offer-analyses` | List stored CV-offer analyses |
 | DELETE | `/users/{id}/cvs/{cv_id}` | Delete CV |
 
 ### Cover Letter Templates
@@ -329,6 +350,8 @@ offer_notes
 | Skill gap analysis | User skills + offer | Missing skills + recommendations (JSON) |
 | Cover letter draft | Offer + user profile + optional template | Cover letter text |
 | Offer parsing | Raw job description text | Structured offer data (JSON) |
+| CV general analysis | CV text | Score, summary, strengths, improvements (JSON) |
+| CV offer analysis | CV text + offer | Match score, suggested title, profile, recommendations |
 | Profile auto-fill | CV text (stored or uploaded PDF) | Extracted skills, experiences, education, languages, extracurriculars |
 | Pitch analysis | Audio recording (Voxtral transcription) + optional offer | Structured feedback (JSON) |
 | Interview simulation | WebSocket session with AI interviewer | Live Q&A + post-interview analysis |

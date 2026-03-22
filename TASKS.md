@@ -239,6 +239,49 @@
 
 ---
 
+## Phase 24 — Internationalization [DONE]
+
+- [x] i18next setup with browser language detection + localStorage persistence
+- [x] 4 languages: English, French, German, Spanish
+- [x] Translation files (en.json, fr.json, de.json, es.json)
+- [x] Helper functions for translated arrays (months, days, status labels)
+- [x] Language selector in SettingsPage
+
+---
+
+## Phase 25 — Onboarding & Guided Tour [DONE]
+
+- [x] OnboardingFlow component (5-step: CV upload → AI analysis → search → match → generate)
+- [x] `has_completed_onboarding` flag on User model
+- [x] `PATCH /auth/complete-onboarding` endpoint
+- [x] Onboarding gate in App.tsx (redirects new users to onboarding)
+- [x] Congratulations popup with confetti animation
+- [x] GuidedTour component (spotlight, keyboard nav, step counter)
+- [x] Tour persisted in localStorage per user
+- [x] Alembic migration for `has_completed_onboarding` column
+
+---
+
+## Phase 26 — CV Analysis [DONE]
+
+- [x] `cv_general_analyses` table (score, summary, strengths, improvements)
+- [x] `cv_offer_analyses` table (match score, suggested title, profile, recommendations)
+- [x] `is_default` column on CVs
+- [x] `POST /users/{id}/cvs/{cv_id}/analyze` — general CV analysis
+- [x] `POST /users/{id}/cvs/{cv_id}/toggle-default` — toggle default CV
+- [x] `GET /users/{id}/cv-analyses` and `GET /users/{id}/cv-offer-analyses`
+- [x] Frontend: CV analysis UI in CVsPage
+- [x] 3 Alembic migrations
+
+---
+
+## Phase 27 — UX Improvements [DONE]
+
+- [x] Sidebar cat animation (click to pause/resume)
+- [x] UI polish and CSS improvements
+
+---
+
 ## Next Steps (TODO)
 
 - [ ] Tests for AI endpoints (mock Mistral calls)

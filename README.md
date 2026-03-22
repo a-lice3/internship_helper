@@ -7,6 +7,16 @@ As a bonus, it also offers pitch and interview simulation and evaluation, calend
 
 ## Features
 
+### Onboarding
+- 5-step guided onboarding for new users:
+  1. Upload your CV (drag & drop PDF)
+  2. AI analyzes and auto-fills your profile (skills, experiences, education, languages)
+  3. Describe your dream job in natural language
+  4. Browse AI-matched offers with relevance scores
+  5. Auto-generate skill gap analysis and cover letter for your chosen offer
+- Can be skipped at any step
+- Followed by a congratulations animation and an interactive guided tour of the app
+
 ### Profile Management
 - Store your complete profile: skills (by category), experiences, education, languages (with levels), extracurriculars
 - Auto-fill your profile from an uploaded CV (PDF) using AI extraction
@@ -42,6 +52,9 @@ As a bonus, it also offers pitch and interview simulation and evaluation, calend
 
 ### CV Management
 - Upload CVs in multiple formats: PDF, LaTeX (.tex), or LaTeX project (.zip)
+- Mark a CV as default for quick access
+- **AI-powered CV analysis**: general scoring with strengths, improvements, and summary
+- **Offer-specific CV analysis**: match score, suggested title, profile summary, and recommendations
 - Interactive LaTeX editor with live PDF preview
 - AI-powered chat editing: describe changes in natural language, get updated LaTeX
 - Compile LaTeX to PDF directly from the app
@@ -88,6 +101,7 @@ As a bonus, it also offers pitch and interview simulation and evaluation, calend
 ### Frontend
 - **React 19** with **TypeScript**, built with **Vite**
 - **React Router** for navigation
+- **i18next** for internationalization (EN, FR, DE, ES)
 - **docx** + **file-saver** for .docx export
 
 ### Infrastructure
@@ -222,7 +236,7 @@ internship_helper/
 │   │   ├── config.py              # Environment variables
 │   │   ├── auth.py                # JWT authentication (password hashing, token creation/verification)
 │   │   ├── database.py            # SQLAlchemy engine & session
-│   │   ├── models.py              # 18 SQLAlchemy models
+│   │   ├── models.py              # 20 SQLAlchemy models
 │   │   ├── schemas.py             # 40+ Pydantic schemas
 │   │   ├── crud.py                # Database operations
 │   │   ├── llm_service.py         # Mistral AI functions (CV, cover letter, pitch, etc.)
@@ -257,24 +271,28 @@ internship_helper/
 │   └── Dockerfile
 ├── frontend/
 │   ├── src/
-│   │   ├── App.tsx                # Login, routing, sidebar navigation
+│   │   ├── App.tsx                # Login, routing, sidebar, onboarding gate, guided tour
 │   │   ├── api.ts                 # API client (REST + WebSocket)
+│   │   ├── i18n/                  # Internationalization (EN, FR, DE, ES)
+│   │   ├── components/
+│   │   │   └── GuidedTour.tsx         # Interactive post-onboarding tour
 │   │   ├── hooks/
 │   │   │   ├── useInterview.ts        # WebSocket interview state machine
 │   │   │   └── useSpeechRecognition.ts # Mic recording + Voxtral transcription
 │   │   └── pages/
+│   │       ├── OnboardingFlow.tsx     # 5-step guided onboarding
 │   │       ├── DashboardPage.tsx      # Stats, activity feed
 │   │       ├── OffersPage.tsx         # Offer list with status filtering
 │   │       ├── OfferDetailPage.tsx    # Full offer view + notes + AI actions
 │   │       ├── SearchPage.tsx         # External offer search + smart matching
 │   │       ├── ProfilePage.tsx        # Profile management
-│   │       ├── CVsPage.tsx            # CV management
+│   │       ├── CVsPage.tsx            # CV management + analysis
 │   │       ├── TemplatesPage.tsx      # Cover letter templates
 │   │       ├── AIPage.tsx             # AI features hub
 │   │       ├── InterviewPage.tsx      # Mock interviews
 │   │       ├── CalendarPage.tsx       # Calendar view
 │   │       ├── RemindersPage.tsx      # Reminders management
-│   │       └── SettingsPage.tsx       # User settings
+│   │       └── SettingsPage.tsx       # User settings (language selector)
 │   ├── package.json
 │   └── Dockerfile
 ├── docker-compose.yml             # Multi-service orchestration (backend + db + frontend)
@@ -286,13 +304,13 @@ internship_helper/
 
 | Area | Examples |
 |------|----------|
-| **Auth** | `POST /auth/register`, `POST /auth/login`, `GET /auth/me` |
+| **Auth** | `POST /auth/register`, `POST /auth/login`, `GET /auth/me`, `PATCH /auth/complete-onboarding` |
 | **Users** | `POST /users`, `GET /users/{id}`, `GET /users/by-email/{email}` |
 | **Profile** | Full CRUD for skills, experiences, education, languages, extracurriculars, AI instructions |
 | **Offers** | `POST/GET/PATCH/DELETE /users/{id}/offers`, status filtering |
-| **CVs** | Upload (PDF/tex/zip), download, compile PDF, chat edit |
+| **CVs** | Upload (PDF/tex/zip), download, compile PDF, chat edit, toggle default, analyze |
 | **Templates** | Create from text or PDF upload, list, delete |
-| **AI** | Adapt CV (text + LaTeX), skill gap analysis, cover letter generation, pitch analysis, offer parsing, profile auto-fill |
+| **AI** | Adapt CV (text + LaTeX), skill gap analysis, cover letter generation, pitch analysis, offer parsing, profile auto-fill, CV analysis (general + offer-specific), AI chat search |
 | **Interview** | Create/list/delete sessions, view detail, run analysis, predict questions, progress stats, `WS /ws/interview/{id}` |
 | **Search** | `POST /search/francetravail`, `/search/wttj`, `/search/themuse`, smart matching |
 | **Dashboard** | `GET /users/{id}/dashboard` (stats, activity, reminders) |
@@ -307,6 +325,5 @@ Full interactive documentation available at `/docs` when the server is running.
 |------|---------|
 | CVs | PDF, LaTeX (.tex), LaTeX project (.zip) |
 | Templates | PDF, plain text |
-| Audio (pitch & interview) | mp3, wav, webm, ogg, m4a, flac |
 
 See [TASKS.md](TASKS.md) for the roadmap, [ARCHITECTURE.md](ARCHITECTURE.md) for technical details, and [ALEMBIC.md](ALEMBIC.md) for the database migration guide.
