@@ -95,6 +95,7 @@ export interface CV {
   job_title: string | null;
   offer_id: number | null;
   is_adapted: boolean;
+  is_default: boolean;
   created_at: string | null;
 }
 
@@ -151,6 +152,47 @@ export interface AdaptCVLatexResult {
   offer_title: string;
   company: string;
   support_files_dir: string | null;
+}
+
+export interface CVSuggestionsResult {
+  id: number | null;
+  cv_id: number | null;
+  score: number;
+  suggested_title: string | null;
+  suggested_profile: string | null;
+  other_suggestions: string[];
+  offer_title: string;
+  company: string;
+}
+
+export interface StoredCVOfferAnalysis {
+  id: number;
+  offer_id: number;
+  cv_id: number;
+  offer_title: string;
+  company: string;
+  score: number;
+  suggested_title: string | null;
+  suggested_profile: string | null;
+  other_suggestions: string[];
+  created_at: string | null;
+}
+
+export interface CVAnalysisResult {
+  score: number;
+  summary: string;
+  strengths: string[];
+  improvements: string[];
+}
+
+export interface StoredCVAnalysis {
+  id: number;
+  cv_id: number;
+  score: number;
+  summary: string;
+  strengths: string[];
+  improvements: string[];
+  created_at: string | null;
 }
 
 export interface ParsedOffer {
@@ -438,6 +480,18 @@ export const chatEditCV = (uid: number, cvId: number, message: string, conversat
 export const deleteCV = (uid: number, id: number) =>
   request<void>(`/users/${uid}/cvs/${id}`, { method: "DELETE" });
 
+export const toggleDefaultCV = (uid: number, cvId: number) =>
+  request<CV>(`/users/${uid}/cvs/${cvId}/toggle-default`, { method: "POST" });
+
+export const analyzeCVGeneral = (uid: number, cvId: number) =>
+  request<CVAnalysisResult>(`/users/${uid}/cvs/${cvId}/analyze`, { method: "POST" });
+
+export const getStoredCVAnalyses = (uid: number) =>
+  request<StoredCVAnalysis[]>(`/users/${uid}/cv-analyses`);
+
+export const getStoredCVOfferAnalyses = (uid: number) =>
+  request<StoredCVOfferAnalysis[]>(`/users/${uid}/cv-offer-analyses`);
+
 export const downloadCVUrl = (uid: number, id: number) =>
   `${BASE}/users/${uid}/cvs/${id}/download`;
 
@@ -541,6 +595,12 @@ export const deleteStoredSkillGap = (uid: number, id: number) =>
 
 export const adaptCVLatex = (uid: number, offerId: number, cvId: number) =>
   request<AdaptCVLatexResult>(`/users/${uid}/offers/${offerId}/adapt-cv-latex`, {
+    method: "POST",
+    body: JSON.stringify({ cv_id: cvId }),
+  });
+
+export const suggestCVChanges = (uid: number, offerId: number, cvId: number) =>
+  request<CVSuggestionsResult>(`/users/${uid}/offers/${offerId}/suggest-cv-changes`, {
     method: "POST",
     body: JSON.stringify({ cv_id: cvId }),
   });

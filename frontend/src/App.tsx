@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Routes, Route, Link, Navigate, useNavigate, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import * as api from "./api";
@@ -160,8 +160,33 @@ export default function App() {
   const [user, setUser] = useState<api.User | null>(null);
   const [loading, setLoading] = useState(() => !!api.getToken());
   const [showCongrats, setShowCongrats] = useState(false);
+  const [catPaused, setCatPaused] = useState(false);
+  const [frozenCatSrc, setFrozenCatSrc] = useState<string | null>(null);
+  const catImgRef = useRef<HTMLImageElement>(null);
   const navigate = useNavigate();
   const pendingRedirect = useRef<string | null>(null);
+
+  const handleCatClick = useCallback(() => {
+    if (!catPaused) {
+      // Freeze: capture current frame onto a canvas
+      const img = catImgRef.current;
+      if (img) {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(img, 0, 0);
+          setFrozenCatSrc(canvas.toDataURL());
+        }
+      }
+      setCatPaused(true);
+    } else {
+      // Unfreeze: reload the GIF to restart animation
+      setFrozenCatSrc(null);
+      setCatPaused(false);
+    }
+  }, [catPaused]);
 
 
   useEffect(() => {
@@ -252,8 +277,13 @@ export default function App() {
           ))}
         </nav>
 
-        <div className="sidebar-cat">
-          <img src={sittingCat} alt="Mistral cat" className="sidebar-cat-img" />
+        <div className="sidebar-cat" onClick={handleCatClick} style={{ cursor: "pointer" }}>
+          <img
+            ref={catImgRef}
+            src={frozenCatSrc ?? sittingCat}
+            alt="Mistral cat"
+            className="sidebar-cat-img"
+          />
         </div>
 
         <div className="sidebar-user">

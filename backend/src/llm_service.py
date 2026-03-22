@@ -78,10 +78,14 @@ def adapt_cv(
     system_prompt = (
         "You are an expert career advisor. "
         "You will receive a CV and an internship offer. "
-        "Rewrite the CV to better match the offer. "
-        "Adapt the profile summary, highlight relevant skills, "
-        "adjust the job title, and reorder experiences to match the offer requirements. "
-        "Keep the same factual content — do not invent experience. "
+        "Adapt the CV to better match the offer by:\n"
+        "1. Adapting the job title / position sought to match the offer\n"
+        "2. Rewriting the profile/summary section (if one exists) to highlight "
+        "relevant skills for this offer\n"
+        "3. Emphasizing or reordering relevant experiences and skills\n\n"
+        "IMPORTANT: Do NOT remove or shorten any content. Keep all experiences, "
+        "education, and skills — you may rephrase or reorder them but never delete them. "
+        "Do not invent experience. "
         "Return only the adapted CV text."
     )
     system_prompt = _append_user_instructions(system_prompt, user_instructions)
@@ -93,6 +97,90 @@ def adapt_cv(
         f"## Current CV\n{cv_content}"
     )
     return _chat(system_prompt, user_prompt)
+
+
+def suggest_cv_changes(
+    cv_content: str,
+    offer_title: str,
+    company: str,
+    offer_description: str,
+    user_instructions: str | None = None,
+) -> dict:
+    """Suggest specific changes to a CV to better match an offer (for non-LaTeX CVs)."""
+    system_prompt = (
+        "You are an expert career advisor. "
+        "You will receive a CV's text content and an internship offer. "
+        "Since this CV cannot be automatically modified, provide specific textual suggestions. "
+        "Respond in JSON with exactly these keys: "
+        '"score" (integer 0-10 — how well this CV matches the offer as-is), '
+        '"suggested_title" (string or null — the job title the user should put on their CV to match the offer), '
+        '"suggested_profile" (string or null — a rewritten profile/summary section if one exists, '
+        "tailored to highlight relevant skills for this offer), "
+        '"other_suggestions" (list of strings — any other specific suggestions to improve the CV for this offer). '
+        "Keep suggestions concise and actionable. Do not invent experience. "
+        "Return only valid JSON, no markdown."
+    )
+    system_prompt = _append_user_instructions(system_prompt, user_instructions)
+    user_prompt = (
+        f"## Internship Offer\n"
+        f"Company: {company}\n"
+        f"Title: {offer_title}\n"
+        f"Description: {offer_description}\n\n"
+        f"## Current CV\n{cv_content}"
+    )
+    raw = _chat(system_prompt, user_prompt)
+
+    try:
+        result = json.loads(raw)
+    except json.JSONDecodeError:
+        result = {
+            "score": 5,
+            "suggested_title": None,
+            "suggested_profile": None,
+            "other_suggestions": [raw],
+        }
+    return {
+        "score": result.get("score", 5),
+        "suggested_title": result.get("suggested_title"),
+        "suggested_profile": result.get("suggested_profile"),
+        "other_suggestions": result.get("other_suggestions", []),
+    }
+
+
+def analyze_cv_general(
+    cv_content: str,
+    user_instructions: str | None = None,
+) -> dict:
+    """Analyze a CV's overall quality (independent of any offer)."""
+    system_prompt = (
+        "You are an expert career advisor and CV reviewer. "
+        "Analyze the CV and provide a general quality assessment. "
+        "Respond in JSON with exactly these keys: "
+        '"score" (integer 0-10 — overall CV quality), '
+        '"summary" (string — brief overall assessment), '
+        '"strengths" (list of strings — what the CV does well), '
+        '"improvements" (list of strings — specific actionable improvements). '
+        "Return only valid JSON, no markdown."
+    )
+    system_prompt = _append_user_instructions(system_prompt, user_instructions)
+    user_prompt = f"## CV to analyze\n{cv_content}"
+    raw = _chat(system_prompt, user_prompt)
+
+    try:
+        result = json.loads(raw)
+    except json.JSONDecodeError:
+        result = {
+            "score": 5,
+            "summary": raw,
+            "strengths": [],
+            "improvements": [],
+        }
+    return {
+        "score": result.get("score", 5),
+        "summary": result.get("summary", ""),
+        "strengths": result.get("strengths", []),
+        "improvements": result.get("improvements", []),
+    }
 
 
 def analyze_skill_gap(
@@ -516,9 +604,13 @@ _ADAPT_CV_SYSTEM_PROMPT = (
     "You are an expert career advisor and LaTeX specialist. "
     "You will receive a LaTeX CV source and an internship offer. "
     "Adapt the CV to better match the offer by:\n"
-    "1. Modifying the PROFILE/summary section to highlight relevant skills for this offer\n"
-    "2. Adapting the job title/position sought to match the offer\n"
-    "3. Reordering or emphasizing relevant experiences and skills\n\n"
+    "1. Adapting the job title/position sought to match the offer\n"
+    "2. Rewriting the PROFILE/summary section (if one exists) to highlight "
+    "relevant skills for this offer\n"
+    "3. Emphasizing or reordering relevant experiences and skills\n\n"
+    "IMPORTANT: Do NOT remove or shorten any content. Keep all experiences, "
+    "education, skills, and bullet points — you may rephrase or reorder them "
+    "but never delete them.\n\n"
     "CRITICAL LaTeX RULES:\n"
     "- PRESERVE the exact same \\documentclass, \\usepackage commands, and document structure\n"
     "- ONLY modify TEXT CONTENT inside environments and commands — never change "
@@ -529,8 +621,6 @@ _ADAPT_CV_SYSTEM_PROMPT = (
     "\\% for %, \\_ for _, \\# for #, \\$ for $, \\{ for {, \\} for }\n"
     "- Do NOT add raw special characters (& _ % # $) in text — they MUST be escaped\n"
     "- Do NOT invent experience, education, or skills that are not in the original CV\n"
-    "- The generated LaTeX MUST compile to exactly ONE page — adjust spacing, "
-    "font sizes, or trim less relevant details if needed\n"
     "- Return ONLY the complete LaTeX source code, no explanations, no markdown fences\n"
     "- The output must be valid, compilable LaTeX — test mentally that every "
     "brace is matched and every special character is escaped"
@@ -547,11 +637,7 @@ def adapt_cv_latex(
     max_retries: int = 2,
     user_instructions: str | None = None,
 ) -> str:
-    """Adapt a LaTeX CV to a specific internship offer, returning valid LaTeX.
-
-    After the initial generation, compiles the result and checks the page count.
-    If it exceeds 1 page, asks Mistral to shorten it (up to *max_retries* times).
-    """
+    """Adapt a LaTeX CV to a specific internship offer, returning valid LaTeX."""
     user_prompt = (
         f"## Internship Offer\n"
         f"Company: {company}\n"
@@ -573,41 +659,8 @@ def adapt_cv_latex(
         _ADAPT_CV_SYSTEM_PROMPT, user_instructions
     )
 
-    # First generation
     result = _chat(system_prompt, user_prompt)
-    cleaned = _strip_markdown_fences(result)
-
-    # Build message history for possible follow-ups
-    messages: Messages = [
-        SystemMessage(role="system", content=system_prompt),
-        UserMessage(role="user", content=user_prompt),
-        AssistantMessage(role="assistant", content=cleaned),
-    ]
-
-    # Feedback loop: compile → check pages → ask to shorten
-    for attempt in range(max_retries):
-        page_count = _try_count_pages(cleaned, support_files_dir)
-        if page_count is None or page_count <= 1:
-            break
-
-        logger.info(
-            "Adapted CV is %d pages (attempt %d/%d), asking Mistral to shorten",
-            page_count,
-            attempt + 1,
-            max_retries,
-        )
-        followup = (
-            f"The LaTeX you just produced compiles to {page_count} pages. "
-            f"It MUST fit on exactly 1 page. "
-            f"Please shorten the content: remove less relevant bullet points, "
-            f"reduce descriptions, trim the least important sections, or reduce "
-            f"spacing/font sizes. "
-            f"Return ONLY the corrected complete LaTeX source, no explanations."
-        )
-        new_result, messages = _chat_continue(messages, followup)
-        cleaned = _strip_markdown_fences(new_result)
-
-    return cleaned
+    return _strip_markdown_fences(result)
 
 
 _CHAT_EDIT_CV_SYSTEM_PROMPT = (

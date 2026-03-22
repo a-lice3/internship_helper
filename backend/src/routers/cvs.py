@@ -249,6 +249,21 @@ def chat_edit_cv_endpoint(
     return schemas.ChatEditCVResponse(updated_latex=updated_latex)
 
 
+@router.post("/{cv_id}/toggle-default", response_model=schemas.CVResponse)
+def toggle_default_cv(
+    user_id: int,
+    cv_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Toggle a CV as the default. Only one CV can be default at a time."""
+    _verify_owner(user_id, current_user)
+    cv = crud.set_default_cv(db, user_id, cv_id)
+    if not cv:
+        raise HTTPException(status_code=404, detail="CV not found")
+    return cv
+
+
 @router.delete("/{cv_id}")
 def delete_cv(
     user_id: int,

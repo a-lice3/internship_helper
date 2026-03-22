@@ -438,6 +438,15 @@ def delete_offer(db: Session, offer_id: int) -> bool:
 
 
 def create_cv(db: Session, user_id: int, cv: schemas.CVCreate) -> models.CV:
+    # Auto-set as default if no default CV exists for this user
+    has_default = (
+        db.query(models.CV)
+        .filter(
+            models.CV.user_id == user_id, models.CV.is_default == True  # noqa: E712
+        )
+        .first()
+        is not None
+    )
     db_cv = models.CV(
         user_id=user_id,
         name=cv.name,
@@ -447,6 +456,7 @@ def create_cv(db: Session, user_id: int, cv: schemas.CVCreate) -> models.CV:
         company=cv.company,
         job_title=cv.job_title,
         offer_id=cv.offer_id,
+        is_default=not has_default,
     )
     db.add(db_cv)
     db.commit()
@@ -479,6 +489,15 @@ def create_cv_from_file(
     job_title: str | None = None,
     offer_id: int | None = None,
 ) -> models.CV:
+    # Auto-set as default if no default CV exists for this user
+    has_default = (
+        db.query(models.CV)
+        .filter(
+            models.CV.user_id == user_id, models.CV.is_default == True  # noqa: E712
+        )
+        .first()
+        is not None
+    )
     db_cv = models.CV(
         user_id=user_id,
         name=name,
@@ -489,6 +508,7 @@ def create_cv_from_file(
         company=company,
         job_title=job_title,
         offer_id=offer_id,
+        is_default=not has_default,
     )
     db.add(db_cv)
     db.commit()
@@ -505,6 +525,36 @@ def update_cv(db: Session, cv_id: int, update: schemas.CVUpdate) -> models.CV | 
     db.commit()
     db.refresh(cv)
     return cv
+
+
+def set_default_cv(db: Session, user_id: int, cv_id: int) -> models.CV | None:
+    """Set a CV as default, removing default from all other CVs for this user.
+    Cannot unset — must always have exactly one default CV."""
+    cv = (
+        db.query(models.CV)
+        .filter(models.CV.id == cv_id, models.CV.user_id == user_id)
+        .first()
+    )
+    if not cv:
+        return None
+    # Unset all other defaults for this user
+    db.query(models.CV).filter(
+        models.CV.user_id == user_id, models.CV.id != cv_id
+    ).update({"is_default": False})
+    cv.is_default = True
+    db.commit()
+    db.refresh(cv)
+    return cv
+
+
+def get_default_cv(db: Session, user_id: int) -> models.CV | None:
+    return (
+        db.query(models.CV)
+        .filter(
+            models.CV.user_id == user_id, models.CV.is_default == True  # noqa: E712
+        )
+        .first()
+    )
 
 
 def delete_cv(db: Session, cv_id: int) -> bool:
@@ -1377,3 +1427,116 @@ def get_calendar_events(
 
     events.sort(key=lambda e: e.get("date") or "")
     return events
+
+
+# ---------- CV General Analysis (persisted) ----------
+
+
+def create_or_update_cv_general_analysis(
+    db: Session,
+    user_id: int,
+    cv_id: int,
+    score: int,
+    summary: str,
+    strengths: str,
+    improvements: str,
+) -> models.CVGeneralAnalysis:
+    """Create or replace the general analysis for a CV."""
+    existing = (
+        db.query(models.CVGeneralAnalysis)
+        .filter(
+            models.CVGeneralAnalysis.user_id == user_id,
+            models.CVGeneralAnalysis.cv_id == cv_id,
+        )
+        .first()
+    )
+    if existing:
+        existing.score = score
+        existing.summary = summary
+        existing.strengths = strengths
+        existing.improvements = improvements
+        db.commit()
+        db.refresh(existing)
+        return existing
+    obj = models.CVGeneralAnalysis(
+        user_id=user_id,
+        cv_id=cv_id,
+        score=score,
+        summary=summary,
+        strengths=strengths,
+        improvements=improvements,
+    )
+    db.add(obj)
+    db.commit()
+    db.refresh(obj)
+    return obj
+
+
+def get_cv_general_analyses(
+    db: Session, user_id: int
+) -> list[models.CVGeneralAnalysis]:
+    return (
+        db.query(models.CVGeneralAnalysis)
+        .filter(models.CVGeneralAnalysis.user_id == user_id)
+        .order_by(models.CVGeneralAnalysis.created_at.desc())
+        .all()
+    )
+
+
+# ---------- CV Offer Analysis (persisted) ----------
+
+
+def create_or_update_cv_offer_analysis(
+    db: Session,
+    user_id: int,
+    offer_id: int,
+    cv_id: int,
+    offer_title: str,
+    company: str,
+    score: int,
+    suggested_title: str | None,
+    suggested_profile: str | None,
+    other_suggestions: str,
+) -> models.CVOfferAnalysis:
+    existing = (
+        db.query(models.CVOfferAnalysis)
+        .filter(
+            models.CVOfferAnalysis.user_id == user_id,
+            models.CVOfferAnalysis.offer_id == offer_id,
+            models.CVOfferAnalysis.cv_id == cv_id,
+        )
+        .first()
+    )
+    if existing:
+        existing.score = score
+        existing.suggested_title = suggested_title
+        existing.suggested_profile = suggested_profile
+        existing.other_suggestions = other_suggestions
+        existing.created_at = sqlfunc.now()
+        db.commit()
+        db.refresh(existing)
+        return existing
+    obj = models.CVOfferAnalysis(
+        user_id=user_id,
+        offer_id=offer_id,
+        cv_id=cv_id,
+        offer_title=offer_title,
+        company=company,
+        score=score,
+        suggested_title=suggested_title,
+        suggested_profile=suggested_profile,
+        other_suggestions=other_suggestions,
+    )
+    db.add(obj)
+    db.commit()
+    db.refresh(obj)
+    return obj
+
+
+def get_cv_offer_analyses(db: Session, user_id: int) -> list[models.CVOfferAnalysis]:
+    return (
+        db.query(models.CVOfferAnalysis)
+        .filter(models.CVOfferAnalysis.user_id == user_id)
+        .order_by(models.CVOfferAnalysis.created_at.desc())
+        .all()
+    )

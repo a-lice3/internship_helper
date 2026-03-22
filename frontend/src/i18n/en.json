@@ -300,7 +300,16 @@
     "acceptedFormats": "PDF, LaTeX (.tex) or ZIP",
     "uploadFailed": "Upload failed",
     "saveFailed": "Save failed",
-    "compileFailed": "Compilation failed"
+    "compileFailed": "Compilation failed",
+    "setDefault": "Set as default CV",
+    "removeDefault": "Remove default CV",
+    "analyze": "Analyze",
+    "analyzing": "Analyzing...",
+    "generalScore": "Overall score:",
+    "strengths": "Strengths",
+    "improvements": "Improvements",
+    "viewAnalysis": "View analysis",
+    "analysisOf": "Analysis of"
   },
   "templatesPage": {
     "title": "My Profile",
@@ -563,23 +572,18 @@
     "typeLabel": "Type",
     "dueDateRequired": "Due date *",
     "addReminder": "Add reminder",
-    "aiActions": "AI Actions",
-    "adaptCV": "Adapt CV",
-    "analyzePitch": "Analyze Pitch",
-    "selectLatexCV": "Select a LaTeX CV",
-    "select": "-- Select --",
-    "adapting": "Adapting...",
-    "adapt": "Adapt",
+    "cvAnalysis": "CV Analysis",
+    "cvScore": "Match score:",
+    "uploadCVPrompt": "Upload a CV in your profile to get automatic analysis.",
+    "uploadNewCV": "Add a CV",
+    "adapting": "Analyzing...",
     "saveDownloadPDF": "Save & Download PDF",
+    "saveToCV": "Save to CV",
+    "saving": "Saving...",
     "compiling": "Compiling...",
-    "startRecording": "Start Recording",
-    "recordingReady": "Recording ready",
-    "discardBtn": "Discard",
-    "analyze": "Analyze",
-    "score": "Score:",
-    "strengths": "Strengths",
-    "improvements": "Improvements",
-    "micDenied": "Microphone access denied"
+    "suggestedTitle": "Suggested job title",
+    "suggestedProfile": "Suggested profile / summary",
+    "otherSuggestions": "Other suggestions"
   },
   "dateTimeInput": {
     "pickDate": "Pick a date",
@@ -594,7 +598,8 @@
     "edit": "Edit",
     "delete": "Delete",
     "loading": "Loading...",
-    "error": "Error"
+    "error": "Error",
+    "close": "Close"
   },
   "onboarding": {
     "title": "Job Seeker",

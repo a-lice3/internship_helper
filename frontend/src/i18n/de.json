@@ -300,7 +300,16 @@
     "acceptedFormats": "PDF, LaTeX (.tex) oder ZIP",
     "uploadFailed": "Upload fehlgeschlagen",
     "saveFailed": "Speichern fehlgeschlagen",
-    "compileFailed": "Kompilierung fehlgeschlagen"
+    "compileFailed": "Kompilierung fehlgeschlagen",
+    "setDefault": "Als Standard-Lebenslauf festlegen",
+    "removeDefault": "Standard-Lebenslauf entfernen",
+    "analyze": "Analysieren",
+    "analyzing": "Analyse...",
+    "generalScore": "Gesamtbewertung:",
+    "strengths": "Stärken",
+    "improvements": "Verbesserungen",
+    "viewAnalysis": "Analyse anzeigen",
+    "analysisOf": "Analyse von"
   },
   "templatesPage": {
     "title": "Mein Profil",
@@ -563,23 +572,18 @@
     "typeLabel": "Typ",
     "dueDateRequired": "Fälligkeitsdatum *",
     "addReminder": "Erinnerung hinzufügen",
-    "aiActions": "KI-Aktionen",
-    "adaptCV": "Lebenslauf anpassen",
-    "analyzePitch": "Pitch analysieren",
-    "selectLatexCV": "LaTeX-Lebenslauf auswählen",
-    "select": "-- Auswählen --",
-    "adapting": "Wird angepasst...",
-    "adapt": "Anpassen",
+    "cvAnalysis": "Lebenslauf-Analyse",
+    "cvScore": "Übereinstimmung:",
+    "uploadCVPrompt": "Laden Sie einen Lebenslauf in Ihrem Profil hoch, um eine automatische Analyse zu erhalten.",
+    "uploadNewCV": "Lebenslauf hinzufugen",
+    "adapting": "Analyse...",
     "saveDownloadPDF": "Speichern & PDF herunterladen",
+    "saveToCV": "In Lebenslaufe speichern",
+    "saving": "Speichern...",
     "compiling": "Wird kompiliert...",
-    "startRecording": "Aufnahme starten",
-    "recordingReady": "Aufnahme bereit",
-    "discardBtn": "Verwerfen",
-    "analyze": "Analysieren",
-    "score": "Bewertung:",
-    "strengths": "Stärken",
-    "improvements": "Verbesserungen",
-    "micDenied": "Mikrofonzugriff verweigert"
+    "suggestedTitle": "Vorgeschlagene Berufsbezeichnung",
+    "suggestedProfile": "Vorgeschlagenes Profil / Zusammenfassung",
+    "otherSuggestions": "Weitere Vorschläge"
   },
   "dateTimeInput": {
     "pickDate": "Datum auswählen",
@@ -594,7 +598,8 @@
     "edit": "Bearbeiten",
     "delete": "L\u00f6schen",
     "loading": "Laden...",
-    "error": "Fehler"
+    "error": "Fehler",
+    "close": "Schliessen"
   },
   "onboarding": {
     "title": "Job Seeker",

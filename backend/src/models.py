@@ -121,6 +121,12 @@ class User(Base):
     skill_gap_analyses: Mapped[list["SkillGapAnalysis"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
+    cv_general_analyses: Mapped[list["CVGeneralAnalysis"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+    cv_offer_analyses: Mapped[list["CVOfferAnalysis"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
     pitch_analyses: Mapped[list["PitchAnalysis"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
@@ -260,10 +266,14 @@ class CV(Base):
     file_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
     support_files_dir: Mapped[str | None] = mapped_column(String(500), nullable=True)
     is_adapted: Mapped[bool] = mapped_column(default=False)
+    is_default: Mapped[bool] = mapped_column(default=False, server_default="false")
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
     user: Mapped["User"] = relationship(back_populates="cvs")
     offer: Mapped["InternshipOffer | None"] = relationship(back_populates="cvs")
+    general_analyses: Mapped[list["CVGeneralAnalysis"]] = relationship(
+        back_populates="cv", cascade="all, delete-orphan"
+    )
 
 
 class GeneratedCoverLetter(Base):
@@ -289,6 +299,30 @@ class GeneratedCoverLetter(Base):
     user: Mapped["User"] = relationship(back_populates="generated_cover_letters")
     offer: Mapped["InternshipOffer | None"] = relationship()
     template: Mapped["CoverLetterTemplate | None"] = relationship()
+
+
+class CVOfferAnalysis(Base):
+    __tablename__ = "cv_offer_analyses"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    offer_id: Mapped[int] = mapped_column(
+        ForeignKey("internship_offers.id"), nullable=False
+    )
+    cv_id: Mapped[int] = mapped_column(
+        ForeignKey("cvs.id", ondelete="CASCADE"), nullable=False
+    )
+    offer_title: Mapped[str] = mapped_column(String(300), nullable=False)
+    company: Mapped[str] = mapped_column(String(200), nullable=False)
+    score: Mapped[int] = mapped_column(Integer, nullable=False)
+    suggested_title: Mapped[str | None] = mapped_column(Text, nullable=True)
+    suggested_profile: Mapped[str | None] = mapped_column(Text, nullable=True)
+    other_suggestions: Mapped[str] = mapped_column(Text, nullable=False)  # JSON
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+    user: Mapped["User"] = relationship(back_populates="cv_offer_analyses")
+    offer: Mapped["InternshipOffer"] = relationship()
+    cv: Mapped["CV"] = relationship()
 
 
 class SkillGapAnalysis(Base):
@@ -500,6 +534,24 @@ class Reminder(Base):
 
     user: Mapped["User"] = relationship(back_populates="reminders")
     offer: Mapped["InternshipOffer | None"] = relationship()
+
+
+class CVGeneralAnalysis(Base):
+    __tablename__ = "cv_general_analyses"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    cv_id: Mapped[int] = mapped_column(
+        ForeignKey("cvs.id", ondelete="CASCADE"), nullable=False
+    )
+    score: Mapped[int] = mapped_column(Integer, nullable=False)
+    summary: Mapped[str] = mapped_column(Text, nullable=False)
+    strengths: Mapped[str] = mapped_column(Text, nullable=False)  # JSON
+    improvements: Mapped[str] = mapped_column(Text, nullable=False)  # JSON
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+    user: Mapped["User"] = relationship(back_populates="cv_general_analyses")
+    cv: Mapped["CV"] = relationship(back_populates="general_analyses")
 
 
 class OfferNote(Base):
