@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Routes, Route, Link, Navigate, useNavigate, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import * as api from "./api";
@@ -13,6 +13,7 @@ import TemplatesPage from "./pages/TemplatesPage";
 import InterviewPage from "./pages/InterviewPage";
 import SettingsPage from "./pages/SettingsPage";
 import OnboardingFlow from "./pages/OnboardingFlow";
+import GuidedTour, { type TourStep } from "./components/GuidedTour";
 import "./App.css";
 import sittingCat from "./assets/animated-sitting-cat.gif";
 
