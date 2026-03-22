@@ -187,6 +187,63 @@ def _wiki_search(query: str) -> str | None:
         return None
 
 
+def _is_company_result(data: dict) -> bool:
+    """Check if a Wikipedia result looks like a company/organization (not a person, place, etc.)."""
+    desc = (data.get("description") or "").lower()
+    extract = (data.get("extract") or "").lower()
+
+    # Reject if description clearly indicates a person
+    person_keywords = [
+        "actor",
+        "actress",
+        "singer",
+        "comedian",
+        "politician",
+        "footballer",
+        "player",
+        "writer",
+        "poet",
+        "musician",
+        "born ",
+        "athlete",
+        "director",
+    ]
+    if any(kw in desc for kw in person_keywords):
+        return False
+
+    # Accept if description or extract mentions company-related terms
+    company_keywords = [
+        "company",
+        "startup",
+        "firm",
+        "corporation",
+        "enterprise",
+        "organisation",
+        "organization",
+        "business",
+        "software",
+        "founded",
+        "headquartered",
+        "inc.",
+        "ltd",
+        "sarl",
+        "sas",
+        "gmbh",
+        "consulting",
+        "technology",
+        "technologies",
+        "intelligence",
+        "agency",
+        "studio",
+    ]
+    if any(kw in desc for kw in company_keywords):
+        return True
+    if any(kw in extract[:500] for kw in company_keywords):
+        return True
+
+    return False
+
+
 def _extract_result(data: dict) -> dict[str, str | None]:
     """Extract the fields we care about from a Wikipedia summary response."""
     return {
@@ -226,10 +283,18 @@ def _clean_company_name(raw: str) -> list[str]:
     return candidates
 
 
+def _google_search_url(company_name: str) -> str:
+    """Build a Google search URL to help the user find the company website."""
+    q = urllib.parse.quote(f"{company_name} official site")
+    return f"https://www.google.com/search?q={q}"
+
+
 def fetch_company_info(company_name: str) -> dict[str, str | None]:
     """Fetch a short company description from Wikipedia.
 
     Tries multiple name variants and falls back to Wikipedia search API.
+    Validates results look like a company. If nothing relevant is found,
+    returns a link to search for the company website.
     Returns a dict with keys: description, extract, logo_url, page_url.
     """
     candidates = _clean_company_name(company_name)
@@ -237,13 +302,13 @@ def fetch_company_info(company_name: str) -> dict[str, str | None]:
     # 1. Try direct summary lookup for each candidate name
     for name in candidates:
         data = _wiki_summary(name)
-        if data:
+        if data and _is_company_result(data):
             return _extract_result(data)
 
     # 2. Try disambiguation suffix "(company)" for each candidate
     for name in candidates:
         data = _wiki_summary(f"{name} (company)")
-        if data:
+        if data and _is_company_result(data):
             return _extract_result(data)
 
     # 3. Fallback: use Wikipedia search API
@@ -251,10 +316,16 @@ def fetch_company_info(company_name: str) -> dict[str, str | None]:
         title = _wiki_search(f"{name} company")
         if title:
             data = _wiki_summary(title)
-            if data:
+            if data and _is_company_result(data):
                 return _extract_result(data)
 
-    return dict(_EMPTY_COMPANY_INFO)
+    # 4. No valid Wikipedia result — return a search link so the user can find the company
+    return {
+        "description": company_name,
+        "extract": None,
+        "logo_url": None,
+        "page_url": _google_search_url(company_name),
+    }
 
 
 def fetch_offer_from_url(url: str) -> str:

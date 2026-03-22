@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Routes, Route, Link, Navigate, useNavigate, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import * as api from "./api";
@@ -15,6 +15,18 @@ import SettingsPage from "./pages/SettingsPage";
 import OnboardingFlow from "./pages/OnboardingFlow";
 import "./App.css";
 import sittingCat from "./assets/animated-sitting-cat.gif";
+
+const CONGRATS_STAR_STYLES: React.CSSProperties[] = Array.from({ length: 40 }, (_, i) => {
+  const angle = (i / 40) * 2 * Math.PI + (Math.random() - 0.5) * 0.5;
+  const dist = 150 + Math.random() * 250;
+  return {
+    "--delay": `${Math.random() * 0.6}s`,
+    "--x": `${Math.cos(angle) * dist}px`,
+    "--y": `${Math.sin(angle) * dist}px`,
+    "--rot": `${Math.random() * 720}deg`,
+    "--size": `${14 + Math.random() * 18}px`,
+  } as React.CSSProperties;
+});
 
 const NAV_KEYS = [
   { to: "/dashboard", labelKey: "nav.dashboard", icon: "\uD83D\uDCCA" },
@@ -147,7 +159,10 @@ export default function App() {
   const { t } = useTranslation();
   const [user, setUser] = useState<api.User | null>(null);
   const [loading, setLoading] = useState(() => !!api.getToken());
+  const [showCongrats, setShowCongrats] = useState(false);
   const navigate = useNavigate();
+  const pendingRedirect = useRef<string | null>(null);
+
 
   useEffect(() => {
     const token = api.getToken();
@@ -160,6 +175,15 @@ export default function App() {
         .finally(() => setLoading(false));
     }
   }, []);
+
+  // After onboarding completes and congrats is dismissed, navigate to the pending redirect
+  useEffect(() => {
+    if (pendingRedirect.current && user?.has_completed_onboarding && !showCongrats) {
+      const dest = pendingRedirect.current;
+      pendingRedirect.current = null;
+      navigate(dest, { replace: true });
+    }
+  }, [user, navigate, showCongrats]);
 
   const handleLogout = () => {
     api.setToken(null);
@@ -189,12 +213,15 @@ export default function App() {
     return (
       <OnboardingFlow
         userId={user.id}
-        onComplete={(redirectTo?: string) => {
+        onComplete={(redirectTo?: string, skipped?: boolean) => {
           localStorage.setItem(`onboarding_done_${user.id}`, "1");
-          // Navigate BEFORE updating state so the URL is already set
-          // when React re-renders the router
-          if (redirectTo) navigate(redirectTo, { replace: true });
           setUser({ ...user, has_completed_onboarding: true });
+          if (skipped) {
+            navigate("/dashboard", { replace: true });
+          } else {
+            pendingRedirect.current = redirectTo ?? null;
+            setShowCongrats(true);
+          }
         }}
       />
     );
@@ -271,6 +298,25 @@ export default function App() {
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </main>
+
+      {/* Congrats popup after onboarding */}
+      {showCongrats && (
+        <div className="congrats-overlay" onClick={() => setShowCongrats(false)}>
+          <div className="congrats-stars">
+            {CONGRATS_STAR_STYLES.map((style, i) => (
+              <span key={i} className="congrats-star" style={style} />
+            ))}
+          </div>
+          <div className="congrats-card" onClick={(e) => e.stopPropagation()}>
+            <div className="congrats-emoji">{"\uD83C\uDF89"}</div>
+            <h2 className="congrats-title">{t("congrats.title")}</h2>
+            <p className="congrats-text">{t("congrats.text")}</p>
+            <button className="btn-primary congrats-btn" onClick={() => setShowCongrats(false)}>
+              {t("congrats.button")}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

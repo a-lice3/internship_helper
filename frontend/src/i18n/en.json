@@ -129,7 +129,7 @@
     "myOffers": "My offers",
     "search": "Search",
     "clearFilters": "Clear filters",
-    "pasteLink": "Paste offer link",
+    "pasteLink": "Paste an offer link or go to the Search tab",
     "extracting": "Extracting offer & generating analyses...",
     "noOffers": "No offers yet. Add your first one!",
     "noMatch": "No offers match the selected filters.",
@@ -168,7 +168,9 @@
     "noResults": "No offers found. Try describing your search differently.",
     "searchingOffers": "Searching offers and matching to your profile...",
     "mayTakeSeconds": "This may take a few seconds",
-    "searchFailed": "Search failed"
+    "searchFailed": "Search failed",
+    "pasteLinkPlaceholder": "Paste an offer link to add it directly",
+    "or": "or"
   },
   "calendar": {
     "title": "Calendar",
@@ -348,6 +350,8 @@
     "language": "Language",
     "english": "English",
     "french": "French",
+    "spanish": "Spanish",
+    "german": "German",
     "duration": "Duration",
     "enableHints": "Enable real-time hints",
     "creating": "Creating...",
@@ -529,6 +533,7 @@
     "generatingBanner": "Generating skill gap analysis & cover letter...",
     "about": "About {{company}}",
     "wikipedia": "Wikipedia",
+    "searchOnline": "Search online",
     "description": "Description",
     "skillGapAnalysis": "Skill Gap Analysis",
     "regenerate": "Regenerate",
@@ -608,5 +613,10 @@
     "select": "Select",
     "newSearch": "New search",
     "matching": "Matching the offer to your profile..."
+  },
+  "congrats": {
+    "title": "You're all set!",
+    "text": "Your profile is ready and your first offer is saved. Time to land your dream job — good luck!",
+    "button": "Let's go!"
   }
 }

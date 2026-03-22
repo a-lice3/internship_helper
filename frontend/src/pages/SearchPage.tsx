@@ -1,7 +1,10 @@
-import { useState } from "react";
-import { NavLink } from "react-router-dom";
+import { useRef, useState } from "react";
+import { NavLink, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import * as api from "../api";
+
+const mistralLogo = "/logo_mistral.png";
+const isUrl = (s: string) => /^https?:\/\/.+/i.test(s.trim());
 
 const SOURCE_LABELS: Record<string, string> = {
   francetravail: "France Travail",
@@ -11,6 +14,7 @@ const SOURCE_LABELS: Record<string, string> = {
 
 export default function SearchPage({ userId }: { userId: number }) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [message, setMessage] = useState("");
   const [results, setResults] = useState<api.ScrapedOffer[]>([]);
   const [sourcesUsed, setSourcesUsed] = useState<string[]>([]);
@@ -20,6 +24,48 @@ export default function SearchPage({ userId }: { userId: number }) {
   const [error, setError] = useState("");
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [savingId, setSavingId] = useState<number | null>(null);
+
+  // Paste-and-parse
+  const [pasteText, setPasteText] = useState("");
+  const [parsing, setParsing] = useState(false);
+  const parsingRef = useRef(false);
+
+  const handleParseAndAdd = async (url: string) => {
+    if (parsingRef.current) return;
+    parsingRef.current = true;
+    setParsing(true);
+    try {
+      const parsed = await api.parseOffer({ url: url.trim() });
+      const o = await api.createOffer(userId, {
+        company: parsed.company || "Unknown",
+        title: parsed.title || "Unknown",
+        link: url.trim(),
+        locations: parsed.locations || undefined,
+        description: parsed.description || undefined,
+      });
+      setPasteText("");
+
+      // Generate skill gap + cover letter in parallel
+      await Promise.allSettled([
+        api.analyzeSkillGap(userId, o.id),
+        api.generateCoverLetter(userId, o.id),
+      ]);
+
+      navigate(`/offers/${o.id}`);
+    } catch {
+      alert(t("offers.extractFailed"));
+    } finally {
+      setParsing(false);
+      parsingRef.current = false;
+    }
+  };
+
+  const handlePasteChange = (value: string) => {
+    setPasteText(value);
+    if (isUrl(value.trim()) && !parsingRef.current) {
+      handleParseAndAdd(value.trim());
+    }
+  };
 
   const doSearch = async (query: string) => {
     if (!query.trim()) return;
@@ -91,6 +137,31 @@ export default function SearchPage({ userId }: { userId: number }) {
         <NavLink to="/offers/search" className={({ isActive }) => `pill${isActive ? " active" : ""}`}>{t("searchPage.search")}</NavLink>
       </nav>
 
+      {/* Paste link card */}
+      <div className="paste-link-card" style={{ marginBottom: 12 }}>
+        {parsing ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <img src={mistralLogo} alt="Loading" className="mistral-spin-img" />
+            <span style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("offers.extracting")}</span>
+          </div>
+        ) : (
+          <input
+            type="text"
+            placeholder={t("searchPage.pasteLinkPlaceholder")}
+            value={pasteText}
+            onChange={(e) => handlePasteChange(e.target.value)}
+            className="paste-link-input"
+          />
+        )}
+      </div>
+
+      {/* Separator */}
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+        <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
+        <span style={{ fontSize: 12, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 1 }}>{t("searchPage.or")}</span>
+        <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
+      </div>
+
       {/* Chat input */}
       <div className="glass-card" style={{ marginBottom: 20 }}>
         <div className="glass-card-body">
@@ -116,7 +187,12 @@ export default function SearchPage({ userId }: { userId: number }) {
                 disabled={loading || !message.trim()}
                 style={{ whiteSpace: "nowrap", alignSelf: "flex-end" }}
               >
-                {loading ? t("searchPage.searching") : t("searchPage.searchBtn")}
+                {loading ? (
+                  <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <img src={mistralLogo} alt="Loading" className="mistral-spin-img" style={{ width: 18, height: 18 }} />
+                    {t("searchPage.searching")}
+                  </span>
+                ) : t("searchPage.searchBtn")}
               </button>
             </div>
           </form>
@@ -213,6 +289,7 @@ export default function SearchPage({ userId }: { userId: number }) {
       {/* Loading */}
       {loading && (
         <div style={{ textAlign: "center", padding: 40, color: "var(--text-muted)" }}>
+          <img src={mistralLogo} alt="Loading" className="mistral-spin-img" style={{ width: 40, height: 40, marginBottom: 12 }} />
           <p style={{ fontSize: 16 }}>{t("searchPage.searchingOffers")}</p>
           <p style={{ fontSize: 13 }}>{t("searchPage.mayTakeSeconds")}</p>
         </div>

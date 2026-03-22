@@ -129,7 +129,7 @@
     "myOffers": "Meine Angebote",
     "search": "Suche",
     "clearFilters": "Filter löschen",
-    "pasteLink": "Angebotslink einfügen",
+    "pasteLink": "Angebotslink einfügen oder zum Suche-Tab wechseln",
     "extracting": "Angebot wird extrahiert & Analysen generiert...",
     "noOffers": "Noch keine Angebote. Fügen Sie das erste hinzu!",
     "noMatch": "Keine Angebote entsprechen den ausgewählten Filtern.",
@@ -168,7 +168,9 @@
     "noResults": "Keine Angebote gefunden. Versuchen Sie eine andere Beschreibung.",
     "searchingOffers": "Angebote werden gesucht und mit Ihrem Profil abgeglichen...",
     "mayTakeSeconds": "Dies kann einige Sekunden dauern",
-    "searchFailed": "Suche fehlgeschlagen"
+    "searchFailed": "Suche fehlgeschlagen",
+    "pasteLinkPlaceholder": "Angebotslink einfügen, um es direkt hinzuzufügen",
+    "or": "oder"
   },
   "calendar": {
     "title": "Kalender",
@@ -348,6 +350,8 @@
     "language": "Sprache",
     "english": "Englisch",
     "french": "Französisch",
+    "spanish": "Spanisch",
+    "german": "Deutsch",
     "duration": "Dauer",
     "enableHints": "Echtzeit-Hinweise aktivieren",
     "creating": "Wird erstellt...",
@@ -529,6 +533,7 @@
     "generatingBanner": "Kompetenzanalyse & Anschreiben werden generiert...",
     "about": "Über {{company}}",
     "wikipedia": "Wikipedia",
+    "searchOnline": "Online suchen",
     "description": "Beschreibung",
     "skillGapAnalysis": "Kompetenzlückenanalyse",
     "regenerate": "Neu generieren",
@@ -608,5 +613,10 @@
     "select": "Ausw\u00e4hlen",
     "newSearch": "Neue Suche",
     "matching": "Abgleich des Angebots mit Ihrem Profil..."
+  },
+  "congrats": {
+    "title": "Alles bereit!",
+    "text": "Ihr Profil ist fertig und Ihr erstes Angebot ist gespeichert. Viel Erfolg bei der Suche nach Ihrem Traumjob!",
+    "button": "Los geht's!"
   }
 }

@@ -129,7 +129,7 @@
     "myOffers": "Mes offres",
     "search": "Recherche",
     "clearFilters": "Effacer les filtres",
-    "pasteLink": "Coller le lien de l'offre",
+    "pasteLink": "Collez un lien d'offre ou allez dans l'onglet Recherche",
     "extracting": "Extraction de l'offre et génération des analyses...",
     "noOffers": "Aucune offre. Ajoutez la première !",
     "noMatch": "Aucune offre ne correspond aux filtres sélectionnés.",
@@ -168,7 +168,9 @@
     "noResults": "Aucune offre trouvée. Essayez de reformuler votre recherche.",
     "searchingOffers": "Recherche d'offres et comparaison avec votre profil...",
     "mayTakeSeconds": "Cela peut prendre quelques secondes",
-    "searchFailed": "La recherche a échoué"
+    "searchFailed": "La recherche a échoué",
+    "pasteLinkPlaceholder": "Collez un lien d'offre pour l'ajouter directement",
+    "or": "ou"
   },
   "calendar": {
     "title": "Calendrier",
@@ -348,6 +350,8 @@
     "language": "Langue",
     "english": "Anglais",
     "french": "Français",
+    "spanish": "Espagnol",
+    "german": "Allemand",
     "duration": "Durée",
     "enableHints": "Activer les indices en temps réel",
     "creating": "Création...",
@@ -529,6 +533,7 @@
     "generatingBanner": "Génération de l'analyse de compétences et de la lettre de motivation...",
     "about": "À propos de {{company}}",
     "wikipedia": "Wikipédia",
+    "searchOnline": "Rechercher en ligne",
     "description": "Description",
     "skillGapAnalysis": "Analyse des compétences",
     "regenerate": "Régénérer",
@@ -608,5 +613,10 @@
     "select": "S\u00e9lectionner",
     "newSearch": "Nouvelle recherche",
     "matching": "Analyse de l'offre par rapport \u00e0 votre profil..."
+  },
+  "congrats": {
+    "title": "C'est parti !",
+    "text": "Votre profil est prêt et votre première offre est enregistrée. À vous de décrocher le stage de vos rêves — bonne chance !",
+    "button": "C'est parti !"
   }
 }

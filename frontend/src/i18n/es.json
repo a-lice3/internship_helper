@@ -129,7 +129,7 @@
     "myOffers": "Mis ofertas",
     "search": "Búsqueda",
     "clearFilters": "Limpiar filtros",
-    "pasteLink": "Pegar enlace de oferta",
+    "pasteLink": "Pega un enlace de oferta o ve a la pestaña Búsqueda",
     "extracting": "Extrayendo oferta y generando análisis...",
     "noOffers": "Aún no hay ofertas. ¡Añade la primera!",
     "noMatch": "Ninguna oferta coincide con los filtros seleccionados.",
@@ -168,7 +168,9 @@
     "noResults": "No se encontraron ofertas. Intenta reformular tu búsqueda.",
     "searchingOffers": "Buscando ofertas y comparando con tu perfil...",
     "mayTakeSeconds": "Esto puede tardar unos segundos",
-    "searchFailed": "La búsqueda falló"
+    "searchFailed": "La búsqueda falló",
+    "pasteLinkPlaceholder": "Pega un enlace de oferta para añadirla directamente",
+    "or": "o"
   },
   "calendar": {
     "title": "Calendario",
@@ -348,6 +350,8 @@
     "language": "Idioma",
     "english": "Inglés",
     "french": "Francés",
+    "spanish": "Español",
+    "german": "Alemán",
     "duration": "Duración",
     "enableHints": "Activar pistas en tiempo real",
     "creating": "Creando...",
@@ -529,6 +533,7 @@
     "generatingBanner": "Generando análisis de competencias y carta de presentación...",
     "about": "Sobre {{company}}",
     "wikipedia": "Wikipedia",
+    "searchOnline": "Buscar en línea",
     "description": "Descripción",
     "skillGapAnalysis": "Análisis de competencias",
     "regenerate": "Regenerar",
@@ -608,5 +613,10 @@
     "select": "Seleccionar",
     "newSearch": "Nueva búsqueda",
     "matching": "Comparando la oferta con tu perfil..."
+  },
+  "congrats": {
+    "title": "Todo listo!",
+    "text": "Tu perfil está listo y tu primera oferta está guardada. A buscar el trabajo de tus sueños — buena suerte!",
+    "button": "Vamos!"
   }
 }

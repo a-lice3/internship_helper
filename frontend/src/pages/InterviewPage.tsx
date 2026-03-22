@@ -102,6 +102,7 @@ export default function InterviewPage({ userId }: { userId: number }) {
     if (interview.state.status === "active" && interview.state.questionNumber > 0) {
       interview.startRecording();
       setAnswerText("");
+      speech.start();
     }
     if (interview.state.status === "results") {
       speech.stop();
@@ -134,8 +135,23 @@ export default function InterviewPage({ userId }: { userId: number }) {
   }, [answerText, interview, speech]);
 
   const handleEndInterview = useCallback(async () => {
-    speech.stop(); interview.endInterview();
-  }, [interview, speech]);
+    // Submit the current answer (if any) before ending
+    const wasRecording = speech.isRecording;
+    if (wasRecording) {
+      const transcription = await speech.stopAndTranscribe();
+      const finalText = answerText.trim() || transcription;
+      if (finalText) {
+        interview.submitAnswer(finalText);
+      }
+      speech.reset();
+    } else if (answerText.trim()) {
+      interview.submitAnswer(answerText);
+    }
+    speech.stop();
+    setAnswerText("");
+    // Small delay to let the last answer be sent via websocket before ending
+    setTimeout(() => interview.endInterview(), 100);
+  }, [answerText, interview, speech]);
 
   useEffect(() => {
     if (interview.state.status === "results" && activeSession) {
@@ -168,7 +184,13 @@ export default function InterviewPage({ userId }: { userId: number }) {
     } catch { setError(t("interviewPage.deleteFailed")); }
   };
 
-  const handleBackToHistory = () => {
+  const handleBackToHistory = async () => {
+    // If interview is still in progress (not finished), cancel it by deleting the session
+    const status = interview.state.status;
+    if (activeSession && status !== "results") {
+      speech.stop();
+      try { await api.deleteInterviewSession(userId, activeSession.id); } catch { /* ignore */ }
+    }
     setView("history"); setActiveSession(null);
     setAnalysis(null); setSelectedDetail(null); setPredictedQuestions([]);
     api.getInterviewSessions(userId).then(setSessions).catch(() => {});
@@ -219,8 +241,8 @@ export default function InterviewPage({ userId }: { userId: number }) {
                   {t("interviewPage.difficulty")}
                   <select value={difficulty} onChange={(e) => setDifficulty(e.target.value)}>
                     <option value="junior">{t("interviewPage.junior")}</option>
-                    <option value="intermediate">{t("interviewPage.intermediate")}</option>
-                    <option value="advanced">{t("interviewPage.advanced")}</option>
+                    <option value="intermediate">{t("interviewPage.intermediateLevel")}</option>
+                    <option value="advanced">{t("interviewPage.advancedLevel")}</option>
                   </select>
                 </label>
                 <label>
@@ -228,6 +250,8 @@ export default function InterviewPage({ userId }: { userId: number }) {
                   <select value={language} onChange={(e) => setLanguage(e.target.value)}>
                     <option value="en">{t("interviewPage.english")}</option>
                     <option value="fr">{t("interviewPage.french")}</option>
+                    <option value="es">{t("interviewPage.spanish")}</option>
+                    <option value="de">{t("interviewPage.german")}</option>
                   </select>
                 </label>
                 <label>
@@ -302,8 +326,31 @@ export default function InterviewPage({ userId }: { userId: number }) {
               <span className="badge" style={{ marginLeft: 8 }}>{activeSession.interview_type}</span>
               <span className="badge" style={{ marginLeft: 4 }}>{activeSession.difficulty}</span>
             </div>
-            <div style={{ fontSize: 22, fontFamily: "var(--mono)", color: "var(--text-h)" }}>
-              {formatTime(interview.state.elapsedSeconds)} / {formatTime(activeSession.duration_minutes * 60)}
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              {/* Record toggle: square-in-circle button */}
+              <button
+                onClick={() => { if (speech.isRecording) { speech.stop(); } else { speech.start(); } }}
+                title={speech.isRecording ? t("interviewPage.pauseMic") : t("interviewPage.startMic")}
+                style={{
+                  width: 36, height: 36, borderRadius: "50%",
+                  border: "2px solid var(--danger)", background: "transparent",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  cursor: "pointer", padding: 0, flexShrink: 0,
+                  animation: speech.isRecording ? "pulse-dot 1.5s ease-in-out infinite" : "none",
+                }}
+              >
+                <span style={{
+                  display: "block",
+                  width: speech.isRecording ? 14 : 16,
+                  height: speech.isRecording ? 14 : 16,
+                  borderRadius: speech.isRecording ? 3 : "50%",
+                  background: "var(--danger)",
+                  transition: "all 0.2s ease",
+                }} />
+              </button>
+              <div style={{ fontSize: 22, fontFamily: "var(--mono)", color: "var(--text-h)" }}>
+                {formatTime(interview.state.elapsedSeconds)} / {formatTime(activeSession.duration_minutes * 60)}
+              </div>
             </div>
           </div>
 
@@ -343,24 +390,15 @@ export default function InterviewPage({ userId }: { userId: number }) {
                     style={{ width: "100%", marginBottom: 8 }}
                   />
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <button
-                      onClick={() => speech.isRecording ? speech.stop() : speech.start()}
-                      disabled={speech.isTranscribing}
-                      className={speech.isRecording ? "btn-danger" : "btn-secondary"}
-                      style={{ padding: "6px 14px", fontSize: 13, borderRadius: 20, boxShadow: "none", display: "flex", alignItems: "center", gap: 6 }}
-                    >
-                      {speech.isRecording && <span className="recording-dot" style={{ width: 8, height: 8 }} />}
-                      {speech.isRecording ? t("interviewPage.pauseMic") : t("interviewPage.startMic")}
-                    </button>
+                    {enableHints && (
+                      <button onClick={() => interview.requestHint(answerText)} className="btn-secondary">{t("interviewPage.hint")}</button>
+                    )}
                     {speech.isTranscribing && <span style={{ fontSize: 12, color: "var(--info)" }}>{t("interviewPage.transcribing")}</span>}
                     <div style={{ flex: 1 }} />
                     <button onClick={handleSubmitAnswer} disabled={isSubmitting || speech.isTranscribing} className="btn-primary" style={{ boxShadow: "none" }}>
                       {isSubmitting || speech.isTranscribing ? t("interviewPage.transcribing") : t("interviewPage.next")}
                     </button>
                     <button onClick={handleEndInterview} className="btn-danger" disabled={isSubmitting}>{t("interviewPage.end")}</button>
-                    {enableHints && (
-                      <button onClick={() => interview.requestHint(answerText)} className="btn-secondary">{t("interviewPage.hint")}</button>
-                    )}
                   </div>
                 </div>
               )}
