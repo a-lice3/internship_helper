@@ -16,6 +16,18 @@ import OnboardingFlow from "./pages/OnboardingFlow";
 import "./App.css";
 import sittingCat from "./assets/animated-sitting-cat.gif";
 
+const CONGRATS_STAR_STYLES: React.CSSProperties[] = Array.from({ length: 40 }, (_, i) => {
+  const angle = (i / 40) * 2 * Math.PI + (Math.random() - 0.5) * 0.5;
+  const dist = 150 + Math.random() * 250;
+  return {
+    "--delay": `${Math.random() * 0.6}s`,
+    "--x": `${Math.cos(angle) * dist}px`,
+    "--y": `${Math.sin(angle) * dist}px`,
+    "--rot": `${Math.random() * 720}deg`,
+    "--size": `${14 + Math.random() * 18}px`,
+  } as React.CSSProperties;
+});
+
 const NAV_KEYS = [
   { to: "/dashboard", labelKey: "nav.dashboard", icon: "\uD83D\uDCCA" },
   { to: "/offers", labelKey: "nav.offers", icon: "\uD83D\uDCCB" },
@@ -150,6 +162,7 @@ export default function App() {
   const [showCongrats, setShowCongrats] = useState(false);
   const navigate = useNavigate();
   const pendingRedirect = useRef<string | null>(null);
+
 
   useEffect(() => {
     const token = api.getToken();
@@ -290,23 +303,9 @@ export default function App() {
       {showCongrats && (
         <div className="congrats-overlay" onClick={() => setShowCongrats(false)}>
           <div className="congrats-stars">
-            {Array.from({ length: 40 }).map((_, i) => {
-              const angle = (i / 40) * 2 * Math.PI + (Math.random() - 0.5) * 0.5;
-              const dist = 150 + Math.random() * 250;
-              return (
-                <span
-                  key={i}
-                  className="congrats-star"
-                  style={{
-                    "--delay": `${Math.random() * 0.6}s`,
-                    "--x": `${Math.cos(angle) * dist}px`,
-                    "--y": `${Math.sin(angle) * dist}px`,
-                    "--rot": `${Math.random() * 720}deg`,
-                    "--size": `${14 + Math.random() * 18}px`,
-                  } as React.CSSProperties}
-                />
-              );
-            })}
+            {CONGRATS_STAR_STYLES.map((style, i) => (
+              <span key={i} className="congrats-star" style={style} />
+            ))}
           </div>
           <div className="congrats-card" onClick={(e) => e.stopPropagation()}>
             <div className="congrats-emoji">{"\uD83C\uDF89"}</div>

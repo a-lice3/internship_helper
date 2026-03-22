@@ -329,7 +329,7 @@ export default function InterviewPage({ userId }: { userId: number }) {
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               {/* Record toggle: square-in-circle button */}
               <button
-                onClick={() => { speech.isRecording ? speech.stop() : speech.start(); }}
+                onClick={() => { if (speech.isRecording) { speech.stop(); } else { speech.start(); } }}
                 title={speech.isRecording ? t("interviewPage.pauseMic") : t("interviewPage.startMic")}
                 style={{
                   width: 36, height: 36, borderRadius: "50%",
