@@ -14,6 +14,8 @@ from src.routers import (
     reminders,
     notes,
     dashboard,
+    memos,
+    goals,
 )
 
 app = FastAPI(title="Job Seeker API")
@@ -38,3 +40,5 @@ app.include_router(search.router)
 app.include_router(reminders.router)
 app.include_router(notes.router)
 app.include_router(dashboard.router)
+app.include_router(memos.router)
+app.include_router(goals.router)

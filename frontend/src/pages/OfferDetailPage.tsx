@@ -410,7 +410,6 @@ export default function OfferDetailPage({ userId }: { userId: number }) {
         ]);
         setCvSuggestions(suggestions);
         setLatexResult(adapted);
-        setEditedLatex(adapted.adapted_latex);
       } else {
         const result = await api.suggestCVChanges(userId, id, cv.id);
         setCvSuggestions(result);

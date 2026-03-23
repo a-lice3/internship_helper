@@ -74,6 +74,20 @@ As a bonus, it also offers pitch and interview simulation and evaluation, calend
 - **Offer Parsing**: practice your interviews with AI-generated questions
 - **Offer Parsing**: paste a raw job description, get structured data (company, title, locations, description)
 
+### Memos & Skill Recommendations
+- Create **personal memos** in plain text (preserves line breaks and indentation — paste code, notes, anything)
+- Tag, search, and filter memos; mark favorites for quick access
+- Grid or list view toggle
+- Link memos to a specific skill for structured learning notes
+- **AI-powered skill recommendations**: analyzes your saved offers to identify the most in-demand skills you should learn, with frequency counts and source offers
+- One-click memo creation from a recommended skill
+
+### Goals & Progress Tracking
+- Set recurring goals with configurable frequency (daily, weekly, monthly) and target count
+- Log daily progress and view history
+- Daily summary showing completion rate across all active goals
+- Pause/resume or delete goals
+
 ### Cover Letter Templates
 - Store your cover letters by uploading PDFs (auto-extracted)
 - Use them as a base for AI-generated cover letters
@@ -251,6 +265,8 @@ internship_helper/
 │   │   │   ├── interview.py       # Interview REST + WebSocket endpoints
 │   │   │   ├── search.py          # Offer search/scraping (France Travail, WTTJ, The Muse)
 │   │   │   ├── dashboard.py       # Dashboard stats
+│   │   │   ├── memos.py           # Memos CRUD (search, tags, favorites)
+│   │   │   ├── goals.py           # Goals CRUD, progress logging, daily summary
 │   │   │   ├── reminders.py       # Reminder CRUD
 │   │   │   └── notes.py           # Offer notes CRUD
 │   │   └── scrapers/
@@ -288,6 +304,8 @@ internship_helper/
 │   │       ├── TemplatesPage.tsx      # Cover letter templates
 │   │       ├── AIPage.tsx             # AI features hub
 │   │       ├── InterviewPage.tsx      # Mock interviews
+│   │       ├── MemosPage.tsx          # Memos with Markdown + skill recommendations
+│   │       ├── GoalsPage.tsx          # Recurring goals + progress tracking
 │   │       ├── CalendarPage.tsx       # Calendar view
 │   │       ├── RemindersPage.tsx      # Reminders management
 │   │       └── SettingsPage.tsx       # User settings (language selector)
@@ -312,6 +330,9 @@ internship_helper/
 | **Interview** | Create/list/delete sessions, view detail, run analysis, predict questions, progress stats, `WS /ws/interview/{id}` |
 | **Search** | `POST /search/francetravail`, `/search/wttj`, `/search/themuse`, smart matching |
 | **Dashboard** | `GET /users/{id}/dashboard` (stats, activity, reminders) |
+| **Memos** | `POST/GET/PATCH/DELETE /users/{id}/memos`, search, filter by tag/favorites |
+| **Goals** | `POST/GET/PATCH/DELETE /users/{id}/goals`, daily summary, log/view progress |
+| **Skill Reco** | `GET /users/{id}/skill-recommendations`, `POST .../refresh` |
 | **Reminders** | `POST/GET/DELETE /users/{id}/reminders`, mark as done |
 | **Notes** | `POST/GET/DELETE /users/{id}/offers/{offer_id}/notes` |
 

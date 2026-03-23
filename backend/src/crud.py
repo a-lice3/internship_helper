@@ -1,4 +1,5 @@
-from datetime import datetime, timedelta
+import json
+from datetime import date as date_type, datetime, timedelta
 
 from sqlalchemy import func as sqlfunc
 from sqlalchemy.orm import Session
@@ -355,8 +356,6 @@ def delete_template(db: Session, template_id: int) -> bool:
 def create_offer(
     db: Session, user_id: int, offer: schemas.InternshipOfferCreate
 ) -> models.InternshipOffer:
-    from datetime import date as date_type
-
     db_offer = models.InternshipOffer(
         user_id=user_id,
         company=offer.company,
@@ -364,7 +363,7 @@ def create_offer(
         description=offer.description,
         link=offer.link,
         locations=offer.locations,
-        date_applied=offer.date_applied or date_type.today(),
+        date_applied=offer.date_applied,
         status=models.OfferStatus(offer.status),
     )
     db.add(db_offer)
@@ -423,6 +422,9 @@ def delete_offer(db: Session, offer_id: int) -> bool:
     if not offer:
         return False
     # Delete related records that lack ondelete CASCADE
+    db.query(models.CVOfferAnalysis).filter(
+        models.CVOfferAnalysis.offer_id == offer_id
+    ).delete()
     db.query(models.GeneratedCoverLetter).filter(
         models.GeneratedCoverLetter.offer_id == offer_id
     ).delete()
@@ -1540,3 +1542,327 @@ def get_cv_offer_analyses(db: Session, user_id: int) -> list[models.CVOfferAnaly
         .order_by(models.CVOfferAnalysis.created_at.desc())
         .all()
     )
+
+
+# ---------- Memo ----------
+
+
+def create_memo(db: Session, user_id: int, memo: schemas.MemoCreate) -> models.Memo:
+    db_memo = models.Memo(
+        user_id=user_id,
+        title=memo.title,
+        content=memo.content,
+        tags=json.dumps(memo.tags) if memo.tags else None,
+        offer_id=memo.offer_id,
+        skill_name=memo.skill_name,
+    )
+    db.add(db_memo)
+    db.commit()
+    db.refresh(db_memo)
+    return db_memo
+
+
+def get_memos(
+    db: Session,
+    user_id: int,
+    search: str | None = None,
+    tag: str | None = None,
+    offer_id: int | None = None,
+    favorites_only: bool = False,
+) -> list[models.Memo]:
+    q = db.query(models.Memo).filter(models.Memo.user_id == user_id)
+    if search:
+        pattern = f"%{search}%"
+        q = q.filter(
+            (models.Memo.title.ilike(pattern)) | (models.Memo.content.ilike(pattern))
+        )
+    if tag:
+        q = q.filter(models.Memo.tags.ilike(f'%"{tag}"%'))
+    if offer_id is not None:
+        q = q.filter(models.Memo.offer_id == offer_id)
+    if favorites_only:
+        q = q.filter(models.Memo.is_favorite.is_(True))
+    return q.order_by(models.Memo.updated_at.desc()).all()
+
+
+def get_memo(db: Session, memo_id: int) -> models.Memo | None:
+    return db.query(models.Memo).filter(models.Memo.id == memo_id).first()
+
+
+def update_memo(
+    db: Session, memo_id: int, update: schemas.MemoUpdate
+) -> models.Memo | None:
+    memo = db.query(models.Memo).filter(models.Memo.id == memo_id).first()
+    if not memo:
+        return None
+    data = update.model_dump(exclude_unset=True)
+    if "tags" in data and data["tags"] is not None:
+        data["tags"] = json.dumps(data["tags"])
+    for field, value in data.items():
+        setattr(memo, field, value)
+    db.commit()
+    db.refresh(memo)
+    return memo
+
+
+def delete_memo(db: Session, memo_id: int) -> bool:
+    memo = db.query(models.Memo).filter(models.Memo.id == memo_id).first()
+    if not memo:
+        return False
+    db.delete(memo)
+    db.commit()
+    return True
+
+
+def get_memo_count(db: Session, user_id: int) -> int:
+    return db.query(models.Memo).filter(models.Memo.user_id == user_id).count()
+
+
+# ---------- Skill Recommendations ----------
+
+
+def compute_skill_recommendations(
+    db: Session, user_id: int
+) -> models.SkillRecommendation:
+    analyses = (
+        db.query(models.SkillGapAnalysis)
+        .filter(models.SkillGapAnalysis.user_id == user_id)
+        .all()
+    )
+
+    freq_map: dict[str, dict] = {}
+    for a in analyses:
+        for skill_type, raw in [
+            ("hard", a.missing_hard_skills),
+            ("soft", a.missing_soft_skills),
+        ]:
+            try:
+                skills = json.loads(raw) if isinstance(raw, str) else raw
+            except (json.JSONDecodeError, TypeError):
+                continue
+            if not isinstance(skills, list):
+                continue
+            for skill_name in skills:
+                if not isinstance(skill_name, str):
+                    continue
+                key = skill_name.lower().strip()
+                if key not in freq_map:
+                    freq_map[key] = {
+                        "skill_name": skill_name.strip(),
+                        "frequency": 0,
+                        "skill_type": skill_type,
+                        "offer_titles": [],
+                    }
+                freq_map[key]["frequency"] += 1
+                title = f"{a.offer_title} @ {a.company}"
+                if title not in freq_map[key]["offer_titles"]:
+                    freq_map[key]["offer_titles"].append(title)
+
+    user_skills = {
+        s.name.lower().strip()
+        for s in db.query(models.Skill).filter(models.Skill.user_id == user_id).all()
+    }
+
+    aggregated = []
+    for key, data in freq_map.items():
+        data["user_has_skill"] = key in user_skills
+        aggregated.append(data)
+
+    aggregated.sort(key=lambda x: x["frequency"], reverse=True)
+
+    existing = (
+        db.query(models.SkillRecommendation)
+        .filter(models.SkillRecommendation.user_id == user_id)
+        .first()
+    )
+    if existing:
+        existing.aggregated_skills = json.dumps(aggregated)
+        existing.offers_analyzed_count = len(analyses)
+        existing.generated_at = datetime.utcnow()
+    else:
+        existing = models.SkillRecommendation(
+            user_id=user_id,
+            aggregated_skills=json.dumps(aggregated),
+            offers_analyzed_count=len(analyses),
+        )
+        db.add(existing)
+    db.commit()
+    db.refresh(existing)
+    return existing
+
+
+def get_skill_recommendations(
+    db: Session, user_id: int
+) -> models.SkillRecommendation | None:
+    return (
+        db.query(models.SkillRecommendation)
+        .filter(models.SkillRecommendation.user_id == user_id)
+        .first()
+    )
+
+
+# ---------- Goal ----------
+
+
+def create_goal(db: Session, user_id: int, goal: schemas.GoalCreate) -> models.Goal:
+    db_goal = models.Goal(
+        user_id=user_id,
+        title=goal.title,
+        frequency=models.GoalFrequency(goal.frequency),
+        target_count=goal.target_count,
+    )
+    db.add(db_goal)
+    db.commit()
+    db.refresh(db_goal)
+    return db_goal
+
+
+def get_goals(db: Session, user_id: int, active_only: bool = True) -> list[models.Goal]:
+    q = db.query(models.Goal).filter(models.Goal.user_id == user_id)
+    if active_only:
+        q = q.filter(models.Goal.is_active.is_(True))
+    return q.order_by(models.Goal.created_at.desc()).all()
+
+
+def update_goal(
+    db: Session, goal_id: int, update: schemas.GoalUpdate
+) -> models.Goal | None:
+    goal = db.query(models.Goal).filter(models.Goal.id == goal_id).first()
+    if not goal:
+        return None
+    data = update.model_dump(exclude_unset=True)
+    if "frequency" in data and data["frequency"] is not None:
+        data["frequency"] = models.GoalFrequency(data["frequency"])
+    for field, value in data.items():
+        setattr(goal, field, value)
+    db.commit()
+    db.refresh(goal)
+    return goal
+
+
+def delete_goal(db: Session, goal_id: int) -> bool:
+    goal = db.query(models.Goal).filter(models.Goal.id == goal_id).first()
+    if not goal:
+        return False
+    db.delete(goal)
+    db.commit()
+    return True
+
+
+# ---------- Goal Progress ----------
+
+
+def log_goal_progress(
+    db: Session,
+    goal_id: int,
+    user_id: int,
+    progress_date: date_type,
+    completed_count: int,
+    notes: str | None = None,
+) -> models.GoalProgress:
+    existing = (
+        db.query(models.GoalProgress)
+        .filter(
+            models.GoalProgress.goal_id == goal_id,
+            models.GoalProgress.date == progress_date,
+        )
+        .first()
+    )
+    if existing:
+        existing.completed_count = completed_count
+        if notes is not None:
+            existing.notes = notes
+    else:
+        existing = models.GoalProgress(
+            goal_id=goal_id,
+            user_id=user_id,
+            date=progress_date,
+            completed_count=completed_count,
+            notes=notes,
+        )
+        db.add(existing)
+    db.commit()
+    db.refresh(existing)
+    return existing
+
+
+def get_goal_progress(
+    db: Session,
+    goal_id: int,
+    start_date: date_type | None = None,
+    end_date: date_type | None = None,
+) -> list[models.GoalProgress]:
+    q = db.query(models.GoalProgress).filter(models.GoalProgress.goal_id == goal_id)
+    if start_date:
+        q = q.filter(models.GoalProgress.date >= start_date)
+    if end_date:
+        q = q.filter(models.GoalProgress.date <= end_date)
+    return q.order_by(models.GoalProgress.date.desc()).all()
+
+
+def compute_streak(db: Session, goal_id: int) -> int:
+    goal = db.query(models.Goal).filter(models.Goal.id == goal_id).first()
+    if not goal:
+        return 0
+    entries = (
+        db.query(models.GoalProgress)
+        .filter(models.GoalProgress.goal_id == goal_id)
+        .order_by(models.GoalProgress.date.desc())
+        .all()
+    )
+    if not entries:
+        return 0
+
+    streak = 0
+    expected = date_type.today()
+    for entry in entries:
+        if entry.date == expected and entry.completed_count >= goal.target_count:
+            streak += 1
+            expected -= timedelta(days=1)
+        elif entry.date < expected:
+            break
+        else:
+            continue
+    return streak
+
+
+def get_daily_goals_summary(db: Session, user_id: int, summary_date: date_type) -> dict:
+    goals = get_goals(db, user_id, active_only=True)
+    goal_data = []
+    completed_count = 0
+    max_streak = 0
+
+    for goal in goals:
+        progress = (
+            db.query(models.GoalProgress)
+            .filter(
+                models.GoalProgress.goal_id == goal.id,
+                models.GoalProgress.date == summary_date,
+            )
+            .first()
+        )
+        today_completed = progress.completed_count if progress else 0
+        streak = compute_streak(db, goal.id)
+        if streak > max_streak:
+            max_streak = streak
+        if today_completed >= goal.target_count:
+            completed_count += 1
+        goal_data.append(
+            {
+                "id": goal.id,
+                "title": goal.title,
+                "frequency": goal.frequency.value,
+                "target_count": goal.target_count,
+                "is_active": goal.is_active,
+                "created_at": goal.created_at,
+                "today_completed": today_completed,
+                "current_streak": streak,
+            }
+        )
+
+    return {
+        "goals": goal_data,
+        "total_goals": len(goals),
+        "completed_today": completed_count,
+        "longest_streak": max_streak,
+    }

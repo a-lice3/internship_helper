@@ -1015,3 +1015,46 @@ def delete_pitch_analysis(
     if not crud.delete_pitch_analysis(db, analysis_id):
         raise HTTPException(status_code=404, detail="Pitch analysis not found")
     return {"detail": "Deleted"}
+
+
+# ---------- Skill Recommendations ----------
+
+
+@router.get(
+    "/users/{user_id}/skill-recommendations",
+    response_model=schemas.SkillRecommendationsResponse,
+)
+def get_skill_recommendations(
+    user_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    _verify_owner(user_id, current_user)
+    rec = crud.get_skill_recommendations(db, user_id)
+    if not rec:
+        rec = crud.compute_skill_recommendations(db, user_id)
+    skills = json.loads(rec.aggregated_skills) if rec.aggregated_skills else []
+    return schemas.SkillRecommendationsResponse(
+        aggregated_skills=[schemas.AggregatedSkill(**s) for s in skills],
+        offers_analyzed_count=rec.offers_analyzed_count,
+        generated_at=rec.generated_at,
+    )
+
+
+@router.post(
+    "/users/{user_id}/skill-recommendations/refresh",
+    response_model=schemas.SkillRecommendationsResponse,
+)
+def refresh_skill_recommendations(
+    user_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    _verify_owner(user_id, current_user)
+    rec = crud.compute_skill_recommendations(db, user_id)
+    skills = json.loads(rec.aggregated_skills) if rec.aggregated_skills else []
+    return schemas.SkillRecommendationsResponse(
+        aggregated_skills=[schemas.AggregatedSkill(**s) for s in skills],
+        offers_analyzed_count=rec.offers_analyzed_count,
+        generated_at=rec.generated_at,
+    )

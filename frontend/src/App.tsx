@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Routes, Route, Link, Navigate, useNavigate, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { LayoutDashboard, ClipboardList, User, Mic, StickyNote, Target, Settings } from "lucide-react";
 import * as api from "./api";
 import DashboardPage from "./pages/DashboardPage";
 import OffersPage from "./pages/OffersPage";
@@ -11,6 +12,8 @@ import ProfilePage from "./pages/ProfilePage";
 import CVsPage from "./pages/CVsPage";
 import TemplatesPage from "./pages/TemplatesPage";
 import InterviewPage from "./pages/InterviewPage";
+import MemosPage from "./pages/MemosPage";
+import GoalsPage from "./pages/GoalsPage";
 import SettingsPage from "./pages/SettingsPage";
 import OnboardingFlow from "./pages/OnboardingFlow";
 import GuidedTour, { type TourStep } from "./components/GuidedTour";
@@ -30,16 +33,18 @@ const CONGRATS_STAR_STYLES: React.CSSProperties[] = Array.from({ length: 40 }, (
 });
 
 const NAV_KEYS = [
-  { to: "/dashboard", labelKey: "nav.dashboard", icon: "\uD83D\uDCCA" },
-  { to: "/offers", labelKey: "nav.offers", icon: "\uD83D\uDCCB" },
-  { to: "/profile", labelKey: "nav.profile", icon: "\uD83D\uDC64" },
-  { to: "/interview", labelKey: "nav.interview", icon: "\uD83C\uDFA4" },
-  { to: "/settings", labelKey: "nav.settings", icon: "\u2699\uFE0F" },
+  { to: "/dashboard", labelKey: "nav.dashboard", icon: <LayoutDashboard size={20} /> },
+  { to: "/offers", labelKey: "nav.offers", icon: <ClipboardList size={20} /> },
+  { to: "/profile", labelKey: "nav.profile", icon: <User size={20} /> },
+  { to: "/interview", labelKey: "nav.interview", icon: <Mic size={20} /> },
+  { to: "/memos", labelKey: "nav.memos", icon: <StickyNote size={20} /> },
+  { to: "/goals", labelKey: "nav.goals", icon: <Target size={20} /> },
+  { to: "/settings", labelKey: "nav.settings", icon: <Settings size={20} /> },
 ];
 
 // ---------- Sidebar Link (matches prefix for nested routes) ----------
 
-const SidebarLink = React.forwardRef<HTMLAnchorElement, { to: string; icon: string; label: string }>(
+const SidebarLink = React.forwardRef<HTMLAnchorElement, { to: string; icon: React.ReactNode; label: string }>(
   ({ to, icon, label }, ref) => {
     const location = useLocation();
     const isActive = location.pathname === to || location.pathname.startsWith(to + "/");
@@ -174,12 +179,16 @@ export default function App() {
   const refOffers = useRef<HTMLAnchorElement>(null);
   const refProfile = useRef<HTMLAnchorElement>(null);
   const refInterview = useRef<HTMLAnchorElement>(null);
+  const refMemos = useRef<HTMLAnchorElement>(null);
+  const refGoals = useRef<HTMLAnchorElement>(null);
   const refSettings = useRef<HTMLAnchorElement>(null);
   const navRefMap: Record<string, React.RefObject<HTMLAnchorElement | null>> = {
     "/dashboard": refDashboard,
     "/offers": refOffers,
     "/profile": refProfile,
     "/interview": refInterview,
+    "/memos": refMemos,
+    "/goals": refGoals,
     "/settings": refSettings,
   };
 
@@ -188,6 +197,8 @@ export default function App() {
     { targetRef: refOffers, titleKey: "guidedTour.offers.title", descriptionKey: "guidedTour.offers.desc" },
     { targetRef: refProfile, titleKey: "guidedTour.profile.title", descriptionKey: "guidedTour.profile.desc" },
     { targetRef: refInterview, titleKey: "guidedTour.interview.title", descriptionKey: "guidedTour.interview.desc" },
+    { targetRef: refMemos, titleKey: "guidedTour.memos.title", descriptionKey: "guidedTour.memos.desc" },
+    { targetRef: refGoals, titleKey: "guidedTour.goals.title", descriptionKey: "guidedTour.goals.desc" },
     { targetRef: refSettings, titleKey: "guidedTour.settings.title", descriptionKey: "guidedTour.settings.desc" },
   ];
 
@@ -352,6 +363,12 @@ export default function App() {
 
           {/* Interview */}
           <Route path="/interview" element={<InterviewPage userId={user.id} />} />
+
+          {/* Memos */}
+          <Route path="/memos" element={<MemosPage userId={user.id} />} />
+
+          {/* Goals */}
+          <Route path="/goals" element={<GoalsPage userId={user.id} />} />
 
           {/* Settings */}
           <Route path="/settings" element={<SettingsPage userId={user.id} userName={user.name} userEmail={user.email} onLogout={handleLogout} />} />

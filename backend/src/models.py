@@ -72,6 +72,11 @@ class InterviewSessionStatus(str, enum.Enum):
     analyzed = "analyzed"
 
 
+class GoalFrequency(str, enum.Enum):
+    daily = "daily"
+    weekly = "weekly"
+
+
 # ---------- Models ----------
 
 
@@ -140,6 +145,12 @@ class User(Base):
         back_populates="user", cascade="all, delete-orphan"
     )
     offer_notes: Mapped[list["OfferNote"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+    memos: Mapped[list["Memo"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+    goals: Mapped[list["Goal"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
 
@@ -570,3 +581,72 @@ class OfferNote(Base):
 
     user: Mapped["User"] = relationship(back_populates="offer_notes")
     offer: Mapped["InternshipOffer"] = relationship(back_populates="notes")
+
+
+class Memo(Base):
+    __tablename__ = "memos"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    title: Mapped[str] = mapped_column(String(300), nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)  # Markdown
+    tags: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON array
+    offer_id: Mapped[int | None] = mapped_column(
+        ForeignKey("internship_offers.id", ondelete="SET NULL"), nullable=True
+    )
+    skill_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    is_favorite: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now()
+    )
+
+    user: Mapped["User"] = relationship(back_populates="memos")
+    offer: Mapped["InternshipOffer | None"] = relationship()
+
+
+class SkillRecommendation(Base):
+    __tablename__ = "skill_recommendations"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id"), nullable=False, unique=True
+    )
+    aggregated_skills: Mapped[str] = mapped_column(Text, nullable=False)  # JSON
+    offers_analyzed_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    generated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+class Goal(Base):
+    __tablename__ = "goals"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    title: Mapped[str] = mapped_column(String(300), nullable=False)
+    frequency: Mapped[GoalFrequency] = mapped_column(
+        Enum(GoalFrequency), nullable=False, default=GoalFrequency.daily
+    )
+    target_count: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+    user: Mapped["User"] = relationship(back_populates="goals")
+    progress_entries: Mapped[list["GoalProgress"]] = relationship(
+        back_populates="goal", cascade="all, delete-orphan"
+    )
+
+
+class GoalProgress(Base):
+    __tablename__ = "goal_progress"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    goal_id: Mapped[int] = mapped_column(
+        ForeignKey("goals.id", ondelete="CASCADE"), nullable=False
+    )
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    date: Mapped[date] = mapped_column(Date, nullable=False)
+    completed_count: Mapped[int] = mapped_column(Integer, default=0)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+    goal: Mapped["Goal"] = relationship(back_populates="progress_entries")
