@@ -9,7 +9,14 @@ from mistralai.client.models.assistantmessage import AssistantMessage
 from mistralai.client.models.systemmessage import SystemMessage
 from mistralai.client.models.usermessage import UserMessage
 
-from src.llm_service import Messages, _chat, _chat_async, _strip_markdown_fences, client, MODEL
+from src.llm_service import (
+    Messages,
+    _chat,
+    _chat_async,
+    _strip_markdown_fences,
+    client,
+    MODEL,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -350,7 +357,7 @@ def generate_hint(question: str, partial_transcript: str, language: str) -> str:
     return _chat("You are a helpful interview coach.", prompt)
 
 
-def predict_questions(
+async def predict_questions(
     offer_title: str,
     company: str,
     offer_description: str,
@@ -369,37 +376,9 @@ def predict_questions(
         difficulty=difficulty,
         language=language,
     )
-    raw = _chat("You are an expert interview preparation assistant.", prompt)
-    cleaned = _strip_markdown_fences(raw)
-    try:
-        result = json.loads(cleaned)
-        if isinstance(result, list):
-            return result  # type: ignore[return-value]
-    except json.JSONDecodeError:
-        logger.error("Failed to parse predicted questions: %s", cleaned[:500])
-    return []
-
-
-async def predict_questions_async(
-    offer_title: str,
-    company: str,
-    offer_description: str,
-    interview_type: str,
-    difficulty: str,
-    language: str,
-    count: int = 10,
-) -> list[dict[str, str]]:
-    """Async version of predict_questions."""
-    prompt = PREDICT_QUESTIONS_PROMPT.format(
-        count=count,
-        offer_title=offer_title,
-        company=company,
-        offer_description=offer_description,
-        interview_type=interview_type,
-        difficulty=difficulty,
-        language=language,
+    raw = await _chat_async(
+        "You are an expert interview preparation assistant.", prompt
     )
-    raw = await _chat_async("You are an expert interview preparation assistant.", prompt)
     cleaned = _strip_markdown_fences(raw)
     try:
         result = json.loads(cleaned)
@@ -443,7 +422,7 @@ def build_full_transcript(turns: list[dict[str, str]]) -> str:
     return "\n".join(lines)
 
 
-def run_post_interview_analysis(
+async def run_post_interview_analysis(
     interview_type: str,
     difficulty: str,
     language: str,
@@ -455,57 +434,6 @@ def run_post_interview_analysis(
 
     Returns a dict with all analysis fields ready for storage.
     """
-    lang = language if language in ("fr", "en") else "en"
-    full_transcript = build_full_transcript(turns)
-    filler_analysis = analyze_filler_words(full_transcript, lang)
-
-    # Build analysis prompt
-    template = ANALYSIS_SYSTEM_PROMPT[lang]
-    system_prompt = template.format(
-        offer_title=offer_title or "General interview",
-        company=company or "a company",
-        interview_type=interview_type,
-        difficulty=difficulty,
-        full_transcript=full_transcript,
-    )
-
-    raw = _chat(
-        system_prompt, "Analyze the interview above and return the JSON report."
-    )
-    cleaned = _strip_markdown_fences(raw)
-
-    try:
-        result = json.loads(cleaned)
-    except json.JSONDecodeError:
-        logger.error("Failed to parse interview analysis: %s", cleaned[:500])
-        result = {
-            "overall_score": 50,
-            "communication_score": 50,
-            "technical_score": None,
-            "behavioral_score": None,
-            "confidence_score": 50,
-            "strengths": [],
-            "weaknesses": [],
-            "improvements": ["Could not parse structured analysis."],
-            "summary": "Analysis parsing failed. Please try again.",
-            "star_method_usage": None,
-            "per_turn_feedback": [],
-        }
-
-    result["filler_words_analysis"] = filler_analysis
-    result["full_transcript"] = full_transcript
-    return result
-
-
-async def run_post_interview_analysis_async(
-    interview_type: str,
-    difficulty: str,
-    language: str,
-    offer_title: str,
-    company: str,
-    turns: list[dict[str, str]],
-) -> dict:
-    """Async version of run_post_interview_analysis."""
     lang = language if language in ("fr", "en") else "en"
     full_transcript = build_full_transcript(turns)
     filler_analysis = analyze_filler_words(full_transcript, lang)

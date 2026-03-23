@@ -233,9 +233,9 @@ async def chat_edit_cv_endpoint(
                         continue
             support_files_content = "\n\n".join(parts)
 
-    from src.llm_service import chat_edit_cv_async
+    from src.llm_service import chat_edit_cv
 
-    updated_latex = await chat_edit_cv_async(
+    updated_latex = await chat_edit_cv(
         latex_content=cv.latex_content,
         user_message=body.message,
         conversation_history=body.conversation_history,

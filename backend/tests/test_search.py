@@ -48,7 +48,7 @@ def _create_scraped_offers(client, uid, auth_header):
     """Run a chat-search to populate scraped offers in DB."""
     with (
         patch(
-            "src.routers.search.extract_search_params_async",
+            "src.routers.search.extract_search_params",
             return_value=FAKE_EXTRACT_PARAMS,
         ),
         patch(
@@ -56,7 +56,7 @@ def _create_scraped_offers(client, uid, auth_header):
             return_value=FAKE_OFFERS,
         ),
         patch(
-            "src.routers.search.match_offers_to_profile_async",
+            "src.routers.search.match_offers_to_profile",
             return_value=FAKE_MATCH_RESULTS,
         ),
     ):
@@ -89,7 +89,7 @@ def test_chat_search_no_results(client, sample_user, auth_header):
     uid = sample_user["id"]
     with (
         patch(
-            "src.routers.search.extract_search_params_async",
+            "src.routers.search.extract_search_params",
             return_value=FAKE_EXTRACT_PARAMS,
         ),
         patch("src.routers.search._wttj_source.search", return_value=[]),
@@ -107,7 +107,7 @@ def test_chat_search_no_results(client, sample_user, auth_header):
 def test_chat_search_mistral_error(client, sample_user, auth_header):
     uid = sample_user["id"]
     with patch(
-        "src.routers.search.extract_search_params_async",
+        "src.routers.search.extract_search_params",
         side_effect=RuntimeError("API down"),
     ):
         resp = client.post(
@@ -126,7 +126,7 @@ def test_search_offers_structured(client, sample_user, auth_header):
     with (
         patch("src.routers.search._wttj_source.search", return_value=FAKE_OFFERS),
         patch(
-            "src.routers.search.match_offers_to_profile_async",
+            "src.routers.search.match_offers_to_profile",
             return_value=FAKE_MATCH_RESULTS,
         ),
     ):

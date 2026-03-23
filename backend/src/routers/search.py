@@ -11,9 +11,7 @@ from src.auth import get_current_user
 from src.database import get_db
 from src.llm_service import (
     extract_search_params,
-    extract_search_params_async,
     match_offers_to_profile,
-    match_offers_to_profile_async,
 )
 from src.models import User
 from src.scrapers import FranceTravailSource, TheMuseSource, WTTJSource, RawOffer
@@ -79,7 +77,7 @@ async def chat_search(
 
     # Use Mistral to extract search params from the user message
     try:
-        params = await extract_search_params_async(body.message)
+        params = await extract_search_params(body.message)
     except Exception as exc:
         logger.error("Failed to extract search params: %s", exc)
         raise HTTPException(status_code=502, detail=f"Mistral API error: {exc}")
@@ -101,7 +99,7 @@ async def chat_search(
     )
 
     # Reuse the search_offers logic
-    result = await _do_search_async(user_id, search_body, current_user, db)
+    result = await _do_search(user_id, search_body, current_user, db)
     result.parsed_query = params
     return result
 
@@ -118,10 +116,10 @@ async def search_offers(
 ):
     """Search for internship offers across configured sources and match against profile."""
     _verify_owner(user_id, current_user)
-    return await _do_search_async(user_id, body, current_user, db)
+    return await _do_search(user_id, body, current_user, db)
 
 
-def _do_search(
+async def _do_search(
     user_id: int,
     body: schemas.OfferSearchRequest,
     current_user: User,
@@ -137,159 +135,40 @@ def _do_search(
         "france metropolitaine",
     )
 
-    # Collect from each source
-    if "francetravail" in body.sources and is_france:
-        try:
-            ft_offers = _ft_source.search(
-                body.keywords, body.location, body.radius_km, body.max_results
-            )
-            all_offers.extend(ft_offers)
-            sources_used.append("francetravail")
-        except Exception as exc:
-            logger.warning("France Travail search failed: %s", exc)
-
-    if "wttj" in body.sources:
-        try:
-            wttj_offers = _wttj_source.search(
-                body.keywords, body.location, body.radius_km, body.max_results
-            )
-            all_offers.extend(wttj_offers)
-            sources_used.append("wttj")
-        except Exception as exc:
-            logger.warning("WTTJ search failed: %s", exc)
-
-    if "themuse" in body.sources:
-        try:
-            muse_offers = _muse_source.search(
-                body.keywords,
-                body.location,
-                body.radius_km,
-                body.max_results,
-                country=body.country,
-            )
-            all_offers.extend(muse_offers)
-            sources_used.append("themuse")
-        except Exception as exc:
-            logger.warning("The Muse search failed: %s", exc)
-
-    if not all_offers:
-        return schemas.OfferSearchResponse(
-            results=[], total=0, sources_used=sources_used
-        )
-
-    # Build profile summary for matching
-    profile_summary = _build_profile_summary(current_user, db)
-
-    # Match offers against profile using Mistral
-    offers_for_matching = [
-        {
-            "title": o.title,
-            "company": o.company,
-            "description": o.description,
-        }
-        for o in all_offers
-    ]
-
-    try:
-        match_results = match_offers_to_profile(profile_summary, offers_for_matching)
-    except Exception as exc:
-        logger.warning("Matching failed, returning unscored offers: %s", exc)
-        match_results = [{"score": 50, "reasons": []} for _ in all_offers]
-
-    # Clear previous results and save new ones
-    crud.clear_scraped_offers(db, user_id)
-
-    results: list[schemas.ScrapedOfferResponse] = []
-    for offer, match in zip(all_offers, match_results):
-        score = float(match.get("score", 50))  # type: ignore[arg-type]
-        reasons: list[str] = match.get("reasons", [])  # type: ignore[assignment]
-
-        db_obj = crud.create_scraped_offer(
-            db,
-            user_id=user_id,
-            source=offer.source,
-            source_id=offer.source_id,
-            company=offer.company,
-            title=offer.title,
-            description=offer.description,
-            locations=offer.locations,
-            link=offer.link,
-            contract_type=offer.contract_type,
-            salary=offer.salary,
-            published_at=offer.published_at,
-            match_score=score,
-            match_reasons=json.dumps(reasons) if reasons else None,
-        )
-
-        results.append(
-            schemas.ScrapedOfferResponse(
-                id=db_obj.id,
-                source=offer.source,
-                source_id=offer.source_id,
-                company=offer.company,
-                title=offer.title,
-                description=offer.description,
-                locations=offer.locations,
-                link=offer.link,
-                contract_type=offer.contract_type,
-                salary=offer.salary,
-                published_at=offer.published_at,
-                match_score=score,
-                match_reasons=reasons if isinstance(reasons, list) else [],
-                saved=False,
-                created_at=db_obj.created_at,
-            )
-        )
-
-    # Sort by match score descending
-    results.sort(key=lambda r: r.match_score or 0, reverse=True)
-
-    return schemas.OfferSearchResponse(
-        results=results[: body.max_results],
-        total=len(results),
-        sources_used=sources_used,
-    )
-
-
-async def _do_search_async(
-    user_id: int,
-    body: schemas.OfferSearchRequest,
-    current_user: User,
-    db: Session,
-) -> schemas.OfferSearchResponse:
-    """Async version of _do_search — uses async LLM matching."""
-    all_offers: list[RawOffer] = []
-    sources_used: list[str] = []
-
-    is_france = body.country.strip().lower() in (
-        "france", "fr", "france metropolitaine",
-    )
-
     # Scraper calls remain sync (HTTP via urllib)
     if "francetravail" in body.sources and is_france:
         try:
-            all_offers.extend(_ft_source.search(
-                body.keywords, body.location, body.radius_km, body.max_results
-            ))
+            all_offers.extend(
+                _ft_source.search(
+                    body.keywords, body.location, body.radius_km, body.max_results
+                )
+            )
             sources_used.append("francetravail")
         except Exception as exc:
             logger.warning("France Travail search failed: %s", exc)
 
     if "wttj" in body.sources:
         try:
-            all_offers.extend(_wttj_source.search(
-                body.keywords, body.location, body.radius_km, body.max_results
-            ))
+            all_offers.extend(
+                _wttj_source.search(
+                    body.keywords, body.location, body.radius_km, body.max_results
+                )
+            )
             sources_used.append("wttj")
         except Exception as exc:
             logger.warning("WTTJ search failed: %s", exc)
 
     if "themuse" in body.sources:
         try:
-            all_offers.extend(_muse_source.search(
-                body.keywords, body.location, body.radius_km, body.max_results,
-                country=body.country,
-            ))
+            all_offers.extend(
+                _muse_source.search(
+                    body.keywords,
+                    body.location,
+                    body.radius_km,
+                    body.max_results,
+                    country=body.country,
+                )
+            )
             sources_used.append("themuse")
         except Exception as exc:
             logger.warning("The Muse search failed: %s", exc)
@@ -307,7 +186,7 @@ async def _do_search_async(
     ]
 
     try:
-        match_results = await match_offers_to_profile_async(
+        match_results = await match_offers_to_profile(
             profile_summary, offers_for_matching
         )
     except Exception as exc:
