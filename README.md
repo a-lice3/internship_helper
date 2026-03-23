@@ -83,7 +83,7 @@ As a bonus, it also offers pitch and interview simulation and evaluation, calend
 - One-click memo creation from a recommended skill
 
 ### Goals & Progress Tracking
-- Set recurring goals with configurable frequency (daily, weekly, monthly) and target count
+- Set recurring goals with configurable frequency (daily, weekly) and target count
 - Log daily progress and view history
 - Daily summary showing completion rate across all active goals
 - Pause/resume or delete goals
