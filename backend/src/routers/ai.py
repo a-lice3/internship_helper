@@ -9,18 +9,30 @@ from src.auth import get_current_user
 from src.database import get_db
 from src.llm_service import (
     adapt_cv,
+    adapt_cv_async,
     adapt_cv_latex,
+    adapt_cv_latex_async,
     analyze_pitch,
+    analyze_pitch_async,
     analyze_skill_gap,
+    analyze_skill_gap_async,
+    analyze_cv_general_async,
     chat_edit_cover_letter,
+    chat_edit_cover_letter_async,
     extract_profile_from_cv,
+    extract_profile_from_cv_async,
     fetch_company_info,
     fetch_offer_from_url,
     generate_cover_letter,
+    generate_cover_letter_async,
     ask_mistral,
+    ask_mistral_async,
     parse_offer,
+    parse_offer_async,
     suggest_cv_changes,
+    suggest_cv_changes_async,
     transcribe_audio,
+    transcribe_audio_async,
 )
 from src.models import User
 
@@ -33,11 +45,11 @@ def _verify_owner(user_id: int, current_user: User) -> None:
 
 
 @router.post("/ask", response_model=schemas.AskResponse)
-def ask(
+async def ask(
     body: schemas.AskRequest,
     current_user: User = Depends(get_current_user),
 ):
-    answer = ask_mistral(body.question)
+    answer = await ask_mistral_async(body.question)
     return schemas.AskResponse(question=body.question, answer=answer)
 
 
@@ -45,7 +57,7 @@ def ask(
     "/users/{user_id}/offers/{offer_id}/adapt-cv",
     response_model=schemas.AdaptCVResponse,
 )
-def adapt_cv_endpoint(
+async def adapt_cv_endpoint(
     user_id: int,
     offer_id: int,
     body: schemas.AdaptCVRequest,
@@ -62,7 +74,7 @@ def adapt_cv_endpoint(
     if not cv:
         raise HTTPException(status_code=404, detail="CV not found")
 
-    adapted_content = adapt_cv(
+    adapted_content = await adapt_cv_async(
         cv.content,
         offer.title,
         offer.company,
@@ -87,7 +99,7 @@ def adapt_cv_endpoint(
     "/users/{user_id}/offers/{offer_id}/suggest-cv-changes",
     response_model=schemas.CVSuggestionsResponse,
 )
-def suggest_cv_changes_endpoint(
+async def suggest_cv_changes_endpoint(
     user_id: int,
     offer_id: int,
     body: schemas.CVSuggestionsRequest,
@@ -105,7 +117,7 @@ def suggest_cv_changes_endpoint(
         raise HTTPException(status_code=404, detail="CV not found")
 
     cv_text = cv.latex_content or cv.content
-    result = suggest_cv_changes(
+    result = await suggest_cv_changes_async(
         cv_text,
         offer.title,
         offer.company,
@@ -177,7 +189,7 @@ def get_cv_offer_analyses_endpoint(
     "/users/{user_id}/cvs/{cv_id}/analyze",
     response_model=schemas.CVAnalysisResponse,
 )
-def analyze_cv_endpoint(
+async def analyze_cv_endpoint(
     user_id: int,
     cv_id: int,
     current_user: User = Depends(get_current_user),
@@ -189,9 +201,7 @@ def analyze_cv_endpoint(
     if not cv:
         raise HTTPException(status_code=404, detail="CV not found")
 
-    from src.llm_service import analyze_cv_general
-
-    result = analyze_cv_general(
+    result = await analyze_cv_general_async(
         cv.content,
         user_instructions=current_user.ai_instructions,
     )
@@ -251,7 +261,7 @@ def get_cv_analyses_endpoint(
     "/users/{user_id}/offers/{offer_id}/skill-gap",
     response_model=schemas.SkillGapResponse,
 )
-def skill_gap_endpoint(
+async def skill_gap_endpoint(
     user_id: int,
     offer_id: int,
     current_user: User = Depends(get_current_user),
@@ -276,7 +286,7 @@ def skill_gap_endpoint(
             ],
         }
     else:
-        result = analyze_skill_gap(
+        result = await analyze_skill_gap_async(
             skill_names,
             offer.title,
             offer.company,
@@ -349,7 +359,7 @@ def delete_skill_gap(
     "/users/{user_id}/offers/{offer_id}/cover-letter",
     response_model=schemas.GenerateCoverLetterResponse,
 )
-def cover_letter_endpoint(
+async def cover_letter_endpoint(
     user_id: int,
     offer_id: int,
     body: schemas.GenerateCoverLetterRequest,
@@ -382,7 +392,7 @@ def cover_letter_endpoint(
         current_user, skills, experiences, education
     )
 
-    letter = generate_cover_letter(
+    letter = await generate_cover_letter_async(
         profile_summary=profile_summary,
         offer_title=offer.title,
         company=offer.company,
@@ -511,7 +521,7 @@ def delete_cover_letter(
     "/users/{user_id}/cover-letters/{letter_id}/chat-edit",
     response_model=schemas.ChatEditCoverLetterResponse,
 )
-def chat_edit_cover_letter_endpoint(
+async def chat_edit_cover_letter_endpoint(
     user_id: int,
     letter_id: int,
     body: schemas.ChatEditCoverLetterRequest,
@@ -521,7 +531,7 @@ def chat_edit_cover_letter_endpoint(
     """Apply a chat instruction to modify a cover letter via Mistral."""
     _verify_owner(user_id, current_user)
 
-    updated_content = chat_edit_cover_letter(
+    updated_content = await chat_edit_cover_letter_async(
         cover_letter_content=body.content,
         user_message=body.message,
         conversation_history=body.conversation_history,
@@ -563,7 +573,7 @@ def update_cover_letter_content(
     "/users/{user_id}/offers/{offer_id}/adapt-cv-latex",
     response_model=schemas.AdaptCVLatexResponse,
 )
-def adapt_cv_latex_endpoint(
+async def adapt_cv_latex_endpoint(
     user_id: int,
     offer_id: int,
     body: schemas.AdaptCVLatexRequest,
@@ -600,7 +610,7 @@ def adapt_cv_latex_endpoint(
                         continue
             support_files_content = "\n\n".join(parts)
 
-    adapted_latex = adapt_cv_latex(
+    adapted_latex = await adapt_cv_latex_async(
         cv.latex_content,
         offer.title,
         offer.company,
@@ -623,7 +633,7 @@ def adapt_cv_latex_endpoint(
 
 
 @router.post("/parse-offer", response_model=schemas.ParseOfferResponse)
-def parse_offer_endpoint(
+async def parse_offer_endpoint(
     body: schemas.ParseOfferRequest,
     current_user: User = Depends(get_current_user),
 ):
@@ -641,7 +651,7 @@ def parse_offer_endpoint(
             )
 
     try:
-        result = parse_offer(text)
+        result = await parse_offer_async(text)
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Mistral API error: {exc}")
     return schemas.ParseOfferResponse(
@@ -672,7 +682,7 @@ def company_info_endpoint(
     "/users/{user_id}/auto-fill-profile",
     response_model=schemas.AutoFillProfileResponse,
 )
-def auto_fill_profile_endpoint(
+async def auto_fill_profile_endpoint(
     user_id: int,
     cv_id: int | None = None,
     current_user: User = Depends(get_current_user),
@@ -695,7 +705,7 @@ def auto_fill_profile_endpoint(
     cv_text = cv.content
 
     try:
-        extracted = extract_profile_from_cv(cv_text)
+        extracted = await extract_profile_from_cv_async(cv_text)
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Mistral API error: {exc}")
 
@@ -708,7 +718,7 @@ def auto_fill_profile_endpoint(
     "/users/{user_id}/auto-fill-profile/upload",
     response_model=schemas.AutoFillProfileResponse,
 )
-def auto_fill_profile_from_upload(
+async def auto_fill_profile_from_upload(
     user_id: int,
     file: UploadFile,
     current_user: User = Depends(get_current_user),
@@ -735,7 +745,7 @@ def auto_fill_profile_from_upload(
         raise HTTPException(status_code=400, detail="Could not extract text from PDF")
 
     try:
-        extracted = extract_profile_from_cv(cv_text)
+        extracted = await extract_profile_from_cv_async(cv_text)
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Mistral API error: {exc}")
 
@@ -867,7 +877,7 @@ def _build_pitch_response(
     "/users/{user_id}/pitch-analysis",
     response_model=schemas.PitchAnalysisResponse,
 )
-def pitch_analysis_general(
+async def pitch_analysis_general(
     user_id: int,
     file: UploadFile,
     current_user: User = Depends(get_current_user),
@@ -879,9 +889,9 @@ def pitch_analysis_general(
     _validate_audio_file(file)
 
     audio_content = file.file.read()
-    transcription = transcribe_audio(file.filename or "audio.webm", audio_content)
+    transcription = await transcribe_audio_async(file.filename or "audio.webm", audio_content)
 
-    analysis = analyze_pitch(
+    analysis = await analyze_pitch_async(
         transcription=transcription,
         user_instructions=current_user.ai_instructions,
     )
@@ -912,7 +922,7 @@ def pitch_analysis_general(
     "/users/{user_id}/offers/{offer_id}/pitch-analysis",
     response_model=schemas.PitchAnalysisResponse,
 )
-def pitch_analysis_offer(
+async def pitch_analysis_offer(
     user_id: int,
     offer_id: int,
     file: UploadFile,
@@ -929,9 +939,9 @@ def pitch_analysis_offer(
     _validate_audio_file(file)
 
     audio_content = file.file.read()
-    transcription = transcribe_audio(file.filename or "audio.webm", audio_content)
+    transcription = await transcribe_audio_async(file.filename or "audio.webm", audio_content)
 
-    analysis = analyze_pitch(
+    analysis = await analyze_pitch_async(
         transcription=transcription,
         offer_title=offer.title,
         company=offer.company,
@@ -964,14 +974,14 @@ def pitch_analysis_offer(
 
 
 @router.post("/transcribe-audio")
-def transcribe_audio_endpoint(
+async def transcribe_audio_endpoint(
     file: UploadFile,
     current_user: User = Depends(get_current_user),
 ):
     """Transcribe an audio file using Voxtral. Returns plain text."""
     _validate_audio_file(file)
     audio_content = file.file.read()
-    text = transcribe_audio(file.filename or "audio.webm", audio_content)
+    text = await transcribe_audio_async(file.filename or "audio.webm", audio_content)
     return {"transcription": text}
 
 

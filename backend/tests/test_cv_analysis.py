@@ -86,7 +86,7 @@ _GENERAL_ANALYSIS_RESULT = {
 }
 
 
-@patch("src.llm_service.analyze_cv_general", return_value=_GENERAL_ANALYSIS_RESULT)
+@patch("src.routers.ai.analyze_cv_general_async", return_value=_GENERAL_ANALYSIS_RESULT)
 def test_analyze_cv_general(mock_llm, client, sample_user, auth_header):
     uid = sample_user["id"]
     cv = _create_cv(client, uid, auth_header)
@@ -101,7 +101,7 @@ def test_analyze_cv_general(mock_llm, client, sample_user, auth_header):
     mock_llm.assert_called_once()
 
 
-@patch("src.llm_service.analyze_cv_general", return_value=_GENERAL_ANALYSIS_RESULT)
+@patch("src.routers.ai.analyze_cv_general_async", return_value=_GENERAL_ANALYSIS_RESULT)
 def test_analyze_cv_not_found(mock_llm, client, sample_user, auth_header):
     uid = sample_user["id"]
     resp = client.post(f"/users/{uid}/cvs/9999/analyze", headers=auth_header)
@@ -109,7 +109,7 @@ def test_analyze_cv_not_found(mock_llm, client, sample_user, auth_header):
     mock_llm.assert_not_called()
 
 
-@patch("src.llm_service.analyze_cv_general", return_value=_GENERAL_ANALYSIS_RESULT)
+@patch("src.routers.ai.analyze_cv_general_async", return_value=_GENERAL_ANALYSIS_RESULT)
 def test_get_stored_cv_analyses(mock_llm, client, sample_user, auth_header):
     uid = sample_user["id"]
     cv = _create_cv(client, uid, auth_header)
@@ -127,7 +127,7 @@ def test_get_stored_cv_analyses(mock_llm, client, sample_user, auth_header):
     assert data[0]["strengths"] == ["Good formatting", "Relevant skills"]
 
 
-@patch("src.llm_service.analyze_cv_general", return_value=_GENERAL_ANALYSIS_RESULT)
+@patch("src.routers.ai.analyze_cv_general_async", return_value=_GENERAL_ANALYSIS_RESULT)
 def test_cv_analysis_is_upserted(mock_llm, client, sample_user, auth_header):
     """Re-analyzing the same CV should update the existing record, not create a duplicate."""
     uid = sample_user["id"]
@@ -151,7 +151,7 @@ _SUGGESTIONS_RESULT = {
 }
 
 
-@patch("src.routers.ai.suggest_cv_changes", return_value=_SUGGESTIONS_RESULT)
+@patch("src.routers.ai.suggest_cv_changes_async", return_value=_SUGGESTIONS_RESULT)
 def test_suggest_cv_changes(mock_llm, client, sample_user, auth_header):
     uid = sample_user["id"]
     cv = _create_cv(client, uid, auth_header)
@@ -172,7 +172,7 @@ def test_suggest_cv_changes(mock_llm, client, sample_user, auth_header):
     mock_llm.assert_called_once()
 
 
-@patch("src.routers.ai.suggest_cv_changes", return_value=_SUGGESTIONS_RESULT)
+@patch("src.routers.ai.suggest_cv_changes_async", return_value=_SUGGESTIONS_RESULT)
 def test_suggest_cv_changes_offer_not_found(mock_llm, client, sample_user, auth_header):
     uid = sample_user["id"]
     cv = _create_cv(client, uid, auth_header)
@@ -185,7 +185,7 @@ def test_suggest_cv_changes_offer_not_found(mock_llm, client, sample_user, auth_
     assert resp.status_code == 404
 
 
-@patch("src.routers.ai.suggest_cv_changes", return_value=_SUGGESTIONS_RESULT)
+@patch("src.routers.ai.suggest_cv_changes_async", return_value=_SUGGESTIONS_RESULT)
 def test_suggest_cv_changes_cv_not_found(mock_llm, client, sample_user, auth_header):
     uid = sample_user["id"]
     offer = _create_offer(client, uid, auth_header)
@@ -198,7 +198,7 @@ def test_suggest_cv_changes_cv_not_found(mock_llm, client, sample_user, auth_hea
     assert resp.status_code == 404
 
 
-@patch("src.routers.ai.suggest_cv_changes", return_value=_SUGGESTIONS_RESULT)
+@patch("src.routers.ai.suggest_cv_changes_async", return_value=_SUGGESTIONS_RESULT)
 def test_get_stored_cv_offer_analyses(mock_llm, client, sample_user, auth_header):
     uid = sample_user["id"]
     cv = _create_cv(client, uid, auth_header)
@@ -225,7 +225,7 @@ def test_get_stored_cv_offer_analyses(mock_llm, client, sample_user, auth_header
     ]
 
 
-@patch("src.routers.ai.suggest_cv_changes", return_value=_SUGGESTIONS_RESULT)
+@patch("src.routers.ai.suggest_cv_changes_async", return_value=_SUGGESTIONS_RESULT)
 def test_cv_offer_analysis_is_upserted(mock_llm, client, sample_user, auth_header):
     """Re-analyzing the same CV+offer pair should update, not duplicate."""
     uid = sample_user["id"]

@@ -34,6 +34,19 @@ def _chat(system_prompt: str, user_prompt: str) -> str:
     return content
 
 
+async def _chat_async(system_prompt: str, user_prompt: str) -> str:
+    """Async version of _chat."""
+    messages: Messages = [
+        SystemMessage(role="system", content=system_prompt),
+        UserMessage(role="user", content=user_prompt),
+    ]
+    response = await client.chat.complete_async(model=MODEL, messages=messages)
+    content = response.choices[0].message.content
+    if not isinstance(content, str):
+        return str(content)
+    return content
+
+
 def _chat_continue(messages: Messages, followup: str) -> tuple[str, Messages]:
     """Continue a conversation with a follow-up user message.
 
@@ -47,10 +60,32 @@ def _chat_continue(messages: Messages, followup: str) -> tuple[str, Messages]:
     return text, messages
 
 
+async def _chat_continue_async(
+    messages: Messages, followup: str
+) -> tuple[str, Messages]:
+    """Async version of _chat_continue."""
+    messages.append(UserMessage(role="user", content=followup))
+    response = await client.chat.complete_async(model=MODEL, messages=messages)
+    content = response.choices[0].message.content
+    text = content if isinstance(content, str) else str(content)
+    messages.append(AssistantMessage(role="assistant", content=text))
+    return text, messages
+
+
 def ask_mistral(question: str) -> str:
     """General-purpose question to Mistral."""
     messages: Messages = [UserMessage(role="user", content=question)]
     response = client.chat.complete(model=MODEL, messages=messages)
+    content = response.choices[0].message.content
+    if not isinstance(content, str):
+        return str(content)
+    return content
+
+
+async def ask_mistral_async(question: str) -> str:
+    """Async version of ask_mistral."""
+    messages: Messages = [UserMessage(role="user", content=question)]
+    response = await client.chat.complete_async(model=MODEL, messages=messages)
     content = response.choices[0].message.content
     if not isinstance(content, str):
         return str(content)
@@ -945,3 +980,459 @@ def _try_count_pages(latex_content: str, support_files_dir: str | None) -> int |
     except Exception as exc:
         logger.warning("Page-count compilation failed (will skip check): %s", exc)
         return None
+
+
+# ---------------------------------------------------------------------------
+# Async versions of LLM functions
+# ---------------------------------------------------------------------------
+# These mirror their sync counterparts but use `_chat_async` /
+# `client.chat.complete_async` so they can be awaited from async endpoints,
+# freeing the event loop while waiting for Mistral's response.
+# ---------------------------------------------------------------------------
+
+
+async def _complete_messages_async(messages: Messages) -> str:
+    """Async completion from a pre-built message list."""
+    response = await client.chat.complete_async(model=MODEL, messages=messages)
+    content = response.choices[0].message.content
+    return content if isinstance(content, str) else str(content)
+
+
+async def adapt_cv_async(
+    cv_content: str,
+    offer_title: str,
+    company: str,
+    offer_description: str,
+    user_instructions: str | None = None,
+) -> str:
+    """Async version of adapt_cv."""
+    system_prompt = _append_user_instructions(
+        "You are an expert career advisor. "
+        "You will receive a CV and an internship offer. "
+        "Adapt the CV to better match the offer by:\n"
+        "1. Adapting the job title / position sought to match the offer\n"
+        "2. Rewriting the profile/summary section (if one exists) to highlight "
+        "relevant skills for this offer\n"
+        "3. Emphasizing or reordering relevant experiences and skills\n\n"
+        "IMPORTANT: Do NOT remove or shorten any content. Keep all experiences, "
+        "education, and skills — you may rephrase or reorder them but never delete them. "
+        "Do not invent experience. "
+        "Return only the adapted CV text.",
+        user_instructions,
+    )
+    user_prompt = (
+        f"## Internship Offer\nCompany: {company}\nTitle: {offer_title}\n"
+        f"Description: {offer_description}\n\n## Current CV\n{cv_content}"
+    )
+    return await _chat_async(system_prompt, user_prompt)
+
+
+async def suggest_cv_changes_async(
+    cv_content: str,
+    offer_title: str,
+    company: str,
+    offer_description: str,
+    user_instructions: str | None = None,
+) -> dict:
+    """Async version of suggest_cv_changes."""
+    system_prompt = _append_user_instructions(
+        "You are an expert career advisor. "
+        "You will receive a CV's text content and an internship offer. "
+        "Since this CV cannot be automatically modified, provide specific textual suggestions. "
+        "Respond in JSON with exactly these keys: "
+        '"score" (integer 0-10 — how well this CV matches the offer as-is), '
+        '"suggested_title" (string or null — the job title the user should put on their CV to match the offer), '
+        '"suggested_profile" (string or null — a rewritten profile/summary section if one exists, '
+        "tailored to highlight relevant skills for this offer), "
+        '"other_suggestions" (list of strings — any other specific suggestions to improve the CV for this offer). '
+        "Keep suggestions concise and actionable. Do not invent experience. "
+        "Return only valid JSON, no markdown.",
+        user_instructions,
+    )
+    user_prompt = (
+        f"## Internship Offer\nCompany: {company}\nTitle: {offer_title}\n"
+        f"Description: {offer_description}\n\n## Current CV\n{cv_content}"
+    )
+    raw = await _chat_async(system_prompt, user_prompt)
+    try:
+        result = json.loads(raw)
+    except json.JSONDecodeError:
+        result = {"score": 5, "suggested_title": None, "suggested_profile": None, "other_suggestions": [raw]}
+    return {
+        "score": result.get("score", 5),
+        "suggested_title": result.get("suggested_title"),
+        "suggested_profile": result.get("suggested_profile"),
+        "other_suggestions": result.get("other_suggestions", []),
+    }
+
+
+async def analyze_cv_general_async(
+    cv_content: str,
+    user_instructions: str | None = None,
+) -> dict:
+    """Async version of analyze_cv_general."""
+    system_prompt = _append_user_instructions(
+        "You are an expert career advisor and CV reviewer. "
+        "Analyze the CV and provide a general quality assessment. "
+        "Respond in JSON with exactly these keys: "
+        '"score" (integer 0-10 — overall CV quality), '
+        '"summary" (string — brief overall assessment), '
+        '"strengths" (list of strings — what the CV does well), '
+        '"improvements" (list of strings — specific actionable improvements). '
+        "Return only valid JSON, no markdown.",
+        user_instructions,
+    )
+    raw = await _chat_async(system_prompt, f"## CV to analyze\n{cv_content}")
+    try:
+        result = json.loads(raw)
+    except json.JSONDecodeError:
+        result = {"score": 5, "summary": raw, "strengths": [], "improvements": []}
+    return {
+        "score": result.get("score", 5),
+        "summary": result.get("summary", ""),
+        "strengths": result.get("strengths", []),
+        "improvements": result.get("improvements", []),
+    }
+
+
+async def analyze_skill_gap_async(
+    user_skills: list[str],
+    offer_title: str,
+    company: str,
+    offer_description: str,
+    user_instructions: str | None = None,
+) -> dict[str, list[str]]:
+    """Async version of analyze_skill_gap."""
+    system_prompt = _append_user_instructions(
+        "You are a career advisor. "
+        "Compare the candidate's skills against the internship offer requirements. "
+        "Identify missing hard skills, missing soft skills, and give actionable recommendations. "
+        "Respond in JSON with exactly these keys: "
+        '"missing_hard_skills" (list of strings), '
+        '"missing_soft_skills" (list of strings), '
+        '"recommendations" (list of strings). '
+        "Return only valid JSON, no markdown.",
+        user_instructions,
+    )
+    user_prompt = (
+        f"## Internship Offer\nCompany: {company}\nTitle: {offer_title}\n"
+        f"Description: {offer_description}\n\n"
+        f"## Candidate's Current Skills\n"
+        f"{', '.join(user_skills) if user_skills else 'No skills listed yet.'}"
+    )
+    raw = await _chat_async(system_prompt, user_prompt)
+    try:
+        result = json.loads(raw)
+    except json.JSONDecodeError:
+        result = {"missing_hard_skills": [], "missing_soft_skills": [], "recommendations": [raw]}
+    return {
+        "missing_hard_skills": result.get("missing_hard_skills", []),
+        "missing_soft_skills": result.get("missing_soft_skills", []),
+        "recommendations": result.get("recommendations", []),
+    }
+
+
+async def generate_cover_letter_async(
+    profile_summary: str,
+    offer_title: str,
+    company: str,
+    offer_description: str,
+    template: str = "",
+    user_instructions: str | None = None,
+) -> str:
+    """Async version of generate_cover_letter."""
+    system_prompt = (
+        "You are an expert career advisor specializing in cover letters. "
+        "Write a professional cover letter for an internship application. "
+        "Use the candidate's profile and the offer details. "
+        "The tone should be professional but enthusiastic. "
+        "Keep it concise (about 300 words). "
+        "IMPORTANT: Return ONLY plain text. Do NOT use any markdown formatting — "
+        "no bold (**), no italics (*), no headers (#), no bullet points. "
+        "Write a natural letter with paragraphs separated by blank lines."
+    )
+    if template:
+        system_prompt += (
+            " The candidate has provided a cover letter template — "
+            "use its structure and style as a guide, but adapt the content to this specific offer."
+        )
+    system_prompt = _append_user_instructions(system_prompt, user_instructions)
+    user_prompt = (
+        f"## Internship Offer\nCompany: {company}\nTitle: {offer_title}\n"
+        f"Description: {offer_description}\n\n## Candidate Profile\n{profile_summary}"
+    )
+    if template:
+        user_prompt += f"\n\n## Cover Letter Template to Follow\n{template}"
+    return await _chat_async(system_prompt, user_prompt)
+
+
+async def chat_edit_cover_letter_async(
+    cover_letter_content: str,
+    user_message: str,
+    conversation_history: list[dict[str, str]] | None = None,
+    user_instructions: str | None = None,
+) -> str:
+    """Async version of chat_edit_cover_letter."""
+    system_prompt = _append_user_instructions(
+        _CHAT_EDIT_COVER_LETTER_SYSTEM_PROMPT, user_instructions
+    )
+    user_prompt = (
+        f"## Current Cover Letter\n{cover_letter_content}\n\n"
+        f"## Modification Request\n{user_message}"
+    )
+    messages: Messages = [SystemMessage(role="system", content=system_prompt)]
+    if conversation_history:
+        for msg in conversation_history:
+            if msg["role"] == "user":
+                messages.append(UserMessage(role="user", content=msg["content"]))
+            elif msg["role"] == "assistant":
+                messages.append(AssistantMessage(role="assistant", content=msg["content"]))
+    messages.append(UserMessage(role="user", content=user_prompt))
+    text = await _complete_messages_async(messages)
+    return _strip_markdown_fences(text)
+
+
+async def adapt_cv_latex_async(
+    latex_content: str,
+    offer_title: str,
+    company: str,
+    offer_description: str,
+    support_files_content: str = "",
+    support_files_dir: str | None = None,
+    max_retries: int = 2,
+    user_instructions: str | None = None,
+) -> str:
+    """Async version of adapt_cv_latex."""
+    user_prompt = (
+        f"## Internship Offer\nCompany: {company}\nTitle: {offer_title}\n"
+        f"Description: {offer_description}\n\n"
+    )
+    if support_files_content:
+        user_prompt += (
+            f"## LaTeX Class/Style Files (for reference — do NOT modify these, "
+            f"but use the commands and environments they define)\n"
+            f"{support_files_content}\n\n"
+        )
+    user_prompt += f"## Current LaTeX CV (modify ONLY the text content)\n{latex_content}"
+    system_prompt = _append_user_instructions(_ADAPT_CV_SYSTEM_PROMPT, user_instructions)
+    result = await _chat_async(system_prompt, user_prompt)
+    return _strip_markdown_fences(result)
+
+
+async def chat_edit_cv_async(
+    latex_content: str,
+    user_message: str,
+    conversation_history: list[dict[str, str]] | None = None,
+    support_files_content: str = "",
+    user_instructions: str | None = None,
+) -> str:
+    """Async version of chat_edit_cv."""
+    system_prompt = _append_user_instructions(_CHAT_EDIT_CV_SYSTEM_PROMPT, user_instructions)
+    user_prompt = ""
+    if support_files_content:
+        user_prompt += f"## LaTeX Class/Style Files (for reference)\n{support_files_content}\n\n"
+    user_prompt += f"## Current LaTeX CV\n{latex_content}\n\n"
+    user_prompt += f"## Modification Request\n{user_message}"
+    messages: Messages = [SystemMessage(role="system", content=system_prompt)]
+    if conversation_history:
+        for msg in conversation_history:
+            if msg["role"] == "user":
+                messages.append(UserMessage(role="user", content=msg["content"]))
+            elif msg["role"] == "assistant":
+                messages.append(AssistantMessage(role="assistant", content=msg["content"]))
+    messages.append(UserMessage(role="user", content=user_prompt))
+    text = await _complete_messages_async(messages)
+    return _strip_markdown_fences(text)
+
+
+async def transcribe_audio_async(file_name: str, file_content: bytes) -> str:
+    """Async version of transcribe_audio."""
+    from mistralai.client.models.file import File
+
+    response = await client.audio.transcriptions.complete_async(
+        model=VOXTRAL_MODEL,
+        file=File(file_name=file_name, content=file_content),
+    )
+    return response.text  # type: ignore[return-value]
+
+
+async def analyze_pitch_async(
+    transcription: str,
+    offer_title: str | None = None,
+    company: str | None = None,
+    offer_description: str | None = None,
+    user_instructions: str | None = None,
+) -> dict[str, str | list[str] | int | None]:
+    """Async version of analyze_pitch."""
+    system_prompt = (
+        "You are an expert career coach specializing in interview preparation. "
+        "Analyze the following oral pitch transcription from a student looking for internships. "
+        "Evaluate the pitch and respond in JSON with exactly these keys:\n"
+        '"structure_clarity" (string: assessment of how well-structured and clear the pitch is),\n'
+        '"strengths" (list of strings: key strengths of the pitch),\n'
+        '"improvements" (list of strings: specific areas for improvement),\n'
+        '"overall_score" (integer 1-10: overall quality rating),\n'
+        '"summary" (string: 2-3 sentence overall assessment).\n'
+    )
+    if offer_title and offer_description:
+        system_prompt += (
+            "This pitch is for a specific internship offer. Also include:\n"
+            '"offer_relevance" (string: how well the pitch addresses the offer requirements, '
+            "what key points from the offer are mentioned or missing).\n"
+        )
+    else:
+        system_prompt += 'This is a general pitch (not for a specific offer). Set "offer_relevance" to null.\n'
+    system_prompt += "Return only valid JSON, no markdown."
+    system_prompt = _append_user_instructions(system_prompt, user_instructions)
+    user_prompt = f"## Pitch Transcription\n{transcription}"
+    if offer_title and company and offer_description:
+        user_prompt = (
+            f"## Target Internship Offer\nCompany: {company}\nTitle: {offer_title}\n"
+            f"Description: {offer_description}\n\n" + user_prompt
+        )
+    raw = await _chat_async(system_prompt, user_prompt)
+    cleaned = _strip_markdown_fences(raw)
+    try:
+        result = json.loads(cleaned)
+    except json.JSONDecodeError:
+        result = {
+            "structure_clarity": raw, "strengths": [], "improvements": [],
+            "offer_relevance": None, "overall_score": 5, "summary": "Could not parse structured analysis.",
+        }
+    return {
+        "structure_clarity": result.get("structure_clarity", ""),
+        "strengths": result.get("strengths", []),
+        "improvements": result.get("improvements", []),
+        "offer_relevance": result.get("offer_relevance"),
+        "overall_score": result.get("overall_score", 5),
+        "summary": result.get("summary", ""),
+    }
+
+
+async def parse_offer_async(raw_text: str) -> dict[str, str | None]:
+    """Async version of parse_offer."""
+    system_prompt = (
+        "You are an assistant that extracts structured data from job offer descriptions. "
+        "From the given text, extract:\n"
+        "- company: the hiring company name\n"
+        "- title: the job/internship title\n"
+        "- locations: where the job is located (city, country or remote)\n"
+        "- description: a concise 3-5 sentence summary of the role and requirements "
+        "(do NOT copy the entire text)\n\n"
+        "Respond in JSON with exactly these keys: company, title, locations, description. "
+        "Return only valid JSON, no markdown."
+    )
+    raw = await _chat_async(system_prompt, raw_text)
+    cleaned = _strip_markdown_fences(raw)
+    try:
+        return json.loads(cleaned)
+    except json.JSONDecodeError:
+        return {"company": None, "title": None, "locations": None, "description": raw}
+
+
+async def extract_profile_from_cv_async(cv_text: str) -> dict[str, list[dict[str, str | None]]]:
+    """Async version of extract_profile_from_cv."""
+    system_prompt = (
+        "You are a CV parser. Extract structured sections from the following CV text. "
+        "Respond in JSON with these keys:\n"
+        '- "skills": list of {name, category, level} where category is one of '
+        '"programming", "framework", "tool", "language", "soft_skill", "other" '
+        'and level is "beginner", "intermediate", "advanced" or "expert"\n'
+        '- "experiences": list of {title, description, technologies, client, start_date, end_date}\n'
+        '- "education": list of {school, degree, field, description, start_date, end_date}\n'
+        '- "languages": list of {language, level} where level is one of '
+        '"beginner", "intermediate", "advanced", "native"\n'
+        '- "extracurriculars": list of {name, description}\n\n'
+        "Use null for missing fields. Dates should be in YYYY-MM-DD format when possible. "
+        "Return only valid JSON, no markdown."
+    )
+    raw = await _chat_async(system_prompt, cv_text)
+    cleaned = _strip_markdown_fences(raw)
+    try:
+        result = json.loads(cleaned)
+    except json.JSONDecodeError:
+        logger.error("Failed to parse Mistral CV extraction response: %s", cleaned[:500])
+        result = {"skills": [], "experiences": [], "education": [], "languages": [], "extracurriculars": []}
+    return result
+
+
+async def extract_search_params_async(user_message: str) -> dict[str, str | int | list[str] | None]:
+    """Async version of extract_search_params."""
+    system_prompt = (
+        "You are a helpful assistant that extracts job search parameters from natural language. "
+        "The user will describe what kind of internship they're looking for. "
+        "Extract the following and respond in JSON (no markdown):\n"
+        '- "keywords": string of search keywords (job title, skills, domain)\n'
+        '- "location": city name or null if not specified\n'
+        '- "country": country name (default "France" if not specified)\n'
+        '- "radius_km": search radius in km (default 30)\n'
+        '- "max_results": number of results to return (default 20, max 30)\n'
+        '- "sources": list of sources to use. Available: ["francetravail", "wttj", "themuse"]. '
+        'For France: use ["francetravail", "wttj"]. '
+        'For other countries: use ["wttj", "themuse"]. '
+        "themuse has the best international coverage.\n\n"
+        "Return only valid JSON."
+    )
+    raw = await _chat_async(system_prompt, user_message)
+    cleaned = _strip_markdown_fences(raw)
+    try:
+        result = json.loads(cleaned)
+    except json.JSONDecodeError:
+        return {"keywords": user_message, "location": "", "country": "France", "radius_km": 30, "sources": ["francetravail", "wttj"]}
+    country = result.get("country", "France")
+    sources = result.get("sources")
+    if not sources:
+        if country and country.strip().lower() not in ("france", "fr"):
+            sources = ["wttj", "themuse"]
+        else:
+            sources = ["francetravail", "wttj"]
+    max_results = result.get("max_results")
+    if isinstance(max_results, int):
+        max_results = max(1, min(max_results, 30))
+    else:
+        max_results = None
+    return {
+        "keywords": result.get("keywords", user_message),
+        "location": result.get("location"),
+        "country": country,
+        "radius_km": result.get("radius_km", 30),
+        "max_results": max_results,
+        "sources": sources,
+    }
+
+
+async def match_offers_to_profile_async(
+    profile_summary: str,
+    offers: list[dict[str, str | None]],
+) -> list[dict[str, object]]:
+    """Async version of match_offers_to_profile."""
+    system_prompt = (
+        "You are a career matching expert. "
+        "Given a candidate profile and a list of internship offers, "
+        "score each offer from 0 to 100 on how well it matches the candidate's profile. "
+        "For each offer, provide a match score and 2-3 short reasons explaining the score. "
+        "Respond in JSON as a list of objects with keys: "
+        '"index" (int, 0-based), "score" (int 0-100), "reasons" (list of strings). '
+        "Return only valid JSON, no markdown."
+    )
+    offers_text = ""
+    for i, offer in enumerate(offers):
+        offers_text += (
+            f"\n### Offer {i}\nTitle: {offer.get('title', '')}\n"
+            f"Company: {offer.get('company', '')}\n"
+            f"Description: {(offer.get('description') or '')[:500]}\n"
+        )
+    user_prompt = f"## Candidate Profile\n{profile_summary}\n\n## Offers to Score\n{offers_text}"
+    raw = await _chat_async(system_prompt, user_prompt)
+    cleaned = _strip_markdown_fences(raw)
+    try:
+        results = json.loads(cleaned)
+    except json.JSONDecodeError:
+        return [{"score": 50, "reasons": []} for _ in offers]
+    scored = [{"score": 50, "reasons": []} for _ in offers]
+    if isinstance(results, list):
+        for item in results:
+            idx = item.get("index", 0)
+            if 0 <= idx < len(offers):
+                scored[idx] = {"score": item.get("score", 50), "reasons": item.get("reasons", [])}
+    return scored

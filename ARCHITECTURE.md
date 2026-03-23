@@ -410,3 +410,64 @@ docker compose up --build
 - Migration files in `alembic/versions/`
 - In Docker, migrations run automatically at container startup
 - See `ALEMBIC.md` for usage guide
+
+---
+
+## Possible Improvements: Async Endpoints
+
+All backend endpoints are currently **synchronous** (`def`), except the interview WebSocket. Each LLM call blocks a thread from FastAPI's thread pool (default ~40 threads) for the entire duration of the Mistral API call (2-15 seconds).
+
+### What should be async
+
+**LLM-calling endpoints** — the main bottleneck. Every AI endpoint in `routers/ai.py` and `routers/interview.py` blocks a thread while waiting for Mistral's response:
+
+| Endpoint | Blocking call | Typical latency |
+|----------|--------------|-----------------|
+| `POST .../skill-gap` | `analyze_skill_gap()` | ~3-5s |
+| `POST .../cover-letter` | `generate_cover_letter()` | ~5-10s |
+| `POST .../adapt-cv-latex` | `adapt_cv_latex()` (2 chained LLM calls) | ~10-15s |
+| `POST .../suggest-cv-changes` | `suggest_cv_changes()` | ~3-5s |
+| `POST .../analyze` (CV) | `analyze_cv_general()` | ~3-5s |
+| `POST .../pitch-analysis` | `transcribe_audio()` + `analyze_pitch()` | ~10-15s |
+| `POST .../auto-fill-profile` | `extract_profile_from_cv()` | ~5s |
+| `POST /parse-offer` | `fetch_offer_from_url()` + `parse_offer()` | ~3-5s |
+| `POST .../predict-questions` | LLM prediction | ~3-5s |
+| `POST .../analyze` (interview) | Full post-interview analysis | ~10s |
+
+**External scrapers** — `_do_search()` in `routers/search.py` calls France Travail, WTTJ, and The Muse **sequentially**. With `asyncio.gather()`, all three could run in parallel, cutting search time by ~2/3.
+
+### What does NOT need to be async
+
+CRUD endpoints (offers, notes, reminders, profile, skills, etc.) — database queries are fast and don't benefit from async.
+
+### How to implement
+
+The Mistral SDK already provides `client.chat.complete_async()`. The migration would be:
+
+```python
+# llm_service.py — switch from sync to async
+async def _chat(system_prompt: str, user_prompt: str) -> str:
+    response = await client.chat.complete_async(model=MODEL, messages=messages)
+    ...
+
+# routers/ai.py — switch endpoints to async
+@router.post("/users/{user_id}/offers/{offer_id}/skill-gap")
+async def skill_gap_endpoint(...):
+    result = await analyze_skill_gap(...)
+    ...
+```
+
+For scrapers, `asyncio.gather()` would parallelize independent HTTP calls:
+
+```python
+results = await asyncio.gather(
+    ft_source.search_async(...),
+    wttj_source.search_async(...),
+    muse_source.search_async(...),
+    return_exceptions=True,
+)
+```
+
+### Why it matters
+
+With sync endpoints, 40 concurrent LLM requests exhaust the thread pool — the 41st user waits. With async, the event loop handles all requests without thread contention. Not critical for a single-user dev setup, but would become a bottleneck under real traffic.

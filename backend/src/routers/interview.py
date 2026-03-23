@@ -29,7 +29,9 @@ from src.interview_service import (
     generate_hint,
     generate_next_question,
     predict_questions,
+    predict_questions_async,
     run_post_interview_analysis,
+    run_post_interview_analysis_async,
 )
 from src.models import User
 
@@ -139,7 +141,7 @@ def delete_session(
     "/users/{user_id}/interview-sessions/{session_id}/analyze",
     response_model=schemas.InterviewAnalysisResponse,
 )
-def analyze_session(
+async def analyze_session(
     user_id: int,
     session_id: int,
     current_user: User = Depends(get_current_user),
@@ -167,7 +169,7 @@ def analyze_session(
         for t in turns
     ]
 
-    result = run_post_interview_analysis(
+    result = await run_post_interview_analysis_async(
         interview_type=db_session.interview_type.value,
         difficulty=db_session.difficulty.value,
         language=db_session.language,
@@ -245,7 +247,7 @@ def get_analysis(
     "/users/{user_id}/offers/{offer_id}/predict-questions",
     response_model=list[schemas.PredictedQuestion],
 )
-def predict_questions_endpoint(
+async def predict_questions_endpoint(
     user_id: int,
     offer_id: int,
     body: schemas.PredictQuestionsRequest,
@@ -257,7 +259,7 @@ def predict_questions_endpoint(
     if not offer:
         raise HTTPException(status_code=404, detail="Offer not found")
 
-    questions = predict_questions(
+    questions = await predict_questions_async(
         offer_title=offer.title,
         company=offer.company,
         offer_description=offer.description or "",

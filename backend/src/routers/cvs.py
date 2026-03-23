@@ -200,7 +200,7 @@ def update_cv(
 
 
 @router.post("/{cv_id}/chat-edit", response_model=schemas.ChatEditCVResponse)
-def chat_edit_cv_endpoint(
+async def chat_edit_cv_endpoint(
     user_id: int,
     cv_id: int,
     body: schemas.ChatEditCVRequest,
@@ -233,9 +233,9 @@ def chat_edit_cv_endpoint(
                         continue
             support_files_content = "\n\n".join(parts)
 
-    from src.llm_service import chat_edit_cv
+    from src.llm_service import chat_edit_cv_async
 
-    updated_latex = chat_edit_cv(
+    updated_latex = await chat_edit_cv_async(
         latex_content=cv.latex_content,
         user_message=body.message,
         conversation_history=body.conversation_history,
