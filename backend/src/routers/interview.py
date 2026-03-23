@@ -29,9 +29,7 @@ from src.interview_service import (
     generate_hint,
     generate_next_question,
     predict_questions,
-    predict_questions_async,
     run_post_interview_analysis,
-    run_post_interview_analysis_async,
 )
 from src.models import User
 
@@ -169,7 +167,7 @@ async def analyze_session(
         for t in turns
     ]
 
-    result = await run_post_interview_analysis_async(
+    result = await run_post_interview_analysis(
         interview_type=db_session.interview_type.value,
         difficulty=db_session.difficulty.value,
         language=db_session.language,
@@ -259,7 +257,7 @@ async def predict_questions_endpoint(
     if not offer:
         raise HTTPException(status_code=404, detail="Offer not found")
 
-    questions = await predict_questions_async(
+    questions = await predict_questions(
         offer_title=offer.title,
         company=offer.company,
         offer_description=offer.description or "",
