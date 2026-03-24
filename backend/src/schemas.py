@@ -738,3 +738,102 @@ class CalendarEvent(BaseModel):
 
 class CalendarResponse(BaseModel):
     events: list[CalendarEvent]
+
+
+# ---------- Memo ----------
+
+
+class MemoCreate(BaseModel):
+    title: str
+    content: str
+    tags: list[str] | None = None
+    offer_id: int | None = None
+    skill_name: str | None = None
+
+
+class MemoUpdate(BaseModel):
+    title: str | None = None
+    content: str | None = None
+    tags: list[str] | None = None
+    offer_id: int | None = None
+    skill_name: str | None = None
+    is_favorite: bool | None = None
+
+
+class MemoResponse(BaseModel):
+    id: int
+    title: str
+    content: str
+    tags: list[str] = []
+    offer_id: int | None = None
+    skill_name: str | None = None
+    is_favorite: bool = False
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+
+
+# ---------- Skill Recommendations ----------
+
+
+class AggregatedSkill(BaseModel):
+    skill_name: str
+    frequency: int
+    skill_type: str  # "hard" or "soft"
+    offer_titles: list[str] = []
+    user_has_skill: bool = False
+
+
+class SkillRecommendationsResponse(BaseModel):
+    aggregated_skills: list[AggregatedSkill] = []
+    offers_analyzed_count: int = 0
+    generated_at: datetime | None = None
+
+
+# ---------- Goals ----------
+
+
+class GoalCreate(BaseModel):
+    title: str
+    frequency: str = "daily"  # daily / weekly
+    target_count: int = 1
+
+
+class GoalUpdate(BaseModel):
+    title: str | None = None
+    frequency: str | None = None
+    target_count: int | None = None
+    is_active: bool | None = None
+
+
+class GoalResponse(BaseModel):
+    id: int
+    title: str
+    frequency: str
+    target_count: int
+    is_active: bool = True
+    created_at: datetime | None = None
+
+
+class GoalProgressCreate(BaseModel):
+    completed_count: int = 1
+    notes: str | None = None
+
+
+class GoalProgressResponse(BaseModel):
+    id: int
+    goal_id: int
+    date: date
+    completed_count: int
+    notes: str | None = None
+
+
+class GoalWithTodayProgress(GoalResponse):
+    today_completed: int = 0
+    current_streak: int = 0
+
+
+class DailyGoalsSummary(BaseModel):
+    goals: list[GoalWithTodayProgress] = []
+    total_goals: int = 0
+    completed_today: int = 0
+    longest_streak: int = 0

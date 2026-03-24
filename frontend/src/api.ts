@@ -1014,3 +1014,118 @@ export const autoFillProfileFromUpload = async (uid: number, file: File): Promis
   }
   return res.json();
 };
+
+// ---------- Memos ----------
+
+export interface Memo {
+  id: number;
+  title: string;
+  content: string;
+  tags: string[];
+  offer_id: number | null;
+  skill_name: string | null;
+  is_favorite: boolean;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export const getMemos = (uid: number, params?: { search?: string; tag?: string; offer_id?: number; favorites_only?: boolean }) => {
+  const qs = new URLSearchParams();
+  if (params?.search) qs.set("search", params.search);
+  if (params?.tag) qs.set("tag", params.tag);
+  if (params?.offer_id) qs.set("offer_id", String(params.offer_id));
+  if (params?.favorites_only) qs.set("favorites_only", "true");
+  const q = qs.toString();
+  return request<Memo[]>(`/users/${uid}/memos${q ? `?${q}` : ""}`);
+};
+
+export const getMemo = (uid: number, memoId: number) =>
+  request<Memo>(`/users/${uid}/memos/${memoId}`);
+
+export const createMemo = (uid: number, data: { title: string; content: string; tags?: string[]; offer_id?: number; skill_name?: string }) =>
+  request<Memo>(`/users/${uid}/memos`, { method: "POST", body: JSON.stringify(data) });
+
+export const updateMemo = (uid: number, memoId: number, data: Partial<{ title: string; content: string; tags: string[]; offer_id: number | null; skill_name: string | null; is_favorite: boolean }>) =>
+  request<Memo>(`/users/${uid}/memos/${memoId}`, { method: "PATCH", body: JSON.stringify(data) });
+
+export const deleteMemo = (uid: number, memoId: number) =>
+  request<{ detail: string }>(`/users/${uid}/memos/${memoId}`, { method: "DELETE" });
+
+// ---------- Skill Recommendations ----------
+
+export interface AggregatedSkill {
+  skill_name: string;
+  frequency: number;
+  skill_type: string;
+  offer_titles: string[];
+  user_has_skill: boolean;
+}
+
+export interface SkillRecommendations {
+  aggregated_skills: AggregatedSkill[];
+  offers_analyzed_count: number;
+  generated_at: string | null;
+}
+
+export const getSkillRecommendations = (uid: number) =>
+  request<SkillRecommendations>(`/users/${uid}/skill-recommendations`);
+
+export const refreshSkillRecommendations = (uid: number) =>
+  request<SkillRecommendations>(`/users/${uid}/skill-recommendations/refresh`, { method: "POST" });
+
+// ---------- Goals ----------
+
+export interface Goal {
+  id: number;
+  title: string;
+  frequency: string;
+  target_count: number;
+  is_active: boolean;
+  created_at: string | null;
+}
+
+export interface GoalProgress {
+  id: number;
+  goal_id: number;
+  date: string;
+  completed_count: number;
+  notes: string | null;
+}
+
+export interface GoalWithProgress extends Goal {
+  today_completed: number;
+  current_streak: number;
+}
+
+export interface DailyGoalsSummary {
+  goals: GoalWithProgress[];
+  total_goals: number;
+  completed_today: number;
+  longest_streak: number;
+}
+
+export const getGoals = (uid: number, activeOnly = true) =>
+  request<Goal[]>(`/users/${uid}/goals?active_only=${activeOnly}`);
+
+export const getGoalsSummary = (uid: number) =>
+  request<DailyGoalsSummary>(`/users/${uid}/goals/summary`);
+
+export const createGoal = (uid: number, data: { title: string; frequency?: string; target_count?: number }) =>
+  request<Goal>(`/users/${uid}/goals`, { method: "POST", body: JSON.stringify(data) });
+
+export const updateGoal = (uid: number, goalId: number, data: Partial<{ title: string; frequency: string; target_count: number; is_active: boolean }>) =>
+  request<Goal>(`/users/${uid}/goals/${goalId}`, { method: "PATCH", body: JSON.stringify(data) });
+
+export const deleteGoal = (uid: number, goalId: number) =>
+  request<{ detail: string }>(`/users/${uid}/goals/${goalId}`, { method: "DELETE" });
+
+export const logGoalProgress = (uid: number, goalId: number, data: { completed_count: number; notes?: string }) =>
+  request<GoalProgress>(`/users/${uid}/goals/${goalId}/progress`, { method: "POST", body: JSON.stringify(data) });
+
+export const getGoalProgress = (uid: number, goalId: number, startDate?: string, endDate?: string) => {
+  const qs = new URLSearchParams();
+  if (startDate) qs.set("start_date", startDate);
+  if (endDate) qs.set("end_date", endDate);
+  const q = qs.toString();
+  return request<GoalProgress[]>(`/users/${uid}/goals/${goalId}/progress${q ? `?${q}` : ""}`);
+};

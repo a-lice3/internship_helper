@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import * as api from "../api";
 import DateTimeInput from "../components/DateTimeInput";
@@ -46,6 +46,9 @@ export default function DashboardPage({ userId }: { userId: number }) {
   const [addType, setAddType] = useState("custom");
   const [addDescription, setAddDescription] = useState("");
 
+  // Goals widget
+  const [goalsSummary, setGoalsSummary] = useState<api.DailyGoalsSummary | null>(null);
+
   // Edit reminder
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editTitle, setEditTitle] = useState("");
@@ -67,6 +70,16 @@ export default function DashboardPage({ userId }: { userId: number }) {
     const end = `${year}-${String(month + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
     api.getCalendarEvents(userId, start, end).then((resp) => setEvents(resp.events));
   }, [userId, year, month]);
+
+  // Load goals summary
+  useEffect(() => {
+    api.getGoalsSummary(userId).then(setGoalsSummary).catch(() => {});
+  }, [userId]);
+
+  const handleQuickIncrement = async (goal: api.GoalWithProgress) => {
+    await api.logGoalProgress(userId, goal.id, { completed_count: goal.today_completed + 1 });
+    api.getGoalsSummary(userId).then(setGoalsSummary).catch(() => {});
+  };
 
   // Load reminders
   const loadReminders = () => {
@@ -190,27 +203,32 @@ export default function DashboardPage({ userId }: { userId: number }) {
         <p className="page-desc">{t("dashboard.description")}</p>
       </div>
 
-      {/* Top stats row */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 24 }}>
-        <div className="glass-card stat-card">
-          <span className="stat-value">{stats.total_offers}</span>
-          <span className="stat-label">{t("dashboard.totalOffers")}</span>
+      {/* Goals widget */}
+      {goalsSummary && goalsSummary.total_goals > 0 && (
+        <div className="glass-card dashboard-goals-widget" style={{ marginBottom: 20, padding: 16 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+            <h3 style={{ margin: 0, fontSize: 15 }}>{t("goals.todayGoals")}</h3>
+            <Link to="/goals" className="btn-ghost btn-sm">{t("goals.manageGoals")}</Link>
+          </div>
+          {goalsSummary.goals.map((g) => {
+            const pct = Math.min(100, (g.today_completed / g.target_count) * 100);
+            const isComplete = g.today_completed >= g.target_count;
+            return (
+              <div key={g.id} className="goal-mini">
+                <span className="goal-mini-title">{g.title}</span>
+                <div className="goal-mini-progress">
+                  <div className={`goal-mini-bar ${isComplete ? "complete" : ""}`} style={{ width: `${pct}%` }} />
+                </div>
+                <span style={{ fontSize: 13, minWidth: 40, textAlign: "center" }}>{g.today_completed}/{g.target_count}</span>
+                {g.current_streak > 0 && <span className="goal-mini-streak">{g.current_streak}d</span>}
+                {!isComplete && (
+                  <button className="btn-icon btn-increment" onClick={() => handleQuickIncrement(g)} title="+1">+</button>
+                )}
+              </div>
+            );
+          })}
         </div>
-        <div className="glass-card stat-card">
-          <span className="stat-value">
-            {stats.average_interview_score != null ? stats.average_interview_score : "—"}
-          </span>
-          <span className="stat-label">{t("dashboard.avgScore")}</span>
-        </div>
-        <div className="glass-card stat-card">
-          <span className="stat-value">{stats.interview_sessions_count}</span>
-          <span className="stat-label">{t("dashboard.totalInterviews")}</span>
-        </div>
-        <div className="glass-card stat-card">
-          <span className="stat-value">{stats.interview_sessions_this_week}</span>
-          <span className="stat-label">{t("dashboard.interviewsThisWeek")}</span>
-        </div>
-      </div>
+      )}
 
       {/* Offers by status + Upcoming reminders */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 24 }}>
