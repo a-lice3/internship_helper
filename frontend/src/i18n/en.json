@@ -566,6 +566,8 @@
     "addNote": "Add a note...",
     "addBtn": "Add",
     "noNotes": "No notes yet",
+    "saved": "Saved",
+    "notesPlaceholder": "Write your notes here...",
     "reminders": "Reminders",
     "noReminders": "No reminders",
     "newReminder": "New reminder",

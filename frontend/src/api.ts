@@ -19,6 +19,13 @@ export function getToken(): string | null {
 
 // ---------- Types ----------
 
+export interface PaginatedResponse<T> {
+  items: T[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
 export interface User {
   id: number;
   name: string;
@@ -399,9 +406,12 @@ export const clearProfile = (uid: number) =>
 
 // ---------- Offers ----------
 
-export const getOffers = (uid: number, status?: string) => {
-  const qs = status ? `?status=${status}` : "";
-  return request<Offer[]>(`/users/${uid}/offers${qs}`);
+export const getOffers = (uid: number, status?: string, limit = 100, offset = 0) => {
+  const qs = new URLSearchParams();
+  if (status) qs.set("status", status);
+  qs.set("limit", String(limit));
+  qs.set("offset", String(offset));
+  return request<PaginatedResponse<Offer>>(`/users/${uid}/offers?${qs}`);
 };
 
 export const getOffer = (uid: number, id: number) =>
@@ -430,8 +440,8 @@ export const deleteOffer = (uid: number, id: number) =>
 
 // ---------- CVs ----------
 
-export const getCVs = (uid: number) =>
-  request<CV[]>(`/users/${uid}/cvs`);
+export const getCVs = (uid: number, limit = 100, offset = 0) =>
+  request<PaginatedResponse<CV>>(`/users/${uid}/cvs?limit=${limit}&offset=${offset}`);
 
 export const createCV = (uid: number, data: {
   name?: string; content: string; latex_content?: string;
@@ -511,8 +521,8 @@ export const compileCVUrl = (uid: number, id: number) =>
 
 // ---------- Templates ----------
 
-export const getTemplates = (uid: number) =>
-  request<Template[]>(`/users/${uid}/templates`);
+export const getTemplates = (uid: number, limit = 100, offset = 0) =>
+  request<PaginatedResponse<Template>>(`/users/${uid}/templates?limit=${limit}&offset=${offset}`);
 
 export const createTemplate = (uid: number, data: { name: string; content: string }) =>
   request<Template>(`/users/${uid}/templates`, {
@@ -815,8 +825,8 @@ export const createInterviewSession = (uid: number, data: {
     body: JSON.stringify(data),
   });
 
-export const getInterviewSessions = (uid: number) =>
-  request<InterviewSession[]>(`/users/${uid}/interview-sessions`);
+export const getInterviewSessions = (uid: number, limit = 100, offset = 0) =>
+  request<PaginatedResponse<InterviewSession>>(`/users/${uid}/interview-sessions?limit=${limit}&offset=${offset}`);
 
 export const getInterviewSessionDetail = (uid: number, sessionId: number) =>
   request<InterviewSessionDetail>(`/users/${uid}/interview-sessions/${sessionId}`);
@@ -888,8 +898,8 @@ export const searchOffers = (uid: number, data: {
     body: JSON.stringify(data),
   });
 
-export const getScrapedOffers = (uid: number) =>
-  request<ScrapedOffer[]>(`/users/${uid}/scraped-offers`);
+export const getScrapedOffers = (uid: number, limit = 100, offset = 0) =>
+  request<PaginatedResponse<ScrapedOffer>>(`/users/${uid}/scraped-offers?limit=${limit}&offset=${offset}`);
 
 export const saveScrapedOffer = (uid: number, offerId: number) =>
   request<{ detail: string; offer_id: number }>(`/users/${uid}/scraped-offers/${offerId}/save`, {
@@ -921,8 +931,8 @@ export interface Reminder {
   created_at: string | null;
 }
 
-export const getReminders = (uid: number, includeDone?: boolean) =>
-  request<Reminder[]>(`/users/${uid}/reminders?include_done=${includeDone ?? false}`);
+export const getReminders = (uid: number, includeDone?: boolean, limit = 100, offset = 0) =>
+  request<PaginatedResponse<Reminder>>(`/users/${uid}/reminders?include_done=${includeDone ?? false}&limit=${limit}&offset=${offset}`);
 
 export const createReminder = (uid: number, data: {
   offer_id?: number | null; reminder_type?: string;
@@ -949,8 +959,8 @@ export interface OfferNote {
   updated_at: string | null;
 }
 
-export const getOfferNotes = (uid: number, offerId: number) =>
-  request<OfferNote[]>(`/users/${uid}/offers/${offerId}/notes`);
+export const getOfferNotes = (uid: number, offerId: number, limit = 100, offset = 0) =>
+  request<PaginatedResponse<OfferNote>>(`/users/${uid}/offers/${offerId}/notes?limit=${limit}&offset=${offset}`);
 
 export const createOfferNote = (uid: number, offerId: number, content: string) =>
   request<OfferNote>(`/users/${uid}/offers/${offerId}/notes`, {
@@ -1029,14 +1039,15 @@ export interface Memo {
   updated_at: string | null;
 }
 
-export const getMemos = (uid: number, params?: { search?: string; tag?: string; offer_id?: number; favorites_only?: boolean }) => {
+export const getMemos = (uid: number, params?: { search?: string; tag?: string; offer_id?: number; favorites_only?: boolean; limit?: number; offset?: number }) => {
   const qs = new URLSearchParams();
   if (params?.search) qs.set("search", params.search);
   if (params?.tag) qs.set("tag", params.tag);
   if (params?.offer_id) qs.set("offer_id", String(params.offer_id));
   if (params?.favorites_only) qs.set("favorites_only", "true");
-  const q = qs.toString();
-  return request<Memo[]>(`/users/${uid}/memos${q ? `?${q}` : ""}`);
+  qs.set("limit", String(params?.limit ?? 100));
+  qs.set("offset", String(params?.offset ?? 0));
+  return request<PaginatedResponse<Memo>>(`/users/${uid}/memos?${qs}`);
 };
 
 export const getMemo = (uid: number, memoId: number) =>
@@ -1104,8 +1115,8 @@ export interface DailyGoalsSummary {
   longest_streak: number;
 }
 
-export const getGoals = (uid: number, activeOnly = true) =>
-  request<Goal[]>(`/users/${uid}/goals?active_only=${activeOnly}`);
+export const getGoals = (uid: number, activeOnly = true, limit = 100, offset = 0) =>
+  request<PaginatedResponse<Goal>>(`/users/${uid}/goals?active_only=${activeOnly}&limit=${limit}&offset=${offset}`);
 
 export const getGoalsSummary = (uid: number) =>
   request<DailyGoalsSummary>(`/users/${uid}/goals/summary`);

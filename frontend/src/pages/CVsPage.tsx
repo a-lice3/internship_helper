@@ -44,7 +44,7 @@ export default function CVsPage({ userId }: { userId: number }) {
   const [analysisPopupCvId, setAnalysisPopupCvId] = useState<number | null>(null);
 
   useEffect(() => {
-    api.getCVs(userId).then(setCvs);
+    api.getCVs(userId).then(r => setCvs(r.items));
     // Load stored analyses
     api.getStoredCVAnalyses(userId).then((stored) => {
       const map: Record<number, api.CVAnalysisResult> = {};

@@ -12,7 +12,7 @@ def test_upload_and_list_cvs(client, sample_user, auth_header):
     assert data["is_adapted"] is False
 
     response = client.get(f"/users/{uid}/cvs", headers=auth_header)
-    assert len(response.json()) == 1
+    assert len(response.json()["items"]) == 1
 
 
 def test_cv_linked_to_offer(client, sample_user, auth_header):

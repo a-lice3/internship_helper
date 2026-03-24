@@ -5,6 +5,7 @@ import { saveAs } from "file-saver";
 import { useTranslation } from "react-i18next";
 import * as api from "../api";
 import DateTimeInput from "../components/DateTimeInput";
+import RichNoteEditor from "../components/RichNoteEditor";
 import { getStatusLabel, getReminderTypeLabel, STATUSES, REMINDER_TYPES } from "../i18n/helpers";
 
 const mistralLogo = "/logo_mistral.png";
@@ -18,11 +19,13 @@ export default function OfferDetailPage({ userId }: { userId: number }) {
   const [offer, setOffer] = useState<api.Offer | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Notes
-  const [notes, setNotes] = useState<api.OfferNote[]>([]);
-  const [newNote, setNewNote] = useState("");
-  const [editingNoteId, setEditingNoteId] = useState<number | null>(null);
-  const [editNoteContent, setEditNoteContent] = useState("");
+  // Notes (single notepad style)
+  const [noteId, setNoteId] = useState<number | null>(null);
+  const [noteContent, setNoteContent] = useState("");
+  const [noteSaved, setNoteSaved] = useState(true);
+  const [noteEditing, setNoteEditing] = useState(false);
+  const noteSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const noteCardRef = useRef<HTMLDivElement>(null);
 
   // Reminders for this offer
   const [reminders, setReminders] = useState<api.Reminder[]>([]);
@@ -96,16 +99,38 @@ export default function OfferDetailPage({ userId }: { userId: number }) {
       api.getStoredSkillGaps(userId),
       api.getStoredCoverLetters(userId),
       api.getStoredCVOfferAnalyses(userId),
-    ]).then(([o, n, scls, c, r, sgs, cls, coas]) => {
+    ]).then(([o, n, scls, cResp, rResp, sgs, cls, coas]) => {
       if (cancelled) return;
       setOffer(o);
-      setNotes(n);
+      // Merge all existing notes into a single rich-text notepad
+      const allNotes = n.items as api.OfferNote[];
+      if (allNotes.length > 0) {
+        const sorted = [...allNotes].sort((a, b) => (a.id ?? 0) - (b.id ?? 0));
+        // Convert plain text notes to HTML paragraphs if needed
+        const toHtml = (text: string) =>
+          text.startsWith("<") ? text : text.split("\n").map((line) => `<p>${line || "<br>"}</p>`).join("");
+        const merged = sorted.length === 1
+          ? toHtml(sorted[0].content)
+          : sorted.map((note) => toHtml(note.content)).join("<hr>");
+        setNoteId(sorted[0].id);
+        setNoteContent(merged);
+        // If there were multiple notes, consolidate into the first one and delete the rest
+        if (sorted.length > 1) {
+          api.updateOfferNote(userId, id, sorted[0].id, merged).then(() => {
+            for (let i = 1; i < sorted.length; i++) {
+              api.deleteOfferNote(userId, id, sorted[i].id);
+            }
+          });
+        }
+      }
       setSavedCoverLetters(scls);
 
       // Fetch company info from Wikipedia (non-blocking)
       api.getCompanyInfo(o.company).then((info) => {
         if (!cancelled && info.extract) setCompanyInfo(info);
       }).catch(() => {});
+      const c = cResp.items;
+      const r = rResp.items;
       setCvs(c);
       setReminders(r.filter((rem: api.Reminder) => rem.offer_id === id));
 
@@ -235,26 +260,45 @@ export default function OfferDetailPage({ userId }: { userId: number }) {
     navigate("/offers");
   };
 
-  // Notes
-  const handleAddNote = async () => {
-    if (!newNote.trim() || !offer) return;
-    const n = await api.createOfferNote(userId, offer.id, newNote);
-    setNotes([n, ...notes]);
-    setNewNote("");
-  };
-
-  const handleDeleteNote = async (noteId: number) => {
+  // Notes — auto-save with debounce
+  const saveNote = useCallback(async (content: string) => {
     if (!offer) return;
-    await api.deleteOfferNote(userId, offer.id, noteId);
-    setNotes(notes.filter((n) => n.id !== noteId));
+    if (noteId) {
+      await api.updateOfferNote(userId, offer.id, noteId, content);
+    } else if (content.trim()) {
+      const created = await api.createOfferNote(userId, offer.id, content);
+      setNoteId(created.id);
+    }
+    setNoteSaved(true);
+  }, [offer, noteId, userId]);
+
+  const handleNoteChange = (value: string) => {
+    setNoteContent(value);
+    setNoteSaved(false);
+    if (noteSaveTimer.current) clearTimeout(noteSaveTimer.current);
+    noteSaveTimer.current = setTimeout(() => saveNote(value), 1000);
   };
 
-  const handleSaveNoteEdit = async () => {
-    if (editingNoteId === null || !offer) return;
-    const updated = await api.updateOfferNote(userId, offer.id, editingNoteId, editNoteContent);
-    setNotes(notes.map((n) => (n.id === updated.id ? updated : n)));
-    setEditingNoteId(null);
-  };
+  // Save on unmount / page leave
+  useEffect(() => {
+    return () => {
+      if (noteSaveTimer.current) clearTimeout(noteSaveTimer.current);
+    };
+  }, []);
+
+  // Close editor on click outside
+  useEffect(() => {
+    if (!noteEditing) return;
+    const handler = (e: MouseEvent) => {
+      if (noteCardRef.current && !noteCardRef.current.contains(e.target as Node)) {
+        if (noteSaveTimer.current) { clearTimeout(noteSaveTimer.current); }
+        saveNote(noteContent);
+        setNoteEditing(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [noteEditing, noteContent, saveNote]);
 
   // Reminders
   const handleAddReminder = async (e: React.FormEvent) => {
@@ -272,7 +316,7 @@ export default function OfferDetailPage({ userId }: { userId: number }) {
 
   const reloadReminders = async () => {
     const r = await api.getReminders(userId, true);
-    setReminders(r.filter((rem: api.Reminder) => rem.offer_id === id));
+    setReminders(r.items.filter((rem: api.Reminder) => rem.offer_id === id));
   };
 
   const handleToggleReminder = async (r: api.Reminder) => {
@@ -802,151 +846,130 @@ export default function OfferDetailPage({ userId }: { userId: number }) {
         </div>
       </div>
 
-      {/* Row 3: Notes + Reminders side by side */}
-      <div className="bento-grid-2" style={{ marginTop: 16 }}>
-        {/* Notes */}
-        <div className="glass-card">
-          <div className="glass-card-header"><h3>{t("offerDetail.notes")}</h3></div>
-          <div className="glass-card-body">
-            <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-              <input
-                placeholder={t("offerDetail.addNote")}
-                value={newNote}
-                onChange={(e) => setNewNote(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") handleAddNote(); }}
-                style={{ flex: 1 }}
-              />
-              <button className="btn-secondary" onClick={handleAddNote} style={{ padding: "6px 14px" }}>{t("offerDetail.addBtn")}</button>
-            </div>
-            {notes.length === 0 ? (
-              <p className="empty" style={{ margin: 0, fontSize: 13 }}>{t("offerDetail.noNotes")}</p>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {notes.map((n) => (
-                  <div key={n.id} style={{ padding: "8px 12px", background: "var(--surface-solid)", borderRadius: 8, border: "1px solid var(--border)" }}>
-                    {editingNoteId === n.id ? (
-                      <div style={{ display: "flex", gap: 8 }}>
-                        <textarea rows={2} value={editNoteContent} onChange={(e) => setEditNoteContent(e.target.value)} style={{ flex: 1 }} />
-                        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                          <button className="btn-ghost" onClick={handleSaveNoteEdit} style={{ fontSize: 12 }}>{t("offerDetail.save")}</button>
-                          <button className="btn-ghost" onClick={() => setEditingNoteId(null)} style={{ fontSize: 12 }}>{t("offerDetail.cancel")}</button>
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        <div style={{ fontSize: 13, whiteSpace: "pre-wrap", marginBottom: 4 }}>{n.content}</div>
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                          <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
-                            {n.created_at ? new Date(n.created_at).toLocaleString() : ""}
-                          </span>
-                          <div style={{ display: "flex", gap: 4 }}>
-                            <button className="btn-ghost" onClick={() => { setEditingNoteId(n.id); setEditNoteContent(n.content); }} style={{ fontSize: 11, padding: "2px 6px" }}>{t("offerDetail.edit")}</button>
-                            <button className="btn-icon" onClick={() => handleDeleteNote(n.id)} style={{ fontSize: 11 }}>x</button>
-                          </div>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+      {/* Notes — full width, click to edit */}
+      <div className="glass-card" style={{ marginTop: 16 }} ref={noteCardRef}>
+        <div className="glass-card-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <h3 style={{ margin: 0 }}>{t("offerDetail.notes")}</h3>
+          {noteEditing && (
+            <span style={{ fontSize: 11, color: noteSaved ? "var(--text-muted)" : "var(--accent)" }}>
+              {noteSaved ? t("offerDetail.saved") : t("offerDetail.saving")}
+            </span>
+          )}
         </div>
-
-        {/* Right: Reminders + AI Actions */}
-        <div>
-          {/* Reminders */}
-          <div className="glass-card" style={{ marginBottom: 16 }}>
-            <div className="glass-card-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <h3 style={{ margin: 0 }}>{t("offerDetail.reminders")}</h3>
-              <button className="btn-ghost" onClick={() => setShowAddReminder(true)} style={{ fontSize: 14, padding: "2px 8px" }}>+</button>
-            </div>
-            <div className="glass-card-body">
-              {reminders.length === 0 ? (
-                <p className="empty" style={{ margin: 0, fontSize: 13 }}>{t("offerDetail.noReminders")}</p>
+        <div className="glass-card-body">
+          {noteEditing ? (
+            <RichNoteEditor
+              content={noteContent}
+              onChange={handleNoteChange}
+              onSave={() => saveNote(noteContent)}
+              placeholder={t("offerDetail.notesPlaceholder")}
+            />
+          ) : (
+            <div
+              className="rne-preview"
+              onClick={() => setNoteEditing(true)}
+              style={{ cursor: "text", minHeight: 60 }}
+            >
+              {noteContent && noteContent !== "<p></p>" ? (
+                <div className="rne-content" dangerouslySetInnerHTML={{ __html: noteContent }} />
               ) : (
-                <ul className="item-list" style={{ margin: 0 }}>
-                  {reminders.map((r) =>
-                    editingReminderId === r.id ? (
-                      <li key={r.id} style={{ flexDirection: "column", gap: 8, padding: "8px 0", alignItems: "stretch" }}>
-                        <input placeholder={t("offerDetail.titleField")} value={editReminderTitle} onChange={(e) => setEditReminderTitle(e.target.value)} style={{ fontSize: 13 }} />
-                        <select value={editReminderType} onChange={(e) => setEditReminderType(e.target.value)} style={{ fontSize: 13 }}>
-                          {REMINDER_TYPES.map((rt) => <option key={rt} value={rt}>{getReminderTypeLabel(t, rt)}</option>)}
-                        </select>
-                        <DateTimeInput value={editReminderDueAt} onChange={setEditReminderDueAt} style={{ fontSize: 13 }} />
-                        <div style={{ display: "flex", gap: 8 }}>
-                          <button className="btn-primary" onClick={handleSaveEditReminder} style={{ boxShadow: "none", fontSize: 12 }}>{t("offerDetail.save")}</button>
-                          <button className="btn-cancel" onClick={() => setEditingReminderId(null)} style={{ fontSize: 12 }}>{t("offerDetail.cancel")}</button>
-                        </div>
-                      </li>
-                    ) : (
-                      <li key={r.id} style={{ padding: "6px 0" }}>
-                        <button
-                          className={`reminder-toggle${r.is_done ? " done" : ""}`}
-                          onClick={() => handleToggleReminder(r)}
-                          title={r.is_done ? t("offerDetail.markUndone") : t("offerDetail.markDone")}
-                        >{r.is_done ? "\u2713" : ""}</button>
-                        <div style={{ flex: 1, cursor: "pointer" }} onClick={() => startEditReminder(r)}>
-                          <span style={{
-                            fontSize: 13, fontWeight: 500,
-                            color: r.is_done ? "var(--text-muted)" : "var(--text-h)",
-                            textDecoration: r.is_done ? "line-through" : "none",
-                          }}>{r.title}</span>
-                          <div style={{ fontSize: 11, color: "var(--text-muted)" }}>
-                            {new Date(r.due_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}
-                          </div>
-                        </div>
-                        <button onClick={() => handleDeleteReminder(r.id)} className="btn-icon" title={t("offerDetail.delete")} style={{ fontSize: 11, padding: "2px 6px" }}>x</button>
-                      </li>
-                    )
-                  )}
-                </ul>
+                <p className="empty" style={{ margin: 0, fontSize: 13 }}>{t("offerDetail.notesPlaceholder")}</p>
               )}
             </div>
-          </div>
-
-          {/* Add reminder modal */}
-          {showAddReminder && (
-            <div style={{
-              position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-              background: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              zIndex: 2000,
-            }} onClick={(e) => { if (e.target === e.currentTarget) setShowAddReminder(false); }}>
-              <div className="glass-card" style={{ width: 400, maxWidth: "90vw", overflow: "visible" }}>
-                <div className="glass-card-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <h3 style={{ margin: 0 }}>{t("offerDetail.newReminder")}</h3>
-                  <button className="btn-ghost" onClick={() => setShowAddReminder(false)} style={{ fontSize: 16, padding: "2px 8px" }}>x</button>
-                </div>
-                <div className="glass-card-body" style={{ overflow: "visible" }}>
-                  <form onSubmit={handleAddReminder} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                    <label>
-                      {t("offerDetail.titleRequired")}
-                      <input placeholder={t("offerDetail.reminderPlaceholder")} value={reminderTitle} onChange={(e) => setReminderTitle(e.target.value)} />
-                    </label>
-                    <label>
-                      {t("offerDetail.typeLabel")}
-                      <select value={reminderType} onChange={(e) => setReminderType(e.target.value)}>
-                        {REMINDER_TYPES.map((rt) => <option key={rt} value={rt}>{getReminderTypeLabel(t, rt)}</option>)}
-                      </select>
-                    </label>
-                    <label>
-                      {t("offerDetail.dueDateRequired")}
-                      <DateTimeInput value={reminderDueAt} onChange={setReminderDueAt} />
-                    </label>
-                    <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 4 }}>
-                      <button type="button" className="btn-cancel" onClick={() => setShowAddReminder(false)}>{t("offerDetail.cancel")}</button>
-                      <button type="submit" className="btn-primary" style={{ boxShadow: "none" }}>{t("offerDetail.addReminder")}</button>
-                    </div>
-                  </form>
-                </div>
-              </div>
-            </div>
           )}
-
-          {aiError && <p className="error" style={{ marginTop: 12 }}>{aiError}</p>}
         </div>
       </div>
+
+      {/* Reminders */}
+      <div className="glass-card" style={{ marginTop: 16 }}>
+        <div className="glass-card-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <h3 style={{ margin: 0 }}>{t("offerDetail.reminders")}</h3>
+          <button className="btn-ghost" onClick={() => setShowAddReminder(true)} style={{ fontSize: 14, padding: "2px 8px" }}>+</button>
+        </div>
+        <div className="glass-card-body">
+          {reminders.length === 0 ? (
+            <p className="empty" style={{ margin: 0, fontSize: 13 }}>{t("offerDetail.noReminders")}</p>
+          ) : (
+            <ul className="item-list" style={{ margin: 0 }}>
+              {reminders.map((r) =>
+                editingReminderId === r.id ? (
+                  <li key={r.id} style={{ flexDirection: "column", gap: 8, padding: "8px 0", alignItems: "stretch" }}>
+                    <input placeholder={t("offerDetail.titleField")} value={editReminderTitle} onChange={(e) => setEditReminderTitle(e.target.value)} style={{ fontSize: 13 }} />
+                    <select value={editReminderType} onChange={(e) => setEditReminderType(e.target.value)} style={{ fontSize: 13 }}>
+                      {REMINDER_TYPES.map((rt) => <option key={rt} value={rt}>{getReminderTypeLabel(t, rt)}</option>)}
+                    </select>
+                    <DateTimeInput value={editReminderDueAt} onChange={setEditReminderDueAt} style={{ fontSize: 13 }} />
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button className="btn-primary" onClick={handleSaveEditReminder} style={{ boxShadow: "none", fontSize: 12 }}>{t("offerDetail.save")}</button>
+                      <button className="btn-cancel" onClick={() => setEditingReminderId(null)} style={{ fontSize: 12 }}>{t("offerDetail.cancel")}</button>
+                    </div>
+                  </li>
+                ) : (
+                  <li key={r.id} style={{ padding: "6px 0" }}>
+                    <button
+                      className={`reminder-toggle${r.is_done ? " done" : ""}`}
+                      onClick={() => handleToggleReminder(r)}
+                      title={r.is_done ? t("offerDetail.markUndone") : t("offerDetail.markDone")}
+                    >{r.is_done ? "\u2713" : ""}</button>
+                    <div style={{ flex: 1, cursor: "pointer" }} onClick={() => startEditReminder(r)}>
+                      <span style={{
+                        fontSize: 13, fontWeight: 500,
+                        color: r.is_done ? "var(--text-muted)" : "var(--text-h)",
+                        textDecoration: r.is_done ? "line-through" : "none",
+                      }}>{r.title}</span>
+                      <div style={{ fontSize: 11, color: "var(--text-muted)" }}>
+                        {new Date(r.due_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}
+                      </div>
+                    </div>
+                    <button onClick={() => handleDeleteReminder(r.id)} className="btn-icon" title={t("offerDetail.delete")} style={{ fontSize: 11, padding: "2px 6px" }}>x</button>
+                  </li>
+                )
+              )}
+            </ul>
+          )}
+        </div>
+      </div>
+
+      {/* Add reminder modal */}
+      {showAddReminder && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+          background: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          zIndex: 2000,
+        }} onClick={(e) => { if (e.target === e.currentTarget) setShowAddReminder(false); }}>
+          <div className="glass-card" style={{ width: 400, maxWidth: "90vw", overflow: "visible" }}>
+            <div className="glass-card-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <h3 style={{ margin: 0 }}>{t("offerDetail.newReminder")}</h3>
+              <button className="btn-ghost" onClick={() => setShowAddReminder(false)} style={{ fontSize: 16, padding: "2px 8px" }}>x</button>
+            </div>
+            <div className="glass-card-body" style={{ overflow: "visible" }}>
+              <form onSubmit={handleAddReminder} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <label>
+                  {t("offerDetail.titleRequired")}
+                  <input placeholder={t("offerDetail.reminderPlaceholder")} value={reminderTitle} onChange={(e) => setReminderTitle(e.target.value)} />
+                </label>
+                <label>
+                  {t("offerDetail.typeLabel")}
+                  <select value={reminderType} onChange={(e) => setReminderType(e.target.value)}>
+                    {REMINDER_TYPES.map((rt) => <option key={rt} value={rt}>{getReminderTypeLabel(t, rt)}</option>)}
+                  </select>
+                </label>
+                <label>
+                  {t("offerDetail.dueDateRequired")}
+                  <DateTimeInput value={reminderDueAt} onChange={setReminderDueAt} />
+                </label>
+                <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 4 }}>
+                  <button type="button" className="btn-cancel" onClick={() => setShowAddReminder(false)}>{t("offerDetail.cancel")}</button>
+                  <button type="submit" className="btn-primary" style={{ boxShadow: "none" }}>{t("offerDetail.addReminder")}</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {aiError && <p className="error" style={{ marginTop: 12 }}>{aiError}</p>}
 
       {/* CV Upload Modal */}
       {showCVUpload && (

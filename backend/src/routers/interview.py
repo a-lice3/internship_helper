@@ -88,16 +88,22 @@ def create_session(
 
 @router.get(
     "/users/{user_id}/interview-sessions",
-    response_model=list[schemas.InterviewSessionResponse],
+    response_model=schemas.PaginatedResponse[schemas.InterviewSessionResponse],
 )
 def list_sessions(
     user_id: int,
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     _verify_owner(user_id, current_user)
-    sessions = crud.get_interview_sessions(db, user_id)
-    return [_session_to_response(s) for s in sessions]
+    total = crud.count_interview_sessions(db, user_id)
+    sessions = crud.get_interview_sessions(db, user_id, skip=offset, limit=limit)
+    items = [_session_to_response(s) for s in sessions]
+    return schemas.PaginatedResponse(
+        items=items, total=total, limit=limit, offset=offset
+    )
 
 
 @router.get(
@@ -451,7 +457,7 @@ async def interview_websocket(
         )
 
         # Generate first question
-        first_question = await asyncio.to_thread(generate_first_question, system_prompt)
+        first_question = await generate_first_question(system_prompt)
 
         turn_number = 1
         conversation_history: list[dict[str, str]] = []
@@ -561,8 +567,7 @@ async def interview_websocket(
 
                 # Generate next question
                 await websocket.send_json({"type": "ai.thinking"})
-                next_question = await asyncio.to_thread(
-                    generate_next_question,
+                next_question = await generate_next_question(
                     system_prompt,
                     conversation_history,
                     answer_text,
@@ -602,8 +607,7 @@ async def interview_websocket(
                     break
 
                 await websocket.send_json({"type": "ai.thinking"})
-                next_question = await asyncio.to_thread(
-                    generate_next_question,
+                next_question = await generate_next_question(
                     system_prompt,
                     conversation_history,
                     "(The candidate skipped this question.)",
@@ -630,8 +634,7 @@ async def interview_websocket(
             elif msg_type == "hint.request":
                 if db_session.enable_hints:
                     partial = raw.get("data", {}).get("partial_transcript", "")
-                    hint = await asyncio.to_thread(
-                        generate_hint,
+                    hint = await generate_hint(
                         db_turn.question_text,
                         partial,
                         db_session.language,

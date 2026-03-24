@@ -17,7 +17,7 @@ def test_create_and_list_notes(client, sample_user, auth_header):
     assert data["offer_id"] == offer["id"]
 
     resp = client.get(f"/users/{uid}/offers/{offer['id']}/notes", headers=auth_header)
-    assert len(resp.json()) == 1
+    assert len(resp.json()["items"]) == 1
 
 
 def test_update_note(client, sample_user, auth_header):
@@ -64,7 +64,7 @@ def test_delete_note(client, sample_user, auth_header):
     assert resp.status_code == 200
 
     resp = client.get(f"/users/{uid}/offers/{offer['id']}/notes", headers=auth_header)
-    assert len(resp.json()) == 0
+    assert len(resp.json()["items"]) == 0
 
 
 def test_note_on_nonexistent_offer(client, sample_user, auth_header):

@@ -62,8 +62,8 @@ export default function InterviewPage({ userId }: { userId: number }) {
   const speech = useSpeechRecognition(language);
 
   useEffect(() => {
-    api.getOffers(userId).then(setOffers).catch(() => {});
-    api.getInterviewSessions(userId).then(setSessions).catch(() => {});
+    api.getOffers(userId).then(r => setOffers(r.items)).catch(() => {});
+    api.getInterviewSessions(userId).then(r => setSessions(r.items)).catch(() => {});
     api.getInterviewProgress(userId).then(setProgress).catch(() => {});
   }, [userId]);
 
@@ -157,13 +157,13 @@ export default function InterviewPage({ userId }: { userId: number }) {
 
   useEffect(() => {
     if (interview.state.status === "results" && activeSession) {
-      api.getInterviewSessions(userId).then(setSessions).catch(() => {});
+      api.getInterviewSessions(userId).then(r => setSessions(r.items)).catch(() => {});
       // Auto-launch AI analysis
       setAnalyzing(true);
       api.analyzeInterview(userId, activeSession.id)
         .then((result) => {
           setAnalysis(result);
-          api.getInterviewSessions(userId).then(setSessions).catch(() => {});
+          api.getInterviewSessions(userId).then(r => setSessions(r.items)).catch(() => {});
           api.getInterviewProgress(userId).then(setProgress).catch(() => {});
         })
         .catch(() => setError(t("interviewPage.analysisFailed")))
@@ -196,7 +196,7 @@ export default function InterviewPage({ userId }: { userId: number }) {
     }
     setView("history"); setActiveSession(null);
     setAnalysis(null); setSelectedDetail(null); setPredictedQuestions([]);
-    api.getInterviewSessions(userId).then(setSessions).catch(() => {});
+    api.getInterviewSessions(userId).then(r => setSessions(r.items)).catch(() => {});
     api.getInterviewProgress(userId).then(setProgress).catch(() => {});
   };
 
@@ -589,7 +589,7 @@ export default function InterviewPage({ userId }: { userId: number }) {
                   try {
                     const result = await api.analyzeInterview(userId, selectedDetail.id);
                     setSelectedDetail({ ...selectedDetail, analysis: result, status: "analyzed" });
-                    api.getInterviewSessions(userId).then(setSessions).catch(() => {});
+                    api.getInterviewSessions(userId).then(r => setSessions(r.items)).catch(() => {});
                   } catch { setError(t("interviewPage.analysisFailed")); }
                   finally { setAnalyzing(false); }
                 }}

@@ -1,9 +1,10 @@
 """Router for offer search / scraping endpoints."""
 
+import asyncio
 import json
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from src import crud, schemas
@@ -135,43 +136,66 @@ async def _do_search(
         "france metropolitaine",
     )
 
-    # Scraper calls remain sync (HTTP via urllib)
+    # Run scrapers in parallel using asyncio.to_thread for sync HTTP calls
+    tasks: list[tuple[str, asyncio.Task[list[RawOffer]]]] = []
+
     if "francetravail" in body.sources and is_france:
-        try:
-            all_offers.extend(
-                _ft_source.search(
-                    body.keywords, body.location, body.radius_km, body.max_results
-                )
+        tasks.append(
+            (
+                "francetravail",
+                asyncio.ensure_future(
+                    asyncio.to_thread(
+                        _ft_source.search,
+                        body.keywords,
+                        body.location,
+                        body.radius_km,
+                        body.max_results,
+                    )
+                ),
             )
-            sources_used.append("francetravail")
-        except Exception as exc:
-            logger.warning("France Travail search failed: %s", exc)
+        )
 
     if "wttj" in body.sources:
-        try:
-            all_offers.extend(
-                _wttj_source.search(
-                    body.keywords, body.location, body.radius_km, body.max_results
-                )
+        tasks.append(
+            (
+                "wttj",
+                asyncio.ensure_future(
+                    asyncio.to_thread(
+                        _wttj_source.search,
+                        body.keywords,
+                        body.location,
+                        body.radius_km,
+                        body.max_results,
+                    )
+                ),
             )
-            sources_used.append("wttj")
-        except Exception as exc:
-            logger.warning("WTTJ search failed: %s", exc)
+        )
 
     if "themuse" in body.sources:
-        try:
-            all_offers.extend(
-                _muse_source.search(
-                    body.keywords,
-                    body.location,
-                    body.radius_km,
-                    body.max_results,
-                    country=body.country,
-                )
+        tasks.append(
+            (
+                "themuse",
+                asyncio.ensure_future(
+                    asyncio.to_thread(
+                        lambda: _muse_source.search(
+                            body.keywords,
+                            body.location,
+                            body.radius_km,
+                            body.max_results,
+                            country=body.country,
+                        ),
+                    )
+                ),
             )
-            sources_used.append("themuse")
+        )
+
+    for source_name, task in tasks:
+        try:
+            task_results = await task
+            all_offers.extend(task_results)
+            sources_used.append(source_name)
         except Exception as exc:
-            logger.warning("The Muse search failed: %s", exc)
+            logger.warning("%s search failed: %s", source_name, exc)
 
     if not all_offers:
         return schemas.OfferSearchResponse(
@@ -248,17 +272,20 @@ async def _do_search(
 
 @router.get(
     "/users/{user_id}/scraped-offers",
-    response_model=list[schemas.ScrapedOfferResponse],
+    response_model=schemas.PaginatedResponse[schemas.ScrapedOfferResponse],
 )
 def list_scraped_offers(
     user_id: int,
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """List previously scraped offers for the user."""
     _verify_owner(user_id, current_user)
-    rows = crud.get_scraped_offers(db, user_id)
-    return [
+    total = crud.count_scraped_offers(db, user_id)
+    rows = crud.get_scraped_offers(db, user_id, skip=offset, limit=limit)
+    items = [
         schemas.ScrapedOfferResponse(
             id=r.id,
             source=r.source,
@@ -278,6 +305,9 @@ def list_scraped_offers(
         )
         for r in rows
     ]
+    return schemas.PaginatedResponse(
+        items=items, total=total, limit=limit, offset=offset
+    )
 
 
 @router.post("/users/{user_id}/scraped-offers/{offer_id}/save")

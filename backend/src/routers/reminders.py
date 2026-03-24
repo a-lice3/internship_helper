@@ -25,15 +25,23 @@ def create_reminder(
     return crud.create_reminder(db, user_id, reminder)
 
 
-@router.get("", response_model=list[schemas.ReminderResponse])
+@router.get("", response_model=schemas.PaginatedResponse[schemas.ReminderResponse])
 def list_reminders(
     user_id: int,
     include_done: bool = Query(False, description="Include completed reminders"),
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     _verify_owner(user_id, current_user)
-    return crud.get_reminders(db, user_id, include_done=include_done)
+    total = crud.count_reminders(db, user_id, include_done=include_done)
+    items = crud.get_reminders(
+        db, user_id, include_done=include_done, skip=offset, limit=limit
+    )
+    return schemas.PaginatedResponse(
+        items=items, total=total, limit=limit, offset=offset
+    )
 
 
 @router.get("/{reminder_id}", response_model=schemas.ReminderResponse)

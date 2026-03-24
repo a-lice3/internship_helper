@@ -11,7 +11,6 @@ from mistralai.client.models.usermessage import UserMessage
 
 from src.llm_service import (
     Messages,
-    _chat,
     _chat_async,
     _strip_markdown_fences,
     client,
@@ -303,7 +302,7 @@ def build_interviewer_system_prompt(
     )
 
 
-def generate_first_question(
+async def generate_first_question(
     system_prompt: str,
 ) -> str:
     """Generate the opening interview question using the system prompt."""
@@ -314,12 +313,12 @@ def generate_first_question(
             content="The interview is starting now. Ask your first question.",
         ),
     ]
-    response = client.chat.complete(model=MODEL, messages=messages)
+    response = await client.chat.complete_async(model=MODEL, messages=messages)
     content = response.choices[0].message.content
     return content if isinstance(content, str) else str(content)
 
 
-def generate_next_question(
+async def generate_next_question(
     system_prompt: str,
     conversation_history: list[dict[str, str]],
     latest_answer: str,
@@ -342,19 +341,19 @@ def generate_next_question(
         )
     )
 
-    response = client.chat.complete(model=MODEL, messages=messages)
+    response = await client.chat.complete_async(model=MODEL, messages=messages)
     content = response.choices[0].message.content
     return content if isinstance(content, str) else str(content)
 
 
-def generate_hint(question: str, partial_transcript: str, language: str) -> str:
+async def generate_hint(question: str, partial_transcript: str, language: str) -> str:
     """Generate a real-time hint for a struggling candidate."""
     prompt = HINT_PROMPT.format(
         question=question,
         partial_transcript=partial_transcript,
         language=language,
     )
-    return _chat("You are a helpful interview coach.", prompt)
+    return await _chat_async("You are a helpful interview coach.", prompt)
 
 
 async def predict_questions(

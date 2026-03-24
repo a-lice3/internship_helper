@@ -48,7 +48,7 @@ export default function MemosPage({ userId }: { userId: number }) {
       tag: selectedTag || undefined,
       favorites_only: favoritesOnly || undefined,
     })
-      .then(setMemos)
+      .then(r => setMemos(r.items))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [userId, search, selectedTag, favoritesOnly, memosRefreshKey]);

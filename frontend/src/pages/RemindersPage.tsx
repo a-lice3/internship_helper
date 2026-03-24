@@ -26,12 +26,12 @@ export default function RemindersPage({ userId }: { userId: number }) {
   const [editType, setEditType] = useState("custom");
 
   const load = () => {
-    api.getReminders(userId, showDone).then(setReminders);
+    api.getReminders(userId, showDone).then(r => setReminders(r.items));
   };
 
   useEffect(load, [userId, showDone]);
   useEffect(() => {
-    api.getOffers(userId).then(setOffers);
+    api.getOffers(userId).then(r => setOffers(r.items));
   }, [userId]);
 
   const handleAdd = async (e: React.FormEvent) => {

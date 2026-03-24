@@ -62,13 +62,13 @@ export default function CalendarPage({ userId }: { userId: number }) {
   };
 
   const loadReminders = () => {
-    api.getReminders(userId, showDone).then(setReminders);
+    api.getReminders(userId, showDone).then(r => setReminders(r.items));
   };
 
   useEffect(loadCalendar, [userId, year, month]);
   useEffect(loadReminders, [userId, showDone]);
   useEffect(() => {
-    api.getOffers(userId).then(setOffers);
+    api.getOffers(userId).then(r => setOffers(r.items));
   }, [userId]);
 
   const reloadAll = () => {

@@ -11,7 +11,7 @@ export default function OffersPage({ userId }: { userId: number }) {
   const [filterStatuses, setFilterStatuses] = useState<Set<string>>(new Set());
 
   const load = () => {
-    api.getOffers(userId).then(setOffers);
+    api.getOffers(userId).then(r => setOffers(r.items));
   };
 
   useEffect(load, [userId]);

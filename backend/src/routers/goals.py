@@ -35,16 +35,21 @@ def create_goal(
     )
 
 
-@router.get("", response_model=list[schemas.GoalResponse])
+@router.get("", response_model=schemas.PaginatedResponse[schemas.GoalResponse])
 def list_goals(
     user_id: int,
     active_only: bool = Query(True),
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     _verify_owner(user_id, current_user)
-    goals = crud.get_goals(db, user_id, active_only=active_only)
-    return [
+    total = crud.count_goals(db, user_id, active_only=active_only)
+    goals = crud.get_goals(
+        db, user_id, active_only=active_only, skip=offset, limit=limit
+    )
+    items = [
         schemas.GoalResponse(
             id=g.id,
             title=g.title,
@@ -55,6 +60,9 @@ def list_goals(
         )
         for g in goals
     ]
+    return schemas.PaginatedResponse(
+        items=items, total=total, limit=limit, offset=offset
+    )
 
 
 @router.get("/summary", response_model=schemas.DailyGoalsSummary)

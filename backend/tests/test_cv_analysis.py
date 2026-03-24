@@ -48,7 +48,7 @@ def test_toggle_default_cv(client, sample_user, auth_header):
     assert resp.json()["is_default"] is True
 
     # Verify cv1 is no longer default
-    cvs = client.get(f"/users/{uid}/cvs", headers=auth_header).json()
+    cvs = client.get(f"/users/{uid}/cvs", headers=auth_header).json()["items"]
     defaults = [c for c in cvs if c["is_default"]]
     assert len(defaults) == 1
     assert defaults[0]["id"] == cv2["id"]
