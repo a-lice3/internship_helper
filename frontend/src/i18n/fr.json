@@ -722,6 +722,13 @@
     "todayGoals": "Objectifs du jour",
     "manageGoals": "Gérer mes objectifs",
     "topMissingSkills": "Top compétences manquantes",
-    "viewAll": "Voir tout"
+    "viewAll": "Voir tout",
+    "last30Days": "30 derniers jours",
+    "completionRate": "Complétion",
+    "chartMet": "Atteint",
+    "chartPartial": "Partiel",
+    "chartMissed": "Manqué",
+    "chartTarget": "Objectif",
+    "daysMetTarget": "{{met}}/{{total}} jours"
   }
 }

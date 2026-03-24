@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../api";
+import GoalHistoryChart from "../components/GoalHistoryChart";
 
 export default function GoalsPage({ userId }: { userId: number }) {
   const { t } = useTranslation();
@@ -104,7 +105,15 @@ export default function GoalsPage({ userId }: { userId: number }) {
       return;
     }
     setHistoryGoalId(goalId);
-    const entries = await api.getGoalProgress(userId, goalId);
+    const today = new Date();
+    const start = new Date(today);
+    start.setDate(start.getDate() - 29);
+    const entries = await api.getGoalProgress(
+      userId,
+      goalId,
+      start.toISOString().slice(0, 10),
+      today.toISOString().slice(0, 10),
+    );
     setHistory(entries);
   };
 
@@ -301,28 +310,7 @@ export default function GoalsPage({ userId }: { userId: number }) {
                     </button>
                     {historyGoalId === goal.id && (
                       <div className="goal-history">
-                        {history.length === 0 ? (
-                          <p className="muted">{t("goals.noHistory")}</p>
-                        ) : (
-                          <table className="goal-history-table">
-                            <thead>
-                              <tr>
-                                <th>{t("goals.date")}</th>
-                                <th>{t("goals.completed")}</th>
-                                <th>{t("goals.notes")}</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {history.slice(0, 14).map((e) => (
-                                <tr key={e.id}>
-                                  <td>{e.date}</td>
-                                  <td>{e.completed_count}</td>
-                                  <td>{e.notes || "-"}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        )}
+                        <GoalHistoryChart history={history} targetCount={goal.target_count} />
                       </div>
                     )}
                   </>

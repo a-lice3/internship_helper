@@ -722,6 +722,13 @@
     "todayGoals": "Today's Goals",
     "manageGoals": "Manage goals",
     "topMissingSkills": "Top missing skills",
-    "viewAll": "View all"
+    "viewAll": "View all",
+    "last30Days": "Last 30 days",
+    "completionRate": "Completion",
+    "chartMet": "Met",
+    "chartPartial": "Partial",
+    "chartMissed": "Missed",
+    "chartTarget": "Target",
+    "daysMetTarget": "{{met}}/{{total}} days"
   }
 }
