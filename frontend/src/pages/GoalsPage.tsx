@@ -9,6 +9,7 @@ export default function GoalsPage({ userId }: { userId: number }) {
   const [allGoals, setAllGoals] = useState<api.Goal[]>([]);
   const [loading, setLoading] = useState(true);
   const [showInactive, setShowInactive] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // -- Create form --
   const [creating, setCreating] = useState(false);
@@ -26,8 +27,9 @@ export default function GoalsPage({ userId }: { userId: number }) {
   const [historyGoalId, setHistoryGoalId] = useState<number | null>(null);
   const [history, setHistory] = useState<api.GoalProgress[]>([]);
 
-  const loadData = () => {
-    setLoading(true);
+  const loadData = () => setRefreshKey((k) => k + 1);
+
+  useEffect(() => {
     Promise.all([
       api.getGoalsSummary(userId),
       api.getGoals(userId, false),
@@ -38,11 +40,7 @@ export default function GoalsPage({ userId }: { userId: number }) {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  };
-
-  useEffect(() => {
-    loadData();
-  }, [userId]);
+  }, [userId, refreshKey]);
 
   const handleCreate = async () => {
     await api.createGoal(userId, {

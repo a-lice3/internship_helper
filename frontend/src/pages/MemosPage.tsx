@@ -38,8 +38,11 @@ export default function MemosPage({ userId }: { userId: number }) {
 
   // ---------- Data fetching ----------
 
-  const loadMemos = () => {
-    setLoading(true);
+  const [memosRefreshKey, setMemosRefreshKey] = useState(0);
+
+  const loadMemos = () => setMemosRefreshKey((k) => k + 1);
+
+  useEffect(() => {
     api.getMemos(userId, {
       search: search || undefined,
       tag: selectedTag || undefined,
@@ -48,22 +51,14 @@ export default function MemosPage({ userId }: { userId: number }) {
       .then(setMemos)
       .catch(() => {})
       .finally(() => setLoading(false));
-  };
+  }, [userId, search, selectedTag, favoritesOnly, memosRefreshKey]);
 
   useEffect(() => {
-    loadMemos();
-  }, [userId, search, selectedTag, favoritesOnly]);
-
-  const loadRecommendations = () => {
-    setRecoLoading(true);
+    if (tab !== "recommendations") return;
     api.getSkillRecommendations(userId)
       .then(setRecommendations)
       .catch(() => {})
       .finally(() => setRecoLoading(false));
-  };
-
-  useEffect(() => {
-    if (tab === "recommendations") loadRecommendations();
   }, [tab, userId]);
 
   // ---------- All tags (extracted from memos) ----------
