@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
@@ -108,14 +108,20 @@ def upload_cv_file(
     )
 
 
-@router.get("", response_model=list[schemas.CVResponse])
+@router.get("", response_model=schemas.PaginatedResponse[schemas.CVResponse])
 def list_cvs(
     user_id: int,
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     _verify_owner(user_id, current_user)
-    return crud.get_cvs(db, user_id)
+    total = crud.count_cvs(db, user_id)
+    items = crud.get_cvs(db, user_id, skip=offset, limit=limit)
+    return schemas.PaginatedResponse(
+        items=items, total=total, limit=limit, offset=offset
+    )
 
 
 @router.get("/{cv_id}/download")

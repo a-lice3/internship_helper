@@ -35,9 +35,9 @@ export default function GoalsPage({ userId }: { userId: number }) {
       api.getGoalsSummary(userId),
       api.getGoals(userId, false),
     ])
-      .then(([s, g]) => {
+      .then(([s, gResp]) => {
         setSummary(s);
-        setAllGoals(g);
+        setAllGoals(gResp.items);
       })
       .catch(() => {})
       .finally(() => setLoading(false));

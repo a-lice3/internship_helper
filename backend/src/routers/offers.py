@@ -25,18 +25,26 @@ def create_offer(
     return crud.create_offer(db, user_id, offer)
 
 
-@router.get("", response_model=list[schemas.InternshipOfferResponse])
+@router.get(
+    "", response_model=schemas.PaginatedResponse[schemas.InternshipOfferResponse]
+)
 def list_offers(
     user_id: int,
     status: str | None = Query(
         None,
         description="Filter by status: applied, screened, interview, rejected, accepted",
     ),
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     _verify_owner(user_id, current_user)
-    return crud.get_offers(db, user_id, status=status)
+    total = crud.count_offers(db, user_id, status=status)
+    items = crud.get_offers(db, user_id, status=status, skip=offset, limit=limit)
+    return schemas.PaginatedResponse(
+        items=items, total=total, limit=limit, offset=offset
+    )
 
 
 @router.get("/{offer_id}", response_model=schemas.InternshipOfferResponse)

@@ -198,7 +198,7 @@ export default function ProfilePage({ userId }: { userId: number }) {
     api.getEducation(userId).then(setEducation);
     api.getLanguages(userId).then(setLanguages);
     api.getExtracurriculars(userId).then(setExtras);
-    api.getCVs(userId).then(setCvList);
+    api.getCVs(userId).then(r => setCvList(r.items));
   };
 
   useEffect(loadAll, [userId]);

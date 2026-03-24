@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile
 from sqlalchemy.orm import Session
 
 from src import crud, schemas
@@ -55,14 +55,22 @@ def upload_template_pdf(
     return crud.create_template_from_pdf(db, user_id, template_name, content, str(path))
 
 
-@router.get("", response_model=list[schemas.CoverLetterTemplateResponse])
+@router.get(
+    "", response_model=schemas.PaginatedResponse[schemas.CoverLetterTemplateResponse]
+)
 def list_templates(
     user_id: int,
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     _verify_owner(user_id, current_user)
-    return crud.get_templates(db, user_id)
+    total = crud.count_templates(db, user_id)
+    items = crud.get_templates(db, user_id, skip=offset, limit=limit)
+    return schemas.PaginatedResponse(
+        items=items, total=total, limit=limit, offset=offset
+    )
 
 
 @router.delete("/{template_id}")

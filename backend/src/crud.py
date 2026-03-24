@@ -316,11 +316,24 @@ def create_template_from_pdf(
     return db_tpl
 
 
-def get_templates(db: Session, user_id: int) -> list[models.CoverLetterTemplate]:
+def get_templates(
+    db: Session, user_id: int, skip: int = 0, limit: int | None = None
+) -> list[models.CoverLetterTemplate]:
+    query = db.query(models.CoverLetterTemplate).filter(
+        models.CoverLetterTemplate.user_id == user_id
+    )
+    if skip:
+        query = query.offset(skip)
+    if limit is not None:
+        query = query.limit(limit)
+    return query.all()
+
+
+def count_templates(db: Session, user_id: int) -> int:
     return (
         db.query(models.CoverLetterTemplate)
         .filter(models.CoverLetterTemplate.user_id == user_id)
-        .all()
+        .count()
     )
 
 
@@ -373,7 +386,11 @@ def create_offer(
 
 
 def get_offers(
-    db: Session, user_id: int, status: str | None = None
+    db: Session,
+    user_id: int,
+    status: str | None = None,
+    skip: int = 0,
+    limit: int | None = None,
 ) -> list[models.InternshipOffer]:
     query = db.query(models.InternshipOffer).filter(
         models.InternshipOffer.user_id == user_id
@@ -382,7 +399,23 @@ def get_offers(
         query = query.filter(
             models.InternshipOffer.status == models.OfferStatus(status)
         )
-    return query.order_by(models.InternshipOffer.created_at.desc()).all()
+    query = query.order_by(models.InternshipOffer.created_at.desc())
+    if skip:
+        query = query.offset(skip)
+    if limit is not None:
+        query = query.limit(limit)
+    return query.all()
+
+
+def count_offers(db: Session, user_id: int, status: str | None = None) -> int:
+    query = db.query(models.InternshipOffer).filter(
+        models.InternshipOffer.user_id == user_id
+    )
+    if status:
+        query = query.filter(
+            models.InternshipOffer.status == models.OfferStatus(status)
+        )
+    return query.count()
 
 
 def get_offer(db: Session, offer_id: int) -> models.InternshipOffer | None:
@@ -466,13 +499,23 @@ def create_cv(db: Session, user_id: int, cv: schemas.CVCreate) -> models.CV:
     return db_cv
 
 
-def get_cvs(db: Session, user_id: int) -> list[models.CV]:
-    return (
+def get_cvs(
+    db: Session, user_id: int, skip: int = 0, limit: int | None = None
+) -> list[models.CV]:
+    query = (
         db.query(models.CV)
         .filter(models.CV.user_id == user_id)
         .order_by(models.CV.created_at.desc())
-        .all()
     )
+    if skip:
+        query = query.offset(skip)
+    if limit is not None:
+        query = query.limit(limit)
+    return query.all()
+
+
+def count_cvs(db: Session, user_id: int) -> int:
+    return db.query(models.CV).filter(models.CV.user_id == user_id).count()
 
 
 def get_cv(db: Session, cv_id: int) -> models.CV | None:
@@ -835,12 +878,26 @@ def get_interview_session_by_pk(db: Session, pk: int) -> models.InterviewSession
     )
 
 
-def get_interview_sessions(db: Session, user_id: int) -> list[models.InterviewSession]:
-    return (
+def get_interview_sessions(
+    db: Session, user_id: int, skip: int = 0, limit: int | None = None
+) -> list[models.InterviewSession]:
+    query = (
         db.query(models.InterviewSession)
         .filter(models.InterviewSession.user_id == user_id)
         .order_by(models.InterviewSession.created_at.desc())
-        .all()
+    )
+    if skip:
+        query = query.offset(skip)
+    if limit is not None:
+        query = query.limit(limit)
+    return query.all()
+
+
+def count_interview_sessions(db: Session, user_id: int) -> int:
+    return (
+        db.query(models.InterviewSession)
+        .filter(models.InterviewSession.user_id == user_id)
+        .count()
     )
 
 
@@ -1044,12 +1101,26 @@ def create_scraped_offer(
     return obj
 
 
-def get_scraped_offers(db: Session, user_id: int) -> list[models.ScrapedOffer]:
-    return (
+def get_scraped_offers(
+    db: Session, user_id: int, skip: int = 0, limit: int | None = None
+) -> list[models.ScrapedOffer]:
+    query = (
         db.query(models.ScrapedOffer)
         .filter(models.ScrapedOffer.user_id == user_id)
         .order_by(models.ScrapedOffer.match_score.desc().nullslast())
-        .all()
+    )
+    if skip:
+        query = query.offset(skip)
+    if limit is not None:
+        query = query.limit(limit)
+    return query.all()
+
+
+def count_scraped_offers(db: Session, user_id: int) -> int:
+    return (
+        db.query(models.ScrapedOffer)
+        .filter(models.ScrapedOffer.user_id == user_id)
+        .count()
     )
 
 
@@ -1122,12 +1193,28 @@ def create_reminder(
 
 
 def get_reminders(
-    db: Session, user_id: int, include_done: bool = False
+    db: Session,
+    user_id: int,
+    include_done: bool = False,
+    skip: int = 0,
+    limit: int | None = None,
 ) -> list[models.Reminder]:
     query = db.query(models.Reminder).filter(models.Reminder.user_id == user_id)
     if not include_done:
         query = query.filter(models.Reminder.is_done == False)  # noqa: E712
-    return query.order_by(models.Reminder.due_at.asc()).all()
+    query = query.order_by(models.Reminder.due_at.asc())
+    if skip:
+        query = query.offset(skip)
+    if limit is not None:
+        query = query.limit(limit)
+    return query.all()
+
+
+def count_reminders(db: Session, user_id: int, include_done: bool = False) -> int:
+    query = db.query(models.Reminder).filter(models.Reminder.user_id == user_id)
+    if not include_done:
+        query = query.filter(models.Reminder.is_done == False)  # noqa: E712
+    return query.count()
 
 
 def get_upcoming_reminders(
@@ -1196,12 +1283,24 @@ def create_offer_note(
     return db_note
 
 
-def get_offer_notes(db: Session, offer_id: int) -> list[models.OfferNote]:
-    return (
+def get_offer_notes(
+    db: Session, offer_id: int, skip: int = 0, limit: int | None = None
+) -> list[models.OfferNote]:
+    query = (
         db.query(models.OfferNote)
         .filter(models.OfferNote.offer_id == offer_id)
         .order_by(models.OfferNote.created_at.desc())
-        .all()
+    )
+    if skip:
+        query = query.offset(skip)
+    if limit is not None:
+        query = query.limit(limit)
+    return query.all()
+
+
+def count_offer_notes(db: Session, offer_id: int) -> int:
+    return (
+        db.query(models.OfferNote).filter(models.OfferNote.offer_id == offer_id).count()
     )
 
 
@@ -1562,14 +1661,14 @@ def create_memo(db: Session, user_id: int, memo: schemas.MemoCreate) -> models.M
     return db_memo
 
 
-def get_memos(
+def _memos_query(
     db: Session,
     user_id: int,
     search: str | None = None,
     tag: str | None = None,
     offer_id: int | None = None,
     favorites_only: bool = False,
-) -> list[models.Memo]:
+):
     q = db.query(models.Memo).filter(models.Memo.user_id == user_id)
     if search:
         pattern = f"%{search}%"
@@ -1582,7 +1681,37 @@ def get_memos(
         q = q.filter(models.Memo.offer_id == offer_id)
     if favorites_only:
         q = q.filter(models.Memo.is_favorite.is_(True))
-    return q.order_by(models.Memo.updated_at.desc()).all()
+    return q
+
+
+def get_memos(
+    db: Session,
+    user_id: int,
+    search: str | None = None,
+    tag: str | None = None,
+    offer_id: int | None = None,
+    favorites_only: bool = False,
+    skip: int = 0,
+    limit: int | None = None,
+) -> list[models.Memo]:
+    q = _memos_query(db, user_id, search, tag, offer_id, favorites_only)
+    q = q.order_by(models.Memo.updated_at.desc())
+    if skip:
+        q = q.offset(skip)
+    if limit is not None:
+        q = q.limit(limit)
+    return q.all()
+
+
+def count_memos(
+    db: Session,
+    user_id: int,
+    search: str | None = None,
+    tag: str | None = None,
+    offer_id: int | None = None,
+    favorites_only: bool = False,
+) -> int:
+    return _memos_query(db, user_id, search, tag, offer_id, favorites_only).count()
 
 
 def get_memo(db: Session, memo_id: int) -> models.Memo | None:
@@ -1717,11 +1846,29 @@ def create_goal(db: Session, user_id: int, goal: schemas.GoalCreate) -> models.G
     return db_goal
 
 
-def get_goals(db: Session, user_id: int, active_only: bool = True) -> list[models.Goal]:
+def get_goals(
+    db: Session,
+    user_id: int,
+    active_only: bool = True,
+    skip: int = 0,
+    limit: int | None = None,
+) -> list[models.Goal]:
     q = db.query(models.Goal).filter(models.Goal.user_id == user_id)
     if active_only:
         q = q.filter(models.Goal.is_active.is_(True))
-    return q.order_by(models.Goal.created_at.desc()).all()
+    q = q.order_by(models.Goal.created_at.desc())
+    if skip:
+        q = q.offset(skip)
+    if limit is not None:
+        q = q.limit(limit)
+    return q.all()
+
+
+def count_goals(db: Session, user_id: int, active_only: bool = True) -> int:
+    q = db.query(models.Goal).filter(models.Goal.user_id == user_id)
+    if active_only:
+        q = q.filter(models.Goal.is_active.is_(True))
+    return q.count()
 
 
 def update_goal(

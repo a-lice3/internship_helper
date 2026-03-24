@@ -40,9 +40,9 @@ export default function AIPage({ userId }: { userId: number }) {
   const [storedPitches, setStoredPitches] = useState<api.StoredPitchAnalysis[]>([]);
 
   useEffect(() => {
-    api.getOffers(userId).then(setOffers);
+    api.getOffers(userId).then(r => setOffers(r.items));
     api.getSavedCoverLetters(userId).then(setSavedCoverLetters);
-    api.getCVs(userId).then(setCvs);
+    api.getCVs(userId).then(r => setCvs(r.items));
     api.getStoredCoverLetters(userId).then(setStoredLetters);
     api.getStoredSkillGaps(userId).then(setStoredGaps);
     api.getStoredPitchAnalyses(userId).then(setStoredPitches);

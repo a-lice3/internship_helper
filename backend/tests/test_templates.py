@@ -15,7 +15,7 @@ def test_create_and_list_templates(client, sample_user, auth_header):
     assert response.json()["file_path"] is None
 
     response = client.get(f"/users/{uid}/templates", headers=auth_header)
-    assert len(response.json()) == 1
+    assert len(response.json()["items"]) == 1
 
 
 def test_delete_template(client, sample_user, auth_header):
@@ -30,7 +30,7 @@ def test_delete_template(client, sample_user, auth_header):
     assert response.status_code == 200
 
     response = client.get(f"/users/{uid}/templates", headers=auth_header)
-    assert len(response.json()) == 0
+    assert len(response.json()["items"]) == 0
 
 
 def test_upload_pdf_template(client, sample_user, auth_header, tmp_path):

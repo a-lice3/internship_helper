@@ -152,7 +152,7 @@ def test_list_scraped_offers(client, sample_user, auth_header):
 
     resp = client.get(f"/users/{uid}/scraped-offers", headers=auth_header)
     assert resp.status_code == 200
-    offers = resp.json()
+    offers = resp.json()["items"]
     assert len(offers) == 2
     # Ordered by match_score desc
     assert offers[0]["match_score"] >= offers[1]["match_score"]
@@ -162,7 +162,7 @@ def test_list_scraped_offers_empty(client, sample_user, auth_header):
     uid = sample_user["id"]
     resp = client.get(f"/users/{uid}/scraped-offers", headers=auth_header)
     assert resp.status_code == 200
-    assert resp.json() == []
+    assert resp.json()["items"] == []
 
 
 # ---------- POST /users/{uid}/scraped-offers/{id}/save ----------
@@ -203,7 +203,7 @@ def test_save_scraped_offer_marks_as_saved(client, sample_user, auth_header):
 
     # Check the scraped offer is now marked as saved
     resp = client.get(f"/users/{uid}/scraped-offers", headers=auth_header)
-    saved_offer = next(o for o in resp.json() if o["id"] == scraped_id)
+    saved_offer = next(o for o in resp.json()["items"] if o["id"] == scraped_id)
     assert saved_offer["saved"] is True
 
 
@@ -232,7 +232,7 @@ def test_delete_scraped_offer(client, sample_user, auth_header):
 
     # Confirm it's gone
     resp = client.get(f"/users/{uid}/scraped-offers", headers=auth_header)
-    assert len(resp.json()) == 1
+    assert len(resp.json()["items"]) == 1
 
 
 def test_delete_scraped_offer_not_found(client, sample_user, auth_header):
@@ -257,4 +257,4 @@ def test_clear_scraped_offers(client, sample_user, auth_header):
 
     # Confirm empty
     resp = client.get(f"/users/{uid}/scraped-offers", headers=auth_header)
-    assert resp.json() == []
+    assert resp.json()["items"] == []

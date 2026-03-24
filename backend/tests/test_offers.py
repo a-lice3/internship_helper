@@ -18,7 +18,7 @@ def test_create_and_list_offers(client, sample_user, auth_header):
     assert data["status"] == "applied"
 
     response = client.get(f"/users/{uid}/offers", headers=auth_header)
-    assert len(response.json()) == 1
+    assert len(response.json()["items"]) == 1
 
 
 def test_update_offer_status(client, sample_user, auth_header):
@@ -52,8 +52,8 @@ def test_filter_offers_by_status(client, sample_user, auth_header):
     )
 
     response = client.get(f"/users/{uid}/offers?status=applied", headers=auth_header)
-    assert len(response.json()) == 1
-    assert response.json()[0]["company"] == "A"
+    assert len(response.json()["items"]) == 1
+    assert response.json()["items"][0]["company"] == "A"
 
 
 def test_get_single_offer(client, sample_user, auth_header):

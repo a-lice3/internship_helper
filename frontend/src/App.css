@@ -3431,3 +3431,180 @@ button:disabled {
 .danger {
   color: #ef4444 !important;
 }
+
+/* ---------- Rich Note Editor (TipTap) ---------- */
+
+.rich-note-editor {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-solid);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.rne-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--glass-bg);
+  flex-wrap: wrap;
+}
+
+.rne-toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.rne-separator {
+  width: 1px;
+  height: 18px;
+  background: var(--border);
+  margin: 0 4px;
+}
+
+.rne-btn {
+  all: unset;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--text-p);
+  transition: background 0.15s;
+}
+
+.rne-btn:hover {
+  background: var(--hover);
+}
+
+.rne-btn.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* Color / Highlight dropdown */
+.rne-dropdown {
+  position: relative;
+}
+
+.rne-dropdown-panel {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 50;
+  padding: 6px;
+  background: var(--surface-solid);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+  gap: 4px;
+  flex-wrap: wrap;
+  min-width: 110px;
+}
+
+.rne-dropdown:hover .rne-dropdown-panel,
+.rne-dropdown:focus-within .rne-dropdown-panel {
+  display: flex;
+}
+
+.rne-color-swatch {
+  all: unset;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+
+.rne-color-swatch:hover {
+  transform: scale(1.2);
+}
+
+/* Editor content area */
+.rne-content {
+  min-height: 280px;
+  max-height: 500px;
+  overflow-y: auto;
+  padding: 16px;
+  font-size: 13px;
+  line-height: 1.7;
+  cursor: text;
+}
+
+.rne-content .tiptap {
+  outline: none;
+  min-height: 250px;
+}
+
+.rne-content .tiptap p,
+.rne-content > p {
+  margin: 0 0 0.4em;
+}
+
+.rne-content .tiptap h2,
+.rne-content > h2 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0.8em 0 0.3em;
+}
+
+.rne-content .tiptap ul,
+.rne-content .tiptap ol,
+.rne-content > ul,
+.rne-content > ol {
+  padding-left: 1.4em;
+  margin: 0.3em 0;
+}
+
+.rne-content .tiptap blockquote,
+.rne-content > blockquote {
+  border-left: 3px solid var(--accent);
+  margin: 0.4em 0;
+  padding-left: 12px;
+  color: var(--text-muted);
+}
+
+.rne-content .tiptap p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: var(--text-muted);
+  pointer-events: none;
+  height: 0;
+}
+
+.rne-content .tiptap mark,
+.rne-content > mark,
+.rne-content mark {
+  border-radius: 2px;
+  padding: 0 2px;
+}
+
+.rne-content .tiptap a,
+.rne-content a {
+  color: var(--accent);
+  word-break: break-all;
+}
+
+/* Preview mode (read-only, click to edit) */
+.rne-preview {
+  border-radius: 8px;
+  transition: background 0.15s;
+}
+
+.rne-preview:hover {
+  background: var(--hover);
+}
+
+.rne-preview .rne-content {
+  min-height: auto;
+  max-height: none;
+  padding: 0;
+}

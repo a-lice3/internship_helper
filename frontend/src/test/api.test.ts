@@ -130,7 +130,7 @@ describe("API URL construction", () => {
     await getOffers(1, "applied");
 
     const url = fetchSpy.mock.calls[0][0] as string;
-    expect(url).toBe("/api/users/1/offers?status=applied");
+    expect(url).toBe("/api/users/1/offers?status=applied&limit=100&offset=0");
   });
 
   it("getOffers without status has no query param", async () => {
@@ -147,6 +147,6 @@ describe("API URL construction", () => {
     await getOffers(1);
 
     const url = fetchSpy.mock.calls[0][0] as string;
-    expect(url).toBe("/api/users/1/offers");
+    expect(url).toBe("/api/users/1/offers?limit=100&offset=0");
   });
 });

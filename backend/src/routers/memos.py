@@ -48,18 +48,20 @@ def create_memo(
     return _memo_response(db_memo)
 
 
-@router.get("", response_model=list[schemas.MemoResponse])
+@router.get("", response_model=schemas.PaginatedResponse[schemas.MemoResponse])
 def list_memos(
     user_id: int,
     search: str | None = Query(None),
     tag: str | None = Query(None),
     offer_id: int | None = Query(None),
     favorites_only: bool = Query(False),
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     _verify_owner(user_id, current_user)
-    memos = crud.get_memos(
+    total = crud.count_memos(
         db,
         user_id,
         search=search,
@@ -67,7 +69,20 @@ def list_memos(
         offer_id=offer_id,
         favorites_only=favorites_only,
     )
-    return [_memo_response(m) for m in memos]
+    memos = crud.get_memos(
+        db,
+        user_id,
+        search=search,
+        tag=tag,
+        offer_id=offer_id,
+        favorites_only=favorites_only,
+        skip=offset,
+        limit=limit,
+    )
+    items = [_memo_response(m) for m in memos]
+    return schemas.PaginatedResponse(
+        items=items, total=total, limit=limit, offset=offset
+    )
 
 
 @router.get("/{memo_id}", response_model=schemas.MemoResponse)

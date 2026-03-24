@@ -83,7 +83,7 @@ export default function DashboardPage({ userId }: { userId: number }) {
 
   // Load reminders
   const loadReminders = () => {
-    api.getReminders(userId, true).then(setReminders);
+    api.getReminders(userId, true).then(r => setReminders(r.items));
   };
   useEffect(loadReminders, [userId]);
 

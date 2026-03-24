@@ -17,7 +17,7 @@ def test_create_and_list_reminders(client, sample_user, auth_header):
     assert data["is_done"] is False
 
     resp = client.get(f"/users/{uid}/reminders", headers=auth_header)
-    assert len(resp.json()) == 1
+    assert len(resp.json()["items"]) == 1
 
 
 def test_toggle_reminder_done(client, sample_user, auth_header):
@@ -38,11 +38,11 @@ def test_toggle_reminder_done(client, sample_user, auth_header):
 
     # By default, done reminders are excluded
     resp = client.get(f"/users/{uid}/reminders", headers=auth_header)
-    assert len(resp.json()) == 0
+    assert len(resp.json()["items"]) == 0
 
     # With include_done=true, it should appear
     resp = client.get(f"/users/{uid}/reminders?include_done=true", headers=auth_header)
-    assert len(resp.json()) == 1
+    assert len(resp.json()["items"]) == 1
 
 
 def test_update_reminder(client, sample_user, auth_header):
@@ -77,7 +77,7 @@ def test_delete_reminder(client, sample_user, auth_header):
     assert resp.status_code == 200
 
     resp = client.get(f"/users/{uid}/reminders?include_done=true", headers=auth_header)
-    assert len(resp.json()) == 0
+    assert len(resp.json()["items"]) == 0
 
 
 def test_reminder_not_found(client, sample_user, auth_header):

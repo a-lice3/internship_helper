@@ -643,10 +643,14 @@ async def parse_offer_endpoint(
         result = await parse_offer(text)
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Mistral API error: {exc}")
+    raw_locations = result.get("locations")
+    locations = (
+        ", ".join(raw_locations) if isinstance(raw_locations, list) else raw_locations
+    )
     return schemas.ParseOfferResponse(
         company=result.get("company") or "",
         title=result.get("title") or "",
-        locations=result.get("locations"),
+        locations=locations,
         description=result.get("description"),
     )
 
