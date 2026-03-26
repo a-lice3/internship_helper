@@ -239,7 +239,7 @@ async def chat_edit_cv_endpoint(
                         continue
             support_files_content = "\n\n".join(parts)
 
-    from src.llm_service import chat_edit_cv
+    from src.llm_service import chat_edit_cv, update_personality_profile
 
     updated_latex = await chat_edit_cv(
         latex_content=cv.latex_content,
@@ -247,10 +247,39 @@ async def chat_edit_cv_endpoint(
         conversation_history=body.conversation_history,
         support_files_content=support_files_content,
         user_instructions=current_user.ai_instructions,
+        personality_profile=current_user.personality_profile,
     )
 
     # Persist the change
     crud.update_cv(db, cv_id, schemas.CVUpdate(latex_content=updated_latex))
+
+    # Trigger personality update in background
+    import asyncio
+    import logging
+    _cv_logger = logging.getLogger(__name__)
+
+    async def _update_personality() -> None:
+        try:
+            from src.database import SessionLocal
+            from src.models import User as UserModel
+            new_profile = await update_personality_profile(
+                existing_profile=current_user.personality_profile,
+                artifact_type="CV edit",
+                artifact_content=updated_latex[:3000],
+                user_edit_request=body.message,
+            )
+            sess = SessionLocal()
+            try:
+                user = sess.query(UserModel).filter(UserModel.id == user_id).first()
+                if user:
+                    user.personality_profile = new_profile
+                    sess.commit()
+            finally:
+                sess.close()
+        except Exception as exc:
+            _cv_logger.warning("Personality update failed: %s", exc)
+
+    asyncio.ensure_future(_update_personality())
 
     return schemas.ChatEditCVResponse(updated_latex=updated_latex)
 

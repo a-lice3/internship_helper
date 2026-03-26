@@ -26,6 +26,8 @@ services:
       JWT_SECRET_KEY: ${JWT_SECRET_KEY}
       FRANCE_TRAVAIL_CLIENT_ID: ${FRANCE_TRAVAIL_CLIENT_ID:-}
       FRANCE_TRAVAIL_CLIENT_SECRET: ${FRANCE_TRAVAIL_CLIENT_SECRET:-}
+      ADZUNA_APP_ID: ${ADZUNA_APP_ID:-}
+      ADZUNA_APP_KEY: ${ADZUNA_APP_KEY:-}
     volumes:
       - uploads:/app/uploads
     depends_on:

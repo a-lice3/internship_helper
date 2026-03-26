@@ -15,7 +15,16 @@ from src.llm_service import (
     match_offers_to_profile,
 )
 from src.models import User
-from src.scrapers import FranceTravailSource, TheMuseSource, WTTJSource, RawOffer
+from src.scrapers import (
+    FranceTravailSource,
+    TheMuseSource,
+    WTTJSource,
+    GreenhouseSource,
+    LeverSource,
+    AdzunaSource,
+    RemotiveSource,
+    RawOffer,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +34,10 @@ router = APIRouter(tags=["search"])
 _ft_source = FranceTravailSource()
 _wttj_source = WTTJSource()
 _muse_source = TheMuseSource()
+_greenhouse_source = GreenhouseSource()
+_lever_source = LeverSource()
+_adzuna_source = AdzunaSource()
+_remotive_source = RemotiveSource()
 
 
 def _verify_owner(user_id: int, current_user: User) -> None:
@@ -95,7 +108,7 @@ async def chat_search(
         location=params.get("location"),  # type: ignore[arg-type]
         country=params.get("country") or "France",  # type: ignore[arg-type]
         radius_km=int(params.get("radius_km") or 30),  # type: ignore[arg-type]
-        sources=params.get("sources") or ["francetravail", "wttj"],  # type: ignore[arg-type]
+        sources=params.get("sources") or ["francetravail", "wttj", "themuse", "greenhouse", "lever", "adzuna", "remotive"],  # type: ignore[arg-type]
         max_results=max_results,
     )
 
@@ -184,6 +197,72 @@ async def _do_search(
                             body.max_results,
                             country=body.country,
                         ),
+                    )
+                ),
+            )
+        )
+
+    if "greenhouse" in body.sources:
+        tasks.append(
+            (
+                "greenhouse",
+                asyncio.ensure_future(
+                    asyncio.to_thread(
+                        _greenhouse_source.search,
+                        body.keywords,
+                        body.location,
+                        body.radius_km,
+                        body.max_results,
+                    )
+                ),
+            )
+        )
+
+    if "lever" in body.sources:
+        tasks.append(
+            (
+                "lever",
+                asyncio.ensure_future(
+                    asyncio.to_thread(
+                        _lever_source.search,
+                        body.keywords,
+                        body.location,
+                        body.radius_km,
+                        body.max_results,
+                    )
+                ),
+            )
+        )
+
+    if "adzuna" in body.sources:
+        tasks.append(
+            (
+                "adzuna",
+                asyncio.ensure_future(
+                    asyncio.to_thread(
+                        lambda: _adzuna_source.search(
+                            body.keywords,
+                            body.location,
+                            body.radius_km,
+                            body.max_results,
+                            country=body.country,
+                        ),
+                    )
+                ),
+            )
+        )
+
+    if "remotive" in body.sources:
+        tasks.append(
+            (
+                "remotive",
+                asyncio.ensure_future(
+                    asyncio.to_thread(
+                        _remotive_source.search,
+                        body.keywords,
+                        body.location,
+                        body.radius_km,
+                        body.max_results,
                     )
                 ),
             )

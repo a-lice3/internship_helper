@@ -13,11 +13,21 @@ export default function SettingsPage({
   const [aiInstructionsSaved, setAiInstructionsSaved] = useState("");
   const [savingInstructions, setSavingInstructions] = useState(false);
 
+  const [personality, setPersonality] = useState("");
+  const [personalitySaved, setPersonalitySaved] = useState("");
+  const [savingPersonality, setSavingPersonality] = useState(false);
+  const [resettingPersonality, setResettingPersonality] = useState(false);
+
   useEffect(() => {
     api.getAIInstructions(userId).then((res) => {
       const val = res.ai_instructions ?? "";
       setAiInstructions(val);
       setAiInstructionsSaved(val);
+    });
+    api.getPersonalityProfile(userId).then((res) => {
+      const val = res.personality_profile ?? "";
+      setPersonality(val);
+      setPersonalitySaved(val);
     });
   }, [userId]);
 
@@ -34,6 +44,33 @@ export default function SettingsPage({
   };
 
   const instructionsChanged = aiInstructions !== aiInstructionsSaved;
+
+  const handleSavePersonality = async () => {
+    setSavingPersonality(true);
+    try {
+      await api.updatePersonalityProfile(userId, personality);
+      setPersonalitySaved(personality);
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : t("settings.failedSave"));
+    } finally {
+      setSavingPersonality(false);
+    }
+  };
+
+  const handleResetPersonality = async () => {
+    setResettingPersonality(true);
+    try {
+      await api.resetPersonalityProfile(userId);
+      setPersonality("");
+      setPersonalitySaved("");
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : t("settings.failedSave"));
+    } finally {
+      setResettingPersonality(false);
+    }
+  };
+
+  const personalityChanged = personality !== personalitySaved;
 
   return (
     <div className="page">
@@ -77,7 +114,7 @@ export default function SettingsPage({
       </div>
 
       {/* AI Instructions */}
-      <div className="glass-card">
+      <div className="glass-card" style={{ marginBottom: 20 }}>
         <div className="glass-card-header"><h3>{t("settings.aiInstructions")}</h3></div>
         <div className="glass-card-body">
           <p className="hint" style={{ marginBottom: 8 }}>
@@ -104,6 +141,55 @@ export default function SettingsPage({
               <span className="hint">{t("settings.saved")}</span>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* Personality Profile */}
+      <div className="glass-card">
+        <div className="glass-card-header"><h3>{t("settings.personalityProfile")}</h3></div>
+        <div className="glass-card-body">
+          <p className="hint" style={{ marginBottom: 8 }}>
+            {t("settings.personalityHint")}
+          </p>
+          {personalitySaved ? (
+            <>
+              <textarea
+                value={personality}
+                onChange={(e) => setPersonality(e.target.value)}
+                rows={12}
+                title={t("settings.personalityProfile")}
+                placeholder={t("settings.personalityProfile")}
+                style={{ width: "100%", fontFamily: "monospace", fontSize: 13 }}
+              />
+              <div style={{ display: "flex", gap: 8, marginTop: 8, alignItems: "center" }}>
+                <button
+                  type="button"
+                  onClick={handleSavePersonality}
+                  disabled={!personalityChanged || savingPersonality}
+                  className="btn-primary"
+                  style={{ boxShadow: "none" }}
+                >
+                  {savingPersonality ? t("settings.saving") : t("settings.save")}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleResetPersonality}
+                  disabled={resettingPersonality}
+                  className="btn-danger"
+                  style={{ boxShadow: "none" }}
+                >
+                  {resettingPersonality ? "..." : t("settings.reset")}
+                </button>
+                {!personalityChanged && personalitySaved && (
+                  <span className="hint">{t("settings.saved")}</span>
+                )}
+              </div>
+            </>
+          ) : (
+            <p className="hint" style={{ fontStyle: "italic" }}>
+              {t("settings.personalityEmpty")}
+            </p>
+          )}
         </div>
       </div>
     </div>

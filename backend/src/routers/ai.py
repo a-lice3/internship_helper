@@ -1,4 +1,6 @@
+import asyncio
 import json
+import logging
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
@@ -22,8 +24,11 @@ from src.llm_service import (
     parse_offer,
     suggest_cv_changes,
     transcribe_audio,
+    update_personality_profile,
 )
 from src.models import SkillCategory, User
+
+_logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["ai"])
 
@@ -31,6 +36,39 @@ router = APIRouter(tags=["ai"])
 def _verify_owner(user_id: int, current_user: User) -> None:
     if current_user.id != user_id:
         raise HTTPException(status_code=403, detail="Forbidden")
+
+
+def _trigger_personality_update(
+    user_id: int,
+    existing_profile: str | None,
+    artifact_type: str,
+    artifact_content: str,
+    user_edit_request: str | None = None,
+) -> None:
+    """Fire-and-forget personality profile update in the background."""
+    from src.database import SessionLocal
+
+    async def _run() -> None:
+        try:
+            new_profile = await update_personality_profile(
+                existing_profile=existing_profile,
+                artifact_type=artifact_type,
+                artifact_content=artifact_content,
+                user_edit_request=user_edit_request,
+            )
+            db = SessionLocal()
+            try:
+                user = db.query(User).filter(User.id == user_id).first()
+                if user:
+                    user.personality_profile = new_profile
+                    db.commit()
+                    _logger.info("Updated personality profile for user %d", user_id)
+            finally:
+                db.close()
+        except Exception as exc:
+            _logger.warning("Personality update failed for user %d: %s", user_id, exc)
+
+    asyncio.ensure_future(_run())
 
 
 @router.post("/ask", response_model=schemas.AskResponse)
@@ -69,6 +107,7 @@ async def adapt_cv_endpoint(
         offer.company,
         offer.description or "",
         user_instructions=current_user.ai_instructions,
+        personality_profile=current_user.personality_profile,
     )
 
     crud.create_adapted_cv(db, user_id, offer_id, offer.company, adapted_content)
@@ -112,6 +151,7 @@ async def suggest_cv_changes_endpoint(
         offer.company,
         offer.description or "",
         user_instructions=current_user.ai_instructions,
+        personality_profile=current_user.personality_profile,
     )
 
     import json
@@ -193,6 +233,7 @@ async def analyze_cv_endpoint(
     result = await analyze_cv_general(
         cv.content,
         user_instructions=current_user.ai_instructions,
+        personality_profile=current_user.personality_profile,
     )
 
     # Persist the analysis
@@ -281,6 +322,7 @@ async def skill_gap_endpoint(
             offer.company,
             offer.description or "",
             user_instructions=current_user.ai_instructions,
+            personality_profile=current_user.personality_profile,
         )
 
     db_obj = crud.create_skill_gap_analysis(
@@ -388,6 +430,7 @@ async def cover_letter_endpoint(
         offer_description=offer.description or "",
         template=template_content,
         user_instructions=current_user.ai_instructions,
+        personality_profile=current_user.personality_profile,
     )
 
     db_obj = crud.create_generated_cover_letter(
@@ -398,6 +441,13 @@ async def cover_letter_endpoint(
         offer_title=offer.title,
         company=offer.company,
         content=letter,
+    )
+
+    _trigger_personality_update(
+        user_id=user_id,
+        existing_profile=current_user.personality_profile,
+        artifact_type="generated cover letter",
+        artifact_content=letter,
     )
 
     return schemas.GenerateCoverLetterResponse(
@@ -490,6 +540,14 @@ def upload_cover_letter_pdf(
         name=name,
         saved=True,
     )
+
+    _trigger_personality_update(
+        user_id=user_id,
+        existing_profile=current_user.personality_profile,
+        artifact_type="uploaded cover letter",
+        artifact_content=content,
+    )
+
     return obj
 
 
@@ -525,10 +583,19 @@ async def chat_edit_cover_letter_endpoint(
         user_message=body.message,
         conversation_history=body.conversation_history,
         user_instructions=current_user.ai_instructions,
+        personality_profile=current_user.personality_profile,
     )
 
     # Persist the updated content
     crud.update_generated_cover_letter(db, letter_id, content=updated_content)
+
+    _trigger_personality_update(
+        user_id=user_id,
+        existing_profile=current_user.personality_profile,
+        artifact_type="cover letter edit",
+        artifact_content=updated_content,
+        user_edit_request=body.message,
+    )
 
     return schemas.ChatEditCoverLetterResponse(updated_content=updated_content)
 
@@ -607,6 +674,14 @@ async def adapt_cv_latex_endpoint(
         support_files_content=support_files_content,
         support_files_dir=cv.support_files_dir,
         user_instructions=current_user.ai_instructions,
+        personality_profile=current_user.personality_profile,
+    )
+
+    _trigger_personality_update(
+        user_id=user_id,
+        existing_profile=current_user.personality_profile,
+        artifact_type="adapted CV",
+        artifact_content=adapted_latex[:3000],
     )
 
     return schemas.AdaptCVLatexResponse(
@@ -834,8 +909,19 @@ def _save_extracted_profile(
             crud.create_skill(db, user_id, schemas.SkillCreate(**s))  # type: ignore[arg-type]
             existing_skill_names.add(name.lower())
     for exp in extracted.get("experiences", []):
+        exp["title"] = exp.get("title") or ""
+        if isinstance(exp.get("technologies"), list):
+            exp["technologies"] = ", ".join(exp["technologies"])
+        for date_field in ("start_date", "end_date"):
+            if exp.get(date_field) and len(exp[date_field]) > 7:
+                exp[date_field] = exp[date_field][:7]  # truncate to YYYY-MM
         crud.create_experience(db, user_id, schemas.ExperienceCreate(**exp))  # type: ignore[arg-type]
     for ed in extracted.get("education", []):
+        ed["school"] = ed.get("school") or ""
+        ed["degree"] = ed.get("degree") or ""
+        for date_field in ("start_date", "end_date"):
+            if ed.get(date_field) and len(ed[date_field]) > 7:
+                ed[date_field] = ed[date_field][:7]
         crud.create_education(db, user_id, schemas.EducationCreate(**ed))  # type: ignore[arg-type]
     for lang in extracted.get("languages", []):
         crud.create_language(db, user_id, schemas.LanguageCreate(**lang))  # type: ignore[arg-type]
@@ -952,6 +1038,7 @@ async def pitch_analysis_general(
     analysis = await analyze_pitch(
         transcription=transcription,
         user_instructions=current_user.ai_instructions,
+        personality_profile=current_user.personality_profile,
     )
 
     db_obj = crud.create_pitch_analysis(
@@ -1005,6 +1092,7 @@ async def pitch_analysis_offer(
         company=offer.company,
         offer_description=offer.description or "",
         user_instructions=current_user.ai_instructions,
+        personality_profile=current_user.personality_profile,
     )
 
     db_obj = crud.create_pitch_analysis(

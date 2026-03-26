@@ -475,6 +475,10 @@
     "save": "Guardar",
     "saved": "Guardado",
     "failedSave": "Error al guardar las instrucciones",
+    "personalityProfile": "Perfil de personalidad",
+    "personalityHint": "La IA construye automáticamente este perfil a medida que generas cartas de presentación, editas CVs e interactúas con el asistente. Captura tu estilo de escritura, tono y preferencias para personalizar futuras generaciones. También puedes editarlo manualmente.",
+    "personalityEmpty": "Aún no hay perfil de personalidad. Se creará automáticamente cuando uses las funciones de IA (generar cartas de presentación, adaptar CVs, etc.).",
+    "reset": "Restablecer",
     "languageLabel": "Idioma",
     "languageHint": "Elige el idioma de visualización de la interfaz."
   },

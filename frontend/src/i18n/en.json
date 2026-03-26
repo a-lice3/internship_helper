@@ -475,6 +475,10 @@
     "save": "Save",
     "saved": "Saved",
     "failedSave": "Failed to save instructions",
+    "personalityProfile": "Personality Profile",
+    "personalityHint": "The AI automatically builds this profile as you generate cover letters, edit CVs, and interact with the assistant. It captures your writing style, tone, and preferences to personalize future generations. You can also edit it manually.",
+    "personalityEmpty": "No personality profile yet. It will be automatically created as you use the AI features (generate cover letters, adapt CVs, etc.).",
+    "reset": "Reset",
     "languageLabel": "Language",
     "languageHint": "Choose the display language for the interface."
   },

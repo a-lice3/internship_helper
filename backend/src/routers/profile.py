@@ -42,6 +42,49 @@ def update_ai_instructions(
     return schemas.AIInstructionsResponse(ai_instructions=current_user.ai_instructions)
 
 
+# ---------- Personality Profile ----------
+
+
+@router.get("/personality-profile", response_model=schemas.PersonalityProfileResponse)
+def get_personality_profile(
+    user_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    _verify_owner(user_id, current_user)
+    return schemas.PersonalityProfileResponse(
+        personality_profile=current_user.personality_profile
+    )
+
+
+@router.put("/personality-profile", response_model=schemas.PersonalityProfileResponse)
+def update_personality_profile_endpoint(
+    user_id: int,
+    body: schemas.PersonalityProfileUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    _verify_owner(user_id, current_user)
+    current_user.personality_profile = body.personality_profile
+    db.commit()
+    db.refresh(current_user)
+    return schemas.PersonalityProfileResponse(
+        personality_profile=current_user.personality_profile
+    )
+
+
+@router.delete("/personality-profile")
+def reset_personality_profile(
+    user_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    _verify_owner(user_id, current_user)
+    current_user.personality_profile = None
+    db.commit()
+    return {"detail": "Personality profile reset"}
+
+
 # ---------- Skills ----------
 
 
