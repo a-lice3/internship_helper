@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../api";
 
@@ -21,12 +21,44 @@ export default function MemosPage({ userId }: { userId: number }) {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
   // -- Edit / Create --
+  const DRAFT_KEY = `memo-draft-${userId}`;
   const [editing, setEditing] = useState<api.Memo | null>(null);
-  const [creating, setCreating] = useState(false);
-  const [formTitle, setFormTitle] = useState("");
-  const [formContent, setFormContent] = useState("");
-  const [formTags, setFormTags] = useState("");
-  const [formSkillName, setFormSkillName] = useState("");
+  const [creating, setCreating] = useState(() => {
+    try {
+      const raw = localStorage.getItem(`memo-draft-${userId}`);
+      if (!raw) return false;
+      const draft = JSON.parse(raw);
+      return !!(draft.content || draft.title);
+    } catch { return false; }
+  });
+  const [formTitle, setFormTitle] = useState(() => {
+    try {
+      const raw = localStorage.getItem(`memo-draft-${userId}`);
+      if (!raw) return "";
+      return JSON.parse(raw).title || "";
+    } catch { return ""; }
+  });
+  const [formContent, setFormContent] = useState(() => {
+    try {
+      const raw = localStorage.getItem(`memo-draft-${userId}`);
+      if (!raw) return "";
+      return JSON.parse(raw).content || "";
+    } catch { return ""; }
+  });
+  const [formTags, setFormTags] = useState(() => {
+    try {
+      const raw = localStorage.getItem(`memo-draft-${userId}`);
+      if (!raw) return "";
+      return JSON.parse(raw).tags || "";
+    } catch { return ""; }
+  });
+  const [formSkillName, setFormSkillName] = useState(() => {
+    try {
+      const raw = localStorage.getItem(`memo-draft-${userId}`);
+      if (!raw) return "";
+      return JSON.parse(raw).skillName || "";
+    } catch { return ""; }
+  });
   const [showPreview, setShowPreview] = useState(false);
 
   // -- Expanded memo --
@@ -79,6 +111,7 @@ export default function MemosPage({ userId }: { userId: number }) {
       tags: tags.length > 0 ? tags : undefined,
       skill_name: formSkillName || undefined,
     });
+    clearDraft();
     resetForm();
     loadMemos();
   };
@@ -92,6 +125,7 @@ export default function MemosPage({ userId }: { userId: number }) {
       tags,
       skill_name: formSkillName || null,
     });
+    clearDraft();
     resetForm();
     loadMemos();
   };
@@ -127,6 +161,46 @@ export default function MemosPage({ userId }: { userId: number }) {
     setShowPreview(false);
   };
 
+  const clearDraft = useCallback(() => {
+    try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
+  }, [DRAFT_KEY]);
+
+  const saveDraft = useCallback(() => {
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({
+        title: formTitle, content: formContent, tags: formTags,
+        skillName: formSkillName, editingId: editing?.id ?? null,
+      }));
+    } catch { /* quota exceeded — ignore */ }
+  }, [DRAFT_KEY, formTitle, formContent, formTags, formSkillName, editing]);
+
+  // Auto-backup draft to localStorage on every change
+  useEffect(() => {
+    if (!creating && !editing) return;
+    saveDraft();
+  }, [formTitle, formContent, formTags, formSkillName, creating, editing, saveDraft]);
+
+  // Draft is restored via useState initializers above
+
+  // Warn before page unload if form has unsaved content
+  useEffect(() => {
+    if (!creating && !editing) return;
+    if (!formContent.trim() && !formTitle.trim()) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      saveDraft();
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [creating, editing, formContent, formTitle, saveDraft]);
+
+  // Backup draft on session expiry
+  useEffect(() => {
+    const handler = () => saveDraft();
+    window.addEventListener("session-expired", handler);
+    return () => window.removeEventListener("session-expired", handler);
+  }, [saveDraft]);
+
   const resetForm = () => {
     setCreating(false);
     setEditing(null);
@@ -135,6 +209,7 @@ export default function MemosPage({ userId }: { userId: number }) {
     setFormTags("");
     setFormSkillName("");
     setShowPreview(false);
+    clearDraft();
   };
 
   const handleRefreshRecommendations = () => {

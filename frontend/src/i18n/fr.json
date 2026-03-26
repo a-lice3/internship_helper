@@ -476,7 +476,19 @@
     "saved": "Enregistré",
     "failedSave": "Échec de l'enregistrement des instructions",
     "languageLabel": "Langue",
-    "languageHint": "Choisissez la langue d'affichage de l'interface."
+    "languageHint": "Choisissez la langue d'affichage de l'interface.",
+    "themeLabel": "Thème",
+    "themeHint": "Choisissez une palette de couleurs pour l'interface.",
+    "themes": {
+      "aurore": "Aurore",
+      "sakura": "Sakura",
+      "neon": "Neon",
+      "nord": "Nord",
+      "terre": "Terre",
+      "encre": "Encre",
+      "mono": "Monochrome",
+      "crepuscule": "Crépuscule"
+    }
   },
   "aiPage": {
     "title": "Assistant IA",
@@ -603,7 +615,9 @@
     "delete": "Supprimer",
     "loading": "Chargement...",
     "error": "Erreur",
-    "close": "Fermer"
+    "close": "Fermer",
+    "saved": "Enregistr\u00e9",
+    "saving": "Enregistrement..."
   },
   "onboarding": {
     "title": "Job Seeker",

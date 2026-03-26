@@ -476,7 +476,19 @@
     "saved": "Saved",
     "failedSave": "Failed to save instructions",
     "languageLabel": "Language",
-    "languageHint": "Choose the display language for the interface."
+    "languageHint": "Choose the display language for the interface.",
+    "themeLabel": "Theme",
+    "themeHint": "Choose a color palette for the interface.",
+    "themes": {
+      "aurore": "Aurore",
+      "sakura": "Sakura",
+      "neon": "Neon",
+      "nord": "Nord",
+      "terre": "Terre",
+      "encre": "Encre",
+      "mono": "Monochrome",
+      "crepuscule": "Crépuscule"
+    }
   },
   "aiPage": {
     "title": "AI Assistant",
@@ -603,7 +615,9 @@
     "delete": "Delete",
     "loading": "Loading...",
     "error": "Error",
-    "close": "Close"
+    "close": "Close",
+    "saved": "Saved",
+    "saving": "Saving..."
   },
   "onboarding": {
     "title": "Job Seeker",

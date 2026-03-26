@@ -7,6 +7,7 @@ import * as api from "../api";
 import DateTimeInput from "../components/DateTimeInput";
 import RichNoteEditor from "../components/RichNoteEditor";
 import { getStatusLabel, getReminderTypeLabel, STATUSES, REMINDER_TYPES } from "../i18n/helpers";
+import { useAutosave, getDraft } from "../hooks/useAutosave";
 
 const mistralLogo = "/logo_mistral.png";
 
@@ -56,7 +57,6 @@ export default function OfferDetailPage({ userId }: { userId: number }) {
   const [clChatInput, setClChatInput] = useState("");
   const [clChatHistory, setClChatHistory] = useState<{ role: string; content: string }[]>([]);
   const [clChatLoading, setClChatLoading] = useState(false);
-  const [clSaving, setClSaving] = useState(false);
   const [clEdited, setClEdited] = useState(false);
 
   // Skill gap
@@ -168,7 +168,16 @@ export default function OfferDetailPage({ userId }: { userId: number }) {
         const lastAnalyzedCV = c.find((cv: api.CV) => cv.id === latestCOA.cv_id);
         if (lastAnalyzedCV) setSelectedCV(lastAnalyzedCV.id);
       }
-      if (existingCL) setEditableCoverLetter(existingCL.content);
+      if (existingCL) {
+        // Check for draft backup from a previous disconnected session
+        const clDraft = getDraft(`cl-draft-${id}`);
+        if (clDraft && clDraft !== existingCL.content) {
+          setEditableCoverLetter(clDraft);
+          setClEdited(true);
+        } else {
+          setEditableCoverLetter(existingCL.content);
+        }
+      }
 
       // Auto-generate on first visit only (when skill gap & cover letter don't exist yet)
       const needsSG = !existingSG;
@@ -286,6 +295,40 @@ export default function OfferDetailPage({ userId }: { userId: number }) {
     };
   }, []);
 
+  // Backup note to localStorage on session expiry or page unload
+  const noteDraftKey = `note-draft-${id}`;
+  useEffect(() => {
+    const backupNote = () => {
+      if (!noteSaved) {
+        try { localStorage.setItem(noteDraftKey, noteContent); } catch { /* ignore */ }
+      }
+    };
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!noteSaved) {
+        e.preventDefault();
+        backupNote();
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    window.addEventListener("session-expired", backupNote);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      window.removeEventListener("session-expired", backupNote);
+    };
+  }, [noteSaved, noteContent, noteDraftKey]);
+
+  // Restore note draft on load
+  useEffect(() => {
+    const draft = getDraft(noteDraftKey);
+    if (draft && offer && draft !== noteContent) {
+      setNoteContent(draft);
+      setNoteSaved(false);
+      // Trigger save of the restored draft
+      if (noteSaveTimer.current) clearTimeout(noteSaveTimer.current);
+      noteSaveTimer.current = setTimeout(() => saveNote(draft), 1000);
+    }
+  }, [offer]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Close editor on click outside
   useEffect(() => {
     if (!noteEditing) return;
@@ -380,18 +423,20 @@ export default function OfferDetailPage({ userId }: { userId: number }) {
     setClChatLoading(false);
   };
 
-  // Cover letter: save manual edits
-  const handleSaveCoverLetter = async () => {
+  // Cover letter autosave
+  const clDraftKey = `cl-draft-${id}`;
+  const saveCoverLetterAuto = useCallback(async (content: string) => {
     if (!storedCoverLetter) return;
-    setClSaving(true); setAiError("");
-    try {
-      await api.updateCoverLetter(userId, storedCoverLetter.id, { content: editableCoverLetter });
-      setStoredCoverLetter({ ...storedCoverLetter, content: editableCoverLetter });
-      setCoverLetter((prev) => prev ? { ...prev, cover_letter: editableCoverLetter } : prev);
-      setClEdited(false);
-    } catch (e: unknown) { setAiError(e instanceof Error ? e.message : "Unknown error"); }
-    setClSaving(false);
-  };
+    await api.updateCoverLetter(userId, storedCoverLetter.id, { content });
+    setStoredCoverLetter((prev) => prev ? { ...prev, content } : prev);
+    setCoverLetter((prev) => prev ? { ...prev, cover_letter: content } : prev);
+    setClEdited(false);
+  }, [storedCoverLetter, userId]);
+
+  useAutosave(clDraftKey, editableCoverLetter, saveCoverLetterAuto, {
+    delay: 3000,
+    enabled: clEdited && !!storedCoverLetter,
+  });
 
   // Cover letter: toggle saved flag (add to / remove from Cover Letters page)
   const handleToggleSavedCoverLetter = async () => {
@@ -728,11 +773,9 @@ export default function OfferDetailPage({ userId }: { userId: number }) {
               {/* Action buttons + Mistral chat on same row */}
               <div style={{ display: "flex", gap: 12, marginTop: 10, alignItems: "center", flexWrap: "wrap" }}>
                 <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  {clEdited && (
-                    <button onClick={handleSaveCoverLetter} disabled={clSaving} className="btn-primary" style={{ boxShadow: "none", fontSize: 12 }}>
-                      {clSaving ? t("settings.saving") : t("offerDetail.saveChanges")}
-                    </button>
-                  )}
+                  <span style={{ fontSize: 11, color: clEdited ? "var(--text-muted)" : "var(--green, #4caf50)" }}>
+                    {clEdited ? t("common.saving") : t("common.saved")}
+                  </span>
                   <button onClick={handleToggleSavedCoverLetter} className={storedCoverLetter?.saved ? "btn-ghost" : "btn-secondary"} style={{ fontSize: 12 }}>
                     {storedCoverLetter?.saved ? t("offerDetail.savedToCoverLetters") : t("offerDetail.saveToCoverLetters")}
                   </button>
