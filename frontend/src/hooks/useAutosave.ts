@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 
 /**
  * Reusable autosave hook with debounce.
@@ -22,15 +22,18 @@ export function useAutosave(
   const delay = options?.delay ?? 2000;
   const enabled = options?.enabled ?? true;
 
+  const [isDirty, setIsDirty] = useState(false);
   const isDirtyRef = useRef(false);
   const valueRef = useRef(value);
   const saveFnRef = useRef(saveFn);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const initialValueRef = useRef(value);
 
-  // Keep refs up to date
-  valueRef.current = value;
-  saveFnRef.current = saveFn;
+  // Keep refs up to date (inside an effect to avoid "cannot update ref during render")
+  useEffect(() => {
+    valueRef.current = value;
+    saveFnRef.current = saveFn;
+  });
 
   // Track dirty state: value differs from last saved/initial value
   const lastSavedRef = useRef(value);
@@ -45,6 +48,7 @@ export function useAutosave(
       await saveFnRef.current(valueRef.current);
       lastSavedRef.current = valueRef.current;
       isDirtyRef.current = false;
+      setIsDirty(false);
     } catch {
       // Save failed — keep dirty so we retry
     }
@@ -57,10 +61,12 @@ export function useAutosave(
     if (value === initialValueRef.current && !isDirtyRef.current) return;
     if (value === lastSavedRef.current) {
       isDirtyRef.current = false;
+      setIsDirty(false);
       return;
     }
 
     isDirtyRef.current = true;
+    setIsDirty(true);
 
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
@@ -77,7 +83,9 @@ export function useAutosave(
     initialValueRef.current = value;
     lastSavedRef.current = value;
     isDirtyRef.current = false;
-  }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
+    setIsDirty(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
 
   // beforeunload warning
   useEffect(() => {
@@ -118,9 +126,9 @@ export function useAutosave(
         saveFnRef.current(valueRef.current).catch(() => {});
       }
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
-  return { isDirty: isDirtyRef.current, saveNow };
+  return { isDirty, saveNow };
 }
 
 /**

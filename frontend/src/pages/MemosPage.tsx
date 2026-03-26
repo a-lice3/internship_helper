@@ -21,12 +21,44 @@ export default function MemosPage({ userId }: { userId: number }) {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
   // -- Edit / Create --
+  const DRAFT_KEY = `memo-draft-${userId}`;
   const [editing, setEditing] = useState<api.Memo | null>(null);
-  const [creating, setCreating] = useState(false);
-  const [formTitle, setFormTitle] = useState("");
-  const [formContent, setFormContent] = useState("");
-  const [formTags, setFormTags] = useState("");
-  const [formSkillName, setFormSkillName] = useState("");
+  const [creating, setCreating] = useState(() => {
+    try {
+      const raw = localStorage.getItem(`memo-draft-${userId}`);
+      if (!raw) return false;
+      const draft = JSON.parse(raw);
+      return !!(draft.content || draft.title);
+    } catch { return false; }
+  });
+  const [formTitle, setFormTitle] = useState(() => {
+    try {
+      const raw = localStorage.getItem(`memo-draft-${userId}`);
+      if (!raw) return "";
+      return JSON.parse(raw).title || "";
+    } catch { return ""; }
+  });
+  const [formContent, setFormContent] = useState(() => {
+    try {
+      const raw = localStorage.getItem(`memo-draft-${userId}`);
+      if (!raw) return "";
+      return JSON.parse(raw).content || "";
+    } catch { return ""; }
+  });
+  const [formTags, setFormTags] = useState(() => {
+    try {
+      const raw = localStorage.getItem(`memo-draft-${userId}`);
+      if (!raw) return "";
+      return JSON.parse(raw).tags || "";
+    } catch { return ""; }
+  });
+  const [formSkillName, setFormSkillName] = useState(() => {
+    try {
+      const raw = localStorage.getItem(`memo-draft-${userId}`);
+      if (!raw) return "";
+      return JSON.parse(raw).skillName || "";
+    } catch { return ""; }
+  });
   const [showPreview, setShowPreview] = useState(false);
 
   // -- Expanded memo --
@@ -129,8 +161,6 @@ export default function MemosPage({ userId }: { userId: number }) {
     setShowPreview(false);
   };
 
-  const DRAFT_KEY = `memo-draft-${userId}`;
-
   const clearDraft = useCallback(() => {
     try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
   }, [DRAFT_KEY]);
@@ -150,28 +180,7 @@ export default function MemosPage({ userId }: { userId: number }) {
     saveDraft();
   }, [formTitle, formContent, formTags, formSkillName, creating, editing, saveDraft]);
 
-  // Restore draft on mount (if user was disconnected mid-edit)
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(DRAFT_KEY);
-      if (!raw) return;
-      const draft = JSON.parse(raw);
-      if (draft.content || draft.title) {
-        setFormTitle(draft.title || "");
-        setFormContent(draft.content || "");
-        setFormTags(draft.tags || "");
-        setFormSkillName(draft.skillName || "");
-        if (draft.editingId) {
-          // We can't fully restore editing state (need the memo object),
-          // so open as "create" with the draft content
-          setCreating(true);
-        } else {
-          setCreating(true);
-        }
-        // Don't clear draft yet — wait until user saves or cancels
-      }
-    } catch { /* ignore */ }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // Draft is restored via useState initializers above
 
   // Warn before page unload if form has unsaved content
   useEffect(() => {

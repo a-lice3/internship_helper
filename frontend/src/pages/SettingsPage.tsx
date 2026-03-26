@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../api";
 import i18n from "../i18n";
-import { useTheme } from "../ThemeContext";
+import { useTheme } from "../useTheme";
 import { themes } from "../themes";
 
 export default function SettingsPage({

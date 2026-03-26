@@ -1,23 +1,12 @@
-import { createContext, useContext, useEffect, useState } from "react";
-import { themes, type Theme } from "./themes";
-
-interface ThemeContextValue {
-  themeId: string;
-  setThemeId: (id: string) => void;
-  currentTheme: Theme;
-}
-
-const ThemeContext = createContext<ThemeContextValue>(null!);
-
-export function useTheme() {
-  return useContext(ThemeContext);
-}
+import { useEffect, useState } from "react";
+import { themes } from "./themes";
+import { ThemeContext } from "./themeContextDef";
 
 function getSystemDark() {
   return window.matchMedia("(prefers-color-scheme: dark)").matches;
 }
 
-function applyTheme(theme: Theme) {
+function applyTheme(theme: { light: Record<string, string>; dark: Record<string, string> }) {
   const vars = getSystemDark() ? theme.dark : theme.light;
   const root = document.documentElement;
   for (const [key, value] of Object.entries(vars)) {
