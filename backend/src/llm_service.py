@@ -722,12 +722,12 @@ async def extract_profile_from_cv(
         '- "skills": list of {name, category, level} where category is one of '
         '"programming", "framework", "tool", "language", "soft_skill", "other" '
         'and level is "beginner", "intermediate", "advanced" or "expert"\n'
-        '- "experiences": list of {title, description, technologies, client, start_date, end_date}\n'
+        '- "experiences": list of {title, description, technologies (comma-separated string), client, start_date, end_date}\n'
         '- "education": list of {school, degree, field, description, start_date, end_date}\n'
         '- "languages": list of {language, level} where level is one of '
         '"beginner", "intermediate", "advanced", "native"\n'
         '- "extracurriculars": list of {name, description}\n\n'
-        "Use null for missing fields. Dates should be in YYYY-MM-DD format when possible. "
+        "Use null for missing fields. Dates should be in YYYY-MM format (e.g. 2024-09). "
         "Return only valid JSON, no markdown."
     )
     raw = await _chat_async(system_prompt, cv_text)

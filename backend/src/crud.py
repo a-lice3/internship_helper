@@ -1947,10 +1947,37 @@ def get_goal_progress(
     return q.order_by(models.GoalProgress.date.desc()).all()
 
 
+def _week_bounds(d: date_type) -> tuple[date_type, date_type]:
+    """Return (monday, sunday) of the ISO week containing *d*."""
+    monday = d - timedelta(days=d.weekday())
+    sunday = monday + timedelta(days=6)
+    return monday, sunday
+
+
+def _weekly_total(
+    db: Session, goal_id: int, monday: date_type, sunday: date_type
+) -> int:
+    """Sum completed_count for a goal over [monday..sunday]."""
+    total = (
+        db.query(sqlfunc.coalesce(sqlfunc.sum(models.GoalProgress.completed_count), 0))
+        .filter(
+            models.GoalProgress.goal_id == goal_id,
+            models.GoalProgress.date >= monday,
+            models.GoalProgress.date <= sunday,
+        )
+        .scalar()
+    )
+    return int(total)
+
+
 def compute_streak(db: Session, goal_id: int) -> int:
     goal = db.query(models.Goal).filter(models.Goal.id == goal_id).first()
     if not goal:
         return 0
+
+    if goal.frequency == models.GoalFrequency.weekly:
+        return _compute_weekly_streak(db, goal)
+
     entries = (
         db.query(models.GoalProgress)
         .filter(models.GoalProgress.goal_id == goal_id)
@@ -1973,6 +2000,23 @@ def compute_streak(db: Session, goal_id: int) -> int:
     return streak
 
 
+def _compute_weekly_streak(db: Session, goal: models.Goal) -> int:
+    """Count consecutive weeks (ending with the current one) where the target was met."""
+    today = date_type.today()
+    monday, sunday = _week_bounds(today)
+    streak = 0
+    while True:
+        total = _weekly_total(db, goal.id, monday, sunday)
+        if total >= goal.target_count:
+            streak += 1
+            # Move to the previous week
+            monday -= timedelta(days=7)
+            sunday -= timedelta(days=7)
+        else:
+            break
+    return streak
+
+
 def get_daily_goals_summary(db: Session, user_id: int, summary_date: date_type) -> dict:
     goals = get_goals(db, user_id, active_only=True)
     goal_data = []
@@ -1980,7 +2024,8 @@ def get_daily_goals_summary(db: Session, user_id: int, summary_date: date_type) 
     max_streak = 0
 
     for goal in goals:
-        progress = (
+        # Always fetch today's daily entry
+        daily_progress = (
             db.query(models.GoalProgress)
             .filter(
                 models.GoalProgress.goal_id == goal.id,
@@ -1988,7 +2033,14 @@ def get_daily_goals_summary(db: Session, user_id: int, summary_date: date_type) 
             )
             .first()
         )
-        today_completed = progress.completed_count if progress else 0
+        today_daily_completed = daily_progress.completed_count if daily_progress else 0
+
+        if goal.frequency == models.GoalFrequency.weekly:
+            monday, sunday = _week_bounds(summary_date)
+            today_completed = _weekly_total(db, goal.id, monday, sunday)
+        else:
+            today_completed = today_daily_completed
+
         streak = compute_streak(db, goal.id)
         if streak > max_streak:
             max_streak = streak
@@ -2003,6 +2055,7 @@ def get_daily_goals_summary(db: Session, user_id: int, summary_date: date_type) 
                 "is_active": goal.is_active,
                 "created_at": goal.created_at,
                 "today_completed": today_completed,
+                "today_daily_completed": today_daily_completed,
                 "current_streak": streak,
             }
         )

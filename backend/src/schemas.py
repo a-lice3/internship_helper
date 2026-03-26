@@ -839,6 +839,7 @@ class GoalProgressResponse(BaseModel):
 
 class GoalWithTodayProgress(GoalResponse):
     today_completed: int = 0
+    today_daily_completed: int = 0
     current_streak: int = 0
 
 

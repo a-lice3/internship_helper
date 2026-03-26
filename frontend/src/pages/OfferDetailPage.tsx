@@ -695,7 +695,11 @@ export default function OfferDetailPage({ userId }: { userId: number }) {
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <select
               value={selectedCoverLetterId}
-              onChange={(e) => setSelectedCoverLetterId(e.target.value ? Number(e.target.value) : "")}
+              onChange={(e) => {
+                const val = e.target.value ? Number(e.target.value) : "";
+                setSelectedCoverLetterId(val);
+                handleCoverLetter(val || undefined);
+              }}
               style={{ width: "auto", fontSize: 11, padding: "2px 6px" }}
             >
               <option value="">{t("offerDetail.noTemplate")}</option>

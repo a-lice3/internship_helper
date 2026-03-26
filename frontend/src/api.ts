@@ -1105,6 +1105,7 @@ export interface GoalProgress {
 
 export interface GoalWithProgress extends Goal {
   today_completed: number;
+  today_daily_completed: number;
   current_streak: number;
 }
 

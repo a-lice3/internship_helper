@@ -747,37 +747,99 @@ async def auto_fill_profile_from_upload(
     return _build_autofill_response(extracted)
 
 
+def _truncate(value: Any, max_len: int) -> str | None:
+    """Coerce to string and truncate to *max_len* characters."""
+    if value is None:
+        return None
+    return str(value)[:max_len] or None
+
+
+def _to_yyyy_mm(value: Any) -> str | None:
+    """Normalise a date string to YYYY-MM (7 chars max).
+
+    Handles common AI outputs: YYYY-MM-DD, YYYY/MM/DD, YYYY-MM, etc.
+    """
+    if not value or not isinstance(value, str):
+        return None
+    cleaned = value.strip().replace("/", "-")
+    # YYYY-MM-DD → YYYY-MM
+    if len(cleaned) >= 7:
+        return cleaned[:7]
+    return None
+
+
+def _to_str(value: Any) -> str | None:
+    """Coerce lists and other types to a comma-separated string."""
+    if value is None:
+        return None
+    if isinstance(value, list):
+        return ", ".join(str(v) for v in value)
+    return str(value)
+
+
+def _sanitize_extracted(
+    extracted: dict[str, list[dict[str, Any]]],
+) -> dict[str, list[dict[str, Any]]]:
+    """Normalise raw AI output so it fits DB column constraints.
+
+    Handles: wrong types (list vs str), oversized strings, date formats, etc.
+    """
+    valid_categories = {c.value for c in SkillCategory}
+
+    for s in extracted.get("skills", []):
+        s["name"] = _truncate(s.get("name"), 100) or ""
+        if s.get("category") not in valid_categories:
+            s["category"] = "other"
+        s["level"] = _truncate(s.get("level"), 50)
+
+    for exp in extracted.get("experiences", []):
+        exp["title"] = _truncate(exp.get("title"), 200) or ""
+        exp["description"] = _to_str(exp.get("description"))
+        exp["technologies"] = _truncate(_to_str(exp.get("technologies")), 500)
+        exp["client"] = _truncate(exp.get("client"), 200)
+        exp["start_date"] = _to_yyyy_mm(exp.get("start_date"))
+        exp["end_date"] = _to_yyyy_mm(exp.get("end_date"))
+
+    for ed in extracted.get("education", []):
+        ed["school"] = _truncate(ed.get("school"), 200) or ""
+        ed["degree"] = _truncate(ed.get("degree"), 200) or ""
+        ed["field"] = _truncate(ed.get("field"), 200)
+        ed["start_date"] = _to_yyyy_mm(ed.get("start_date"))
+        ed["end_date"] = _to_yyyy_mm(ed.get("end_date"))
+
+    for lang in extracted.get("languages", []):
+        lang["language"] = _truncate(lang.get("language"), 50) or ""
+        lang["level"] = _truncate(lang.get("level"), 50) or "intermediate"
+
+    for ex in extracted.get("extracurriculars", []):
+        ex["name"] = _truncate(ex.get("name"), 200) or ""
+
+    return extracted
+
+
 def _save_extracted_profile(
     db: Session,
     user_id: int,
     extracted: dict[str, list[dict[str, Any]]],
 ) -> None:
     """Persist extracted profile data into the database."""
+    _sanitize_extracted(extracted)
+
     existing_skills = crud.get_skills(db, user_id)
     existing_skill_names = {s.name.lower() for s in existing_skills}
 
-    valid_categories = {c.value for c in SkillCategory}
     for s in extracted.get("skills", []):
-        s["name"] = s.get("name") or ""
-        if s.get("category") not in valid_categories:
-            s["category"] = "other"
         name = s["name"]
         if name.lower() not in existing_skill_names:
             crud.create_skill(db, user_id, schemas.SkillCreate(**s))  # type: ignore[arg-type]
             existing_skill_names.add(name.lower())
     for exp in extracted.get("experiences", []):
-        exp["title"] = exp.get("title") or ""
         crud.create_experience(db, user_id, schemas.ExperienceCreate(**exp))  # type: ignore[arg-type]
     for ed in extracted.get("education", []):
-        ed["school"] = ed.get("school") or ""
-        ed["degree"] = ed.get("degree") or ""
         crud.create_education(db, user_id, schemas.EducationCreate(**ed))  # type: ignore[arg-type]
     for lang in extracted.get("languages", []):
-        lang["language"] = lang.get("language") or ""
-        lang["level"] = lang.get("level") or "intermediate"
         crud.create_language(db, user_id, schemas.LanguageCreate(**lang))  # type: ignore[arg-type]
     for ex in extracted.get("extracurriculars", []):
-        ex["name"] = ex.get("name") or ""
         crud.create_extracurricular(db, user_id, schemas.ExtracurricularCreate(**ex))  # type: ignore[arg-type]
 
 
