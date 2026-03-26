@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../api";
 import { useInterview } from "../hooks/useInterview";
@@ -60,6 +60,7 @@ export default function InterviewPage({ userId }: { userId: number }) {
 
   const interview = useInterview(activeSession?.session_id ?? null);
   const speech = useSpeechRecognition(language);
+  const endingRef = useRef(false);
 
   useEffect(() => {
     api.getOffers(userId).then(r => setOffers(r.items)).catch(() => {});
@@ -99,14 +100,15 @@ export default function InterviewPage({ userId }: { userId: number }) {
   }, [view, activeSession, interview.state.status]);
 
   useEffect(() => {
-    if (interview.state.status === "active" && interview.state.questionNumber > 0) {
+    if (interview.state.status === "active" && interview.state.questionNumber > 0 && !endingRef.current) {
       interview.startRecording();
       setAnswerText("");
       speech.start();
     }
-    if (interview.state.status === "results") {
+    if (interview.state.status === "results" || interview.state.status === "idle") {
       speech.stop();
       interview.stopRecording();
+      endingRef.current = false;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [interview.state.status, interview.state.questionNumber]);
@@ -136,6 +138,7 @@ export default function InterviewPage({ userId }: { userId: number }) {
   }, [answerText, interview, speech]);
 
   const handleEndInterview = useCallback(async () => {
+    endingRef.current = true;
     // Submit the current answer (if any) before ending
     const wasRecording = speech.isRecording;
     if (wasRecording) {
@@ -171,6 +174,14 @@ export default function InterviewPage({ userId }: { userId: number }) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [interview.state.status, activeSession, userId]);
+
+  // Cleanup speech stream on unmount
+  useEffect(() => {
+    return () => {
+      speech.stop();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleViewDetail = async (sessionId: number) => {
     try {

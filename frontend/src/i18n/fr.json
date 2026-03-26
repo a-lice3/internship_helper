@@ -711,6 +711,7 @@
     "loading": "Chargement...",
     "noGoals": "Aucun objectif. Définissez votre premier objectif !",
     "streakDays": "{{count}} jour(s) consécutifs",
+    "streakWeeks": "{{count}} semaine(s) consécutive(s)",
     "edit": "Modifier",
     "pause": "Mettre en pause",
     "resume": "Reprendre",
@@ -726,11 +727,14 @@
     "topMissingSkills": "Top compétences manquantes",
     "viewAll": "Voir tout",
     "last30Days": "30 derniers jours",
+    "last8Weeks": "8 dernières semaines",
+    "weekOf": "Semaine du",
     "completionRate": "Complétion",
     "chartMet": "Atteint",
     "chartPartial": "Partiel",
     "chartMissed": "Manqué",
     "chartTarget": "Objectif",
-    "daysMetTarget": "{{met}}/{{total}} jours"
+    "daysMetTarget": "{{met}}/{{total}} jours",
+    "weeksMetTarget": "{{met}}/{{total}} semaines"
   }
 }

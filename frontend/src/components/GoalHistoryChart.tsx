@@ -5,6 +5,7 @@ import type { GoalProgress } from "../api";
 interface Props {
   history: GoalProgress[];
   targetCount: number;
+  frequency?: string;
 }
 
 /** Fill in missing dates in [start..end] range with 0 completed. */
@@ -26,22 +27,73 @@ function buildDailyData(
   return result;
 }
 
+/** Get the Monday of the ISO week containing *d*. */
+function getMonday(d: Date): Date {
+  const copy = new Date(d);
+  const day = copy.getDay(); // 0=Sun..6=Sat
+  const diff = day === 0 ? -6 : 1 - day;
+  copy.setDate(copy.getDate() + diff);
+  copy.setHours(0, 0, 0, 0);
+  return copy;
+}
+
+/** Aggregate daily entries into ISO weeks (Mon-Sun). Returns ~last 8 weeks. */
+function buildWeeklyData(
+  history: GoalProgress[],
+): { date: string; completed: number }[] {
+  // Build per-date map
+  const dayMap = new Map<string, number>();
+  for (const e of history) dayMap.set(e.date, e.completed_count);
+
+  // Walk back ~8 weeks from today
+  const today = new Date();
+  const currentMonday = getMonday(today);
+  const weeks: { date: string; completed: number }[] = [];
+
+  for (let w = 7; w >= 0; w--) {
+    const monday = new Date(currentMonday);
+    monday.setDate(monday.getDate() - w * 7);
+    const sunday = new Date(monday);
+    sunday.setDate(sunday.getDate() + 6);
+
+    let total = 0;
+    for (let d = new Date(monday); d <= sunday; d.setDate(d.getDate() + 1)) {
+      const key = d.toISOString().slice(0, 10);
+      total += dayMap.get(key) ?? 0;
+    }
+
+    const label = monday.toISOString().slice(0, 10);
+    weeks.push({ date: label, completed: total });
+  }
+
+  return weeks;
+}
+
 function formatShortDate(iso: string): string {
   const d = new Date(iso + "T00:00:00");
   return `${d.getDate()}/${d.getMonth() + 1}`;
 }
 
-export default function GoalHistoryChart({ history, targetCount }: Props) {
-  const { t } = useTranslation();
-  const DAYS = 30;
-  const data = useMemo(() => buildDailyData(history, DAYS), [history]);
+function formatWeekLabel(iso: string): string {
+  const d = new Date(iso + "T00:00:00");
+  return `${d.getDate()}/${d.getMonth() + 1}`;
+}
 
-  const metDays = data.filter((d) => d.completed >= targetCount).length;
-  const completionRate = data.length > 0 ? Math.round((metDays / data.length) * 100) : 0;
+export default function GoalHistoryChart({ history, targetCount, frequency }: Props) {
+  const { t } = useTranslation();
+  const isWeekly = frequency === "weekly";
+
+  const data = useMemo(
+    () => isWeekly ? buildWeeklyData(history) : buildDailyData(history, 30),
+    [history, isWeekly],
+  );
+
+  const metCount = data.filter((d) => d.completed >= targetCount).length;
+  const completionRate = data.length > 0 ? Math.round((metCount / data.length) * 100) : 0;
 
   // -- Bar chart dimensions --
-  const barWidth = 14;
-  const barGap = 4;
+  const barWidth = isWeekly ? 28 : 14;
+  const barGap = isWeekly ? 8 : 4;
   const chartHeight = 100;
   const labelHeight = 20;
   const svgWidth = data.length * (barWidth + barGap);
@@ -63,7 +115,7 @@ export default function GoalHistoryChart({ history, targetCount }: Props) {
       {/* Bar chart */}
       <div className="goal-chart-bar-section">
         <h5 className="goal-chart-label">
-          {t("goals.last30Days")}
+          {isWeekly ? t("goals.last8Weeks") : t("goals.last30Days")}
         </h5>
         <div className="goal-chart-bar-scroll">
           <svg
@@ -87,7 +139,7 @@ export default function GoalHistoryChart({ history, targetCount }: Props) {
               const h = maxVal > 0 ? (d.completed / maxVal) * chartHeight : 0;
               const x = i * (barWidth + barGap);
               const met = d.completed >= targetCount;
-              const isToday = i === data.length - 1;
+              const isLast = i === data.length - 1;
               const fill = d.completed === 0
                 ? "var(--border-strong)"
                 : met
@@ -102,9 +154,9 @@ export default function GoalHistoryChart({ history, targetCount }: Props) {
                     height={Math.max(h, 2)}
                     rx={3}
                     fill={fill}
-                    opacity={isToday ? 1 : 0.8}
+                    opacity={isLast ? 1 : 0.8}
                   >
-                    <title>{`${d.date}: ${d.completed}/${targetCount}`}</title>
+                    <title>{`${isWeekly ? t("goals.weekOf") + " " : ""}${d.date}: ${d.completed}/${targetCount}`}</title>
                   </rect>
                   {i % labelInterval === 0 && (
                     <text
@@ -113,7 +165,7 @@ export default function GoalHistoryChart({ history, targetCount }: Props) {
                       textAnchor="middle"
                       className="goal-chart-date-label"
                     >
-                      {formatShortDate(d.date)}
+                      {isWeekly ? formatWeekLabel(d.date) : formatShortDate(d.date)}
                     </text>
                   )}
                 </g>
@@ -178,7 +230,9 @@ export default function GoalHistoryChart({ history, targetCount }: Props) {
           </text>
         </svg>
         <span className="goal-chart-donut-detail">
-          {t("goals.daysMetTarget", { met: metDays, total: data.length })}
+          {isWeekly
+            ? t("goals.weeksMetTarget", { met: metCount, total: data.length })
+            : t("goals.daysMetTarget", { met: metCount, total: data.length })}
         </span>
       </div>
     </div>

@@ -68,15 +68,15 @@ export default function GoalsPage({ userId }: { userId: number }) {
 
   const handleIncrement = async (goal: api.GoalWithProgress) => {
     await api.logGoalProgress(userId, goal.id, {
-      completed_count: goal.today_completed + 1,
+      completed_count: goal.today_daily_completed + 1,
     });
     loadData();
   };
 
   const handleDecrement = async (goal: api.GoalWithProgress) => {
-    if (goal.today_completed <= 0) return;
+    if (goal.today_daily_completed <= 0) return;
     await api.logGoalProgress(userId, goal.id, {
-      completed_count: goal.today_completed - 1,
+      completed_count: goal.today_daily_completed - 1,
     });
     loadData();
   };
@@ -105,9 +105,11 @@ export default function GoalsPage({ userId }: { userId: number }) {
       return;
     }
     setHistoryGoalId(goalId);
+    const goal = allGoals.find((g) => g.id === goalId);
+    const daysBack = goal?.frequency === "weekly" ? 56 : 29;
     const today = new Date();
     const start = new Date(today);
-    start.setDate(start.getDate() - 29);
+    start.setDate(start.getDate() - daysBack);
     const entries = await api.getGoalProgress(
       userId,
       goalId,
@@ -212,6 +214,7 @@ export default function GoalsPage({ userId }: { userId: number }) {
           {displayedGoals.map((goal) => {
             const withProgress = summary?.goals.find((g) => g.id === goal.id);
             const todayCompleted = withProgress?.today_completed ?? 0;
+            const todayDailyCompleted = withProgress?.today_daily_completed ?? 0;
             const streak = withProgress?.current_streak ?? 0;
             const pct = Math.min(100, (todayCompleted / goal.target_count) * 100);
             const isComplete = todayCompleted >= goal.target_count;
@@ -251,8 +254,12 @@ export default function GoalsPage({ userId }: { userId: number }) {
                         <h4>{goal.title}</h4>
                         <span className="badge">{t(`goals.${goal.frequency}`)}</span>
                         {streak > 0 && (
-                          <span className="goal-streak" title={t("goals.streakDays", { count: streak })}>
-                            {streak}d
+                          <span className="goal-streak" title={
+                            goal.frequency === "weekly"
+                              ? t("goals.streakWeeks", { count: streak })
+                              : t("goals.streakDays", { count: streak })
+                          }>
+                            {streak}{goal.frequency === "weekly" ? "w" : "d"}
                           </span>
                         )}
                       </div>
@@ -285,7 +292,7 @@ export default function GoalsPage({ userId }: { userId: number }) {
                         <button
                           className="btn-icon"
                           onClick={() => withProgress && handleDecrement(withProgress)}
-                          disabled={todayCompleted <= 0}
+                          disabled={todayDailyCompleted <= 0}
                         >
                           -
                         </button>
@@ -310,7 +317,7 @@ export default function GoalsPage({ userId }: { userId: number }) {
                     </button>
                     {historyGoalId === goal.id && (
                       <div className="goal-history">
-                        <GoalHistoryChart history={history} targetCount={goal.target_count} />
+                        <GoalHistoryChart history={history} targetCount={goal.target_count} frequency={goal.frequency} />
                       </div>
                     )}
                   </>
