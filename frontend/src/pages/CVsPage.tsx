@@ -3,6 +3,7 @@ import { NavLink } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { saveAs } from "file-saver";
 import * as api from "../api";
+import { useAutosave, getDraft } from "../hooks/useAutosave";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -35,6 +36,8 @@ export default function CVsPage({ userId }: { userId: number }) {
   const [chatLoading, setChatLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
+  const [latexSaved, setLatexSaved] = useState(true);
+
   const [previewCvId, setPreviewCvId] = useState<number | null>(null);
   const [previewBlobUrl, setPreviewBlobUrl] = useState<string | null>(null);
 
@@ -42,6 +45,20 @@ export default function CVsPage({ userId }: { userId: number }) {
   const [cvAnalyses, setCvAnalyses] = useState<Record<number, api.CVAnalysisResult>>({});
   const [analyzingCvId, setAnalyzingCvId] = useState<number | null>(null);
   const [analysisPopupCvId, setAnalysisPopupCvId] = useState<number | null>(null);
+
+  // Autosave LaTeX content
+  const latexDraftKey = `cv-latex-draft-${editingCV?.id ?? "none"}`;
+
+  const saveLatex = useCallback(async (content: string) => {
+    if (!editingCV) return;
+    await api.updateCV(userId, editingCV.id, { latex_content: content });
+    setLatexSaved(true);
+  }, [editingCV, userId]);
+
+  useAutosave(latexDraftKey, editedLatex, saveLatex, {
+    delay: 3000,
+    enabled: !!editingCV,
+  });
 
   useEffect(() => {
     api.getCVs(userId).then(r => setCvs(r.items));
@@ -186,7 +203,16 @@ export default function CVsPage({ userId }: { userId: number }) {
 
   const openEditor = (cv: api.CV) => {
     setEditingCV(cv);
-    setEditedLatex(cv.latex_content || "");
+    // Check for draft backup from a previous disconnected session
+    const draftKey = `cv-latex-draft-${cv.id}`;
+    const draft = getDraft(draftKey);
+    if (draft && draft !== cv.latex_content) {
+      setEditedLatex(draft);
+      setLatexSaved(false);
+    } else {
+      setEditedLatex(cv.latex_content || "");
+      setLatexSaved(true);
+    }
     setChatMessages([]); setChatInput("");
     setPdfUrl(null); setCompileError("");
   };
@@ -255,8 +281,13 @@ export default function CVsPage({ userId }: { userId: number }) {
         <div className="cv-editor-body">
           <div className="cv-editor-top">
             <div className="cv-editor-left">
-              <div className="cv-editor-label">{t("cvsPage.latexSource")}</div>
-              <textarea className="cv-latex-textarea" value={editedLatex} onChange={(e) => setEditedLatex(e.target.value)} spellCheck={false} />
+              <div className="cv-editor-label">
+                {t("cvsPage.latexSource")}
+                <span style={{ marginLeft: 8, fontSize: 11, color: latexSaved ? "var(--green, #4caf50)" : "var(--text-muted)" }}>
+                  {latexSaved ? t("common.saved") : t("common.saving")}
+                </span>
+              </div>
+              <textarea className="cv-latex-textarea" value={editedLatex} onChange={(e) => { setEditedLatex(e.target.value); setLatexSaved(false); }} spellCheck={false} />
             </div>
             <div className="cv-pdf-panel">
               <div className="cv-editor-label cv-pdf-label-bar">

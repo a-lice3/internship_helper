@@ -476,7 +476,15 @@
     "saved": "Guardado",
     "failedSave": "Error al guardar las instrucciones",
     "languageLabel": "Idioma",
-    "languageHint": "Elige el idioma de visualización de la interfaz."
+    "languageHint": "Elige el idioma de visualización de la interfaz.",
+    "themeLabel": "Tema",
+    "themeHint": "Elige una paleta de colores para la interfaz.",
+    "themes": {
+      "aurore": "Aurora",
+      "sakura": "Sakura",
+      "cyberpunk": "Cyberpunk",
+      "forest": "Bosque"
+    }
   },
   "aiPage": {
     "title": "Asistente IA",
@@ -603,7 +611,9 @@
     "delete": "Eliminar",
     "loading": "Cargando...",
     "error": "Error",
-    "close": "Cerrar"
+    "close": "Cerrar",
+    "saved": "Guardado",
+    "saving": "Guardando..."
   },
   "onboarding": {
     "title": "Job Seeker",

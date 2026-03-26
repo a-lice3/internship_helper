@@ -476,7 +476,15 @@
     "saved": "Gespeichert",
     "failedSave": "Anweisungen konnten nicht gespeichert werden",
     "languageLabel": "Sprache",
-    "languageHint": "Wählen Sie die Anzeigesprache der Benutzeroberfläche."
+    "languageHint": "Wählen Sie die Anzeigesprache der Benutzeroberfläche.",
+    "themeLabel": "Farbschema",
+    "themeHint": "Wählen Sie eine Farbpalette für die Benutzeroberfläche.",
+    "themes": {
+      "aurore": "Aurore",
+      "sakura": "Sakura",
+      "cyberpunk": "Cyberpunk",
+      "forest": "Wald"
+    }
   },
   "aiPage": {
     "title": "KI-Assistent",
@@ -603,7 +611,9 @@
     "delete": "L\u00f6schen",
     "loading": "Laden...",
     "error": "Fehler",
-    "close": "Schliessen"
+    "close": "Schliessen",
+    "saved": "Gespeichert",
+    "saving": "Speichern..."
   },
   "onboarding": {
     "title": "Job Seeker",

@@ -233,6 +233,8 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     ...options,
   });
   if (res.status === 401) {
+    // Dispatch event so useAutosave hooks can backup drafts to localStorage
+    window.dispatchEvent(new Event("session-expired"));
     setToken(null);
     window.location.href = "/";
     throw new Error("Session expired");

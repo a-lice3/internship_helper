@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../api";
 
@@ -79,6 +79,7 @@ export default function MemosPage({ userId }: { userId: number }) {
       tags: tags.length > 0 ? tags : undefined,
       skill_name: formSkillName || undefined,
     });
+    clearDraft();
     resetForm();
     loadMemos();
   };
@@ -92,6 +93,7 @@ export default function MemosPage({ userId }: { userId: number }) {
       tags,
       skill_name: formSkillName || null,
     });
+    clearDraft();
     resetForm();
     loadMemos();
   };
@@ -127,6 +129,69 @@ export default function MemosPage({ userId }: { userId: number }) {
     setShowPreview(false);
   };
 
+  const DRAFT_KEY = `memo-draft-${userId}`;
+
+  const clearDraft = useCallback(() => {
+    try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
+  }, [DRAFT_KEY]);
+
+  const saveDraft = useCallback(() => {
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({
+        title: formTitle, content: formContent, tags: formTags,
+        skillName: formSkillName, editingId: editing?.id ?? null,
+      }));
+    } catch { /* quota exceeded — ignore */ }
+  }, [DRAFT_KEY, formTitle, formContent, formTags, formSkillName, editing]);
+
+  // Auto-backup draft to localStorage on every change
+  useEffect(() => {
+    if (!creating && !editing) return;
+    saveDraft();
+  }, [formTitle, formContent, formTags, formSkillName, creating, editing, saveDraft]);
+
+  // Restore draft on mount (if user was disconnected mid-edit)
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (!raw) return;
+      const draft = JSON.parse(raw);
+      if (draft.content || draft.title) {
+        setFormTitle(draft.title || "");
+        setFormContent(draft.content || "");
+        setFormTags(draft.tags || "");
+        setFormSkillName(draft.skillName || "");
+        if (draft.editingId) {
+          // We can't fully restore editing state (need the memo object),
+          // so open as "create" with the draft content
+          setCreating(true);
+        } else {
+          setCreating(true);
+        }
+        // Don't clear draft yet — wait until user saves or cancels
+      }
+    } catch { /* ignore */ }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Warn before page unload if form has unsaved content
+  useEffect(() => {
+    if (!creating && !editing) return;
+    if (!formContent.trim() && !formTitle.trim()) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      saveDraft();
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [creating, editing, formContent, formTitle, saveDraft]);
+
+  // Backup draft on session expiry
+  useEffect(() => {
+    const handler = () => saveDraft();
+    window.addEventListener("session-expired", handler);
+    return () => window.removeEventListener("session-expired", handler);
+  }, [saveDraft]);
+
   const resetForm = () => {
     setCreating(false);
     setEditing(null);
@@ -135,6 +200,7 @@ export default function MemosPage({ userId }: { userId: number }) {
     setFormTags("");
     setFormSkillName("");
     setShowPreview(false);
+    clearDraft();
   };
 
   const handleRefreshRecommendations = () => {
