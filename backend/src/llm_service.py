@@ -57,8 +57,18 @@ async def ask_mistral(question: str) -> str:
     return content
 
 
-def _append_user_instructions(prompt: str, user_instructions: str | None) -> str:
-    """Append user-defined AI instructions to a prompt if present."""
+def _append_user_instructions(
+    prompt: str,
+    user_instructions: str | None,
+    personality_profile: str | None = None,
+) -> str:
+    """Append user personality profile and AI instructions to a prompt if present."""
+    if personality_profile and personality_profile.strip():
+        prompt += (
+            "\n\nCANDIDATE PERSONALITY PROFILE (use this to adapt tone, style, "
+            "and emphasis to match the candidate's personality):\n"
+            + personality_profile.strip()
+        )
     if user_instructions and user_instructions.strip():
         prompt += (
             "\n\nADDITIONAL USER INSTRUCTIONS (follow these carefully):\n"
@@ -361,6 +371,7 @@ async def adapt_cv(
     company: str,
     offer_description: str,
     user_instructions: str | None = None,
+    personality_profile: str | None = None,
 ) -> str:
     """Adapt a CV to match a specific internship offer."""
     system_prompt = _append_user_instructions(
@@ -376,6 +387,7 @@ async def adapt_cv(
         "Do not invent experience. "
         "Return only the adapted CV text.",
         user_instructions,
+        personality_profile,
     )
     user_prompt = (
         f"## Internship Offer\nCompany: {company}\nTitle: {offer_title}\n"
@@ -390,6 +402,7 @@ async def suggest_cv_changes(
     company: str,
     offer_description: str,
     user_instructions: str | None = None,
+    personality_profile: str | None = None,
 ) -> dict:
     """Suggest specific changes to a CV to better match an offer."""
     system_prompt = _append_user_instructions(
@@ -405,6 +418,7 @@ async def suggest_cv_changes(
         "Keep suggestions concise and actionable. Do not invent experience. "
         "Return only valid JSON, no markdown.",
         user_instructions,
+        personality_profile,
     )
     user_prompt = (
         f"## Internship Offer\nCompany: {company}\nTitle: {offer_title}\n"
@@ -431,6 +445,7 @@ async def suggest_cv_changes(
 async def analyze_cv_general(
     cv_content: str,
     user_instructions: str | None = None,
+    personality_profile: str | None = None,
 ) -> dict:
     """Analyze a CV's overall quality (independent of any offer)."""
     system_prompt = _append_user_instructions(
@@ -443,6 +458,7 @@ async def analyze_cv_general(
         '"improvements" (list of strings — specific actionable improvements). '
         "Return only valid JSON, no markdown.",
         user_instructions,
+        personality_profile,
     )
     raw = await _chat_async(system_prompt, f"## CV to analyze\n{cv_content}")
     try:
@@ -463,6 +479,7 @@ async def analyze_skill_gap(
     company: str,
     offer_description: str,
     user_instructions: str | None = None,
+    personality_profile: str | None = None,
 ) -> dict[str, list[str]]:
     """Compare user skills against offer requirements and return gaps."""
     system_prompt = _append_user_instructions(
@@ -475,6 +492,7 @@ async def analyze_skill_gap(
         '"recommendations" (list of strings). '
         "Return only valid JSON, no markdown.",
         user_instructions,
+        personality_profile,
     )
     user_prompt = (
         f"## Internship Offer\nCompany: {company}\nTitle: {offer_title}\n"
@@ -505,6 +523,7 @@ async def generate_cover_letter(
     offer_description: str,
     template: str = "",
     user_instructions: str | None = None,
+    personality_profile: str | None = None,
 ) -> str:
     """Generate a first draft of a cover letter for an internship offer."""
     system_prompt = (
@@ -522,7 +541,7 @@ async def generate_cover_letter(
             " The candidate has provided a cover letter template — "
             "use its structure and style as a guide, but adapt the content to this specific offer."
         )
-    system_prompt = _append_user_instructions(system_prompt, user_instructions)
+    system_prompt = _append_user_instructions(system_prompt, user_instructions, personality_profile)
     user_prompt = (
         f"## Internship Offer\nCompany: {company}\nTitle: {offer_title}\n"
         f"Description: {offer_description}\n\n## Candidate Profile\n{profile_summary}"
@@ -537,10 +556,11 @@ async def chat_edit_cover_letter(
     user_message: str,
     conversation_history: list[dict[str, str]] | None = None,
     user_instructions: str | None = None,
+    personality_profile: str | None = None,
 ) -> str:
     """Apply a user's chat instruction to a cover letter and return the updated text."""
     system_prompt = _append_user_instructions(
-        _CHAT_EDIT_COVER_LETTER_SYSTEM_PROMPT, user_instructions
+        _CHAT_EDIT_COVER_LETTER_SYSTEM_PROMPT, user_instructions, personality_profile
     )
     user_prompt = (
         f"## Current Cover Letter\n{cover_letter_content}\n\n"
@@ -569,6 +589,7 @@ async def adapt_cv_latex(
     support_files_dir: str | None = None,
     max_retries: int = 2,
     user_instructions: str | None = None,
+    personality_profile: str | None = None,
 ) -> str:
     """Adapt a LaTeX CV to a specific internship offer, returning valid LaTeX."""
     user_prompt = (
@@ -585,7 +606,7 @@ async def adapt_cv_latex(
         f"## Current LaTeX CV (modify ONLY the text content)\n{latex_content}"
     )
     system_prompt = _append_user_instructions(
-        _ADAPT_CV_SYSTEM_PROMPT, user_instructions
+        _ADAPT_CV_SYSTEM_PROMPT, user_instructions, personality_profile
     )
     result = await _chat_async(system_prompt, user_prompt)
     return _strip_markdown_fences(result)
@@ -597,10 +618,11 @@ async def chat_edit_cv(
     conversation_history: list[dict[str, str]] | None = None,
     support_files_content: str = "",
     user_instructions: str | None = None,
+    personality_profile: str | None = None,
 ) -> str:
     """Apply a user's chat instruction to a LaTeX CV and return the updated source."""
     system_prompt = _append_user_instructions(
-        _CHAT_EDIT_CV_SYSTEM_PROMPT, user_instructions
+        _CHAT_EDIT_CV_SYSTEM_PROMPT, user_instructions, personality_profile
     )
     user_prompt = ""
     if support_files_content:
@@ -640,6 +662,7 @@ async def analyze_pitch(
     company: str | None = None,
     offer_description: str | None = None,
     user_instructions: str | None = None,
+    personality_profile: str | None = None,
 ) -> dict[str, str | list[str] | int | None]:
     """Analyze a pitch transcription and return structured feedback."""
     system_prompt = (
@@ -661,7 +684,7 @@ async def analyze_pitch(
     else:
         system_prompt += 'This is a general pitch (not for a specific offer). Set "offer_relevance" to null.\n'
     system_prompt += "Return only valid JSON, no markdown."
-    system_prompt = _append_user_instructions(system_prompt, user_instructions)
+    system_prompt = _append_user_instructions(system_prompt, user_instructions, personality_profile)
     user_prompt = f"## Pitch Transcription\n{transcription}"
     if offer_title and company and offer_description:
         user_prompt = (
@@ -761,10 +784,9 @@ async def extract_search_params(
         '- "country": country name (default "France" if not specified)\n'
         '- "radius_km": search radius in km (default 30)\n'
         '- "max_results": number of results to return (default 20, max 30)\n'
-        '- "sources": list of sources to use. Available: ["francetravail", "wttj", "themuse"]. '
-        'For France: use ["francetravail", "wttj"]. '
-        'For other countries: use ["wttj", "themuse"]. '
-        "themuse has the best international coverage.\n\n"
+        '- "sources": list of sources to use. Available: ["francetravail", "wttj", "themuse", "greenhouse", "lever", "adzuna", "remotive"]. '
+        'Always use ALL sources. For France include "francetravail". '
+        "greenhouse and lever cover major tech companies. adzuna covers many countries. remotive is for remote jobs.\n\n"
         "Return only valid JSON."
     )
     raw = await _chat_async(system_prompt, user_message)
@@ -777,15 +799,12 @@ async def extract_search_params(
             "location": "",
             "country": "France",
             "radius_km": 30,
-            "sources": ["francetravail", "wttj"],
+            "sources": ["francetravail", "wttj", "themuse", "greenhouse", "lever", "adzuna", "remotive"],
         }
     country = result.get("country", "France")
     sources = result.get("sources")
     if not sources:
-        if country and country.strip().lower() not in ("france", "fr"):
-            sources = ["wttj", "themuse"]
-        else:
-            sources = ["francetravail", "wttj"]
+        sources = ["francetravail", "wttj", "themuse", "greenhouse", "lever", "adzuna", "remotive"]
     max_results = result.get("max_results")
     if isinstance(max_results, int):
         max_results = max(1, min(max_results, 30))
@@ -841,3 +860,55 @@ async def match_offers_to_profile(
                     "reasons": item.get("reasons", []),
                 }
     return scored
+
+
+async def update_personality_profile(
+    existing_profile: str | None,
+    artifact_type: str,
+    artifact_content: str,
+    user_edit_request: str | None = None,
+) -> str:
+    """Analyze a user artifact and update/refine their personality profile.
+
+    The personality profile captures the user's writing style, tone preferences,
+    habits, strong points, and what they value in their professional documents.
+    """
+    system_prompt = (
+        "You are a personality analyst for a career assistant. "
+        "Your job is to build and maintain a personality profile of a job candidate "
+        "based on their cover letters, CVs, and editing requests.\n\n"
+        "The profile should capture:\n"
+        "- **Writing style**: formal/casual, concise/detailed, technical/narrative\n"
+        "- **Tone preferences**: enthusiastic, measured, confident, humble, etc.\n"
+        "- **Values & priorities**: what the candidate emphasizes (teamwork, innovation, "
+        "technical depth, leadership, creativity, etc.)\n"
+        "- **Strong points**: recurring strengths the candidate highlights\n"
+        "- **Habits**: patterns in how they structure documents, what they always include/exclude\n"
+        "- **Language style**: vocabulary level, sentence length, use of jargon\n"
+        "- **What they like**: inferred preferences from their edits and choices "
+        "(e.g. 'prefers shorter paragraphs', 'always mentions specific technologies', "
+        "'likes to open with a personal anecdote')\n\n"
+        "Return the updated profile as a structured markdown document. "
+        "Keep it concise (under 500 words). "
+        "Merge new observations with existing ones — don't repeat, refine. "
+        "If the new artifact contradicts the existing profile, update accordingly. "
+        "Return ONLY the profile text, no explanations."
+    )
+
+    user_prompt_parts = []
+    if existing_profile:
+        user_prompt_parts.append(f"## Existing Personality Profile\n{existing_profile}")
+    else:
+        user_prompt_parts.append(
+            "## Existing Personality Profile\nNo profile yet — create one from scratch."
+        )
+
+    user_prompt_parts.append(f"\n## New Artifact ({artifact_type})\n{artifact_content[:3000]}")
+
+    if user_edit_request:
+        user_prompt_parts.append(
+            f"\n## User's Edit Request\n{user_edit_request}\n"
+            "(This reveals what the user wants to change — use it to understand their preferences.)"
+        )
+
+    return await _chat_async(system_prompt, "\n".join(user_prompt_parts))

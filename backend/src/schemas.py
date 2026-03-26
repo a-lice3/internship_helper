@@ -47,6 +47,7 @@ class UserResponse(BaseModel):
     name: str
     email: str
     ai_instructions: str | None = None
+    personality_profile: str | None = None
     has_completed_onboarding: bool = False
     created_at: datetime | None = None
 
@@ -60,6 +61,14 @@ class AIInstructionsUpdate(BaseModel):
 
 class AIInstructionsResponse(BaseModel):
     ai_instructions: str | None = None
+
+
+class PersonalityProfileUpdate(BaseModel):
+    personality_profile: str
+
+
+class PersonalityProfileResponse(BaseModel):
+    personality_profile: str | None = None
 
 
 # ---------- Skill ----------
@@ -634,7 +643,7 @@ class OfferSearchRequest(BaseModel):
     location: str | None = None
     country: str = "France"
     radius_km: int = 30
-    sources: list[str] = ["francetravail", "wttj"]
+    sources: list[str] = ["francetravail", "wttj", "themuse", "greenhouse", "lever", "adzuna", "remotive"]
     max_results: int = 20  # 1-30
 
     def model_post_init(self, __context: object) -> None:

@@ -297,6 +297,26 @@ export const updateAIInstructions = (uid: number, ai_instructions: string) =>
     body: JSON.stringify({ ai_instructions }),
   });
 
+// ---------- Personality Profile ----------
+
+export interface PersonalityProfile {
+  personality_profile: string | null;
+}
+
+export const getPersonalityProfile = (uid: number) =>
+  request<PersonalityProfile>(`/users/${uid}/personality-profile`);
+
+export const updatePersonalityProfile = (uid: number, personality_profile: string) =>
+  request<PersonalityProfile>(`/users/${uid}/personality-profile`, {
+    method: "PUT",
+    body: JSON.stringify({ personality_profile }),
+  });
+
+export const resetPersonalityProfile = (uid: number) =>
+  request<{ detail: string }>(`/users/${uid}/personality-profile`, {
+    method: "DELETE",
+  });
+
 // ---------- Profile ----------
 
 export const getSkills = (uid: number) =>

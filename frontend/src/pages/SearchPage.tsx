@@ -10,6 +10,10 @@ const SOURCE_LABELS: Record<string, string> = {
   francetravail: "France Travail",
   wttj: "Welcome to the Jungle",
   themuse: "The Muse",
+  greenhouse: "Greenhouse",
+  lever: "Lever",
+  adzuna: "Adzuna",
+  remotive: "Remotive",
 };
 
 export default function SearchPage({ userId }: { userId: number }) {
@@ -118,6 +122,10 @@ export default function SearchPage({ userId }: { userId: number }) {
     if (src === "francetravail") return "FT";
     if (src === "wttj") return "WTTJ";
     if (src === "themuse") return "Muse";
+    if (src === "greenhouse") return "GH";
+    if (src === "lever") return "Lever";
+    if (src === "adzuna") return "Adz";
+    if (src === "remotive") return "Remo";
     return src;
   };
 

@@ -90,6 +90,7 @@ class User(Base):
     )
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     ai_instructions: Mapped[str | None] = mapped_column(Text, nullable=True)
+    personality_profile: Mapped[str | None] = mapped_column(Text, nullable=True)
     has_completed_onboarding: Mapped[bool] = mapped_column(
         Boolean, default=False, server_default="false"
     )

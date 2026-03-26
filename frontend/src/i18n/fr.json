@@ -475,6 +475,10 @@
     "save": "Enregistrer",
     "saved": "Enregistré",
     "failedSave": "Échec de l'enregistrement des instructions",
+    "personalityProfile": "Profil de personnalité",
+    "personalityHint": "L'IA construit automatiquement ce profil au fur et à mesure que vous générez des lettres de motivation, modifiez des CV et interagissez avec l'assistant. Il capture votre style d'écriture, votre ton et vos préférences pour personnaliser les futures générations. Vous pouvez aussi le modifier manuellement.",
+    "personalityEmpty": "Pas encore de profil de personnalité. Il sera créé automatiquement lorsque vous utiliserez les fonctionnalités IA (générer des lettres de motivation, adapter des CV, etc.).",
+    "reset": "Réinitialiser",
     "languageLabel": "Langue",
     "languageHint": "Choisissez la langue d'affichage de l'interface."
   },

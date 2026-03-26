@@ -475,6 +475,10 @@
     "save": "Speichern",
     "saved": "Gespeichert",
     "failedSave": "Anweisungen konnten nicht gespeichert werden",
+    "personalityProfile": "Persönlichkeitsprofil",
+    "personalityHint": "Die KI erstellt dieses Profil automatisch, während Sie Anschreiben generieren, Lebensläufe bearbeiten und mit dem Assistenten interagieren. Es erfasst Ihren Schreibstil, Ton und Vorlieben, um zukünftige Generierungen zu personalisieren. Sie können es auch manuell bearbeiten.",
+    "personalityEmpty": "Noch kein Persönlichkeitsprofil. Es wird automatisch erstellt, wenn Sie die KI-Funktionen nutzen (Anschreiben generieren, Lebensläufe anpassen usw.).",
+    "reset": "Zurücksetzen",
     "languageLabel": "Sprache",
     "languageHint": "Wählen Sie die Anzeigesprache der Benutzeroberfläche."
   },
