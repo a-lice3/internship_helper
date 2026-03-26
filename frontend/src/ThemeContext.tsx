@@ -25,10 +25,14 @@ function applyTheme(theme: Theme) {
   }
 }
 
-function clearThemeVars(theme: Theme) {
+// Collect all possible variable keys across all themes so we clear everything on switch
+const ALL_VAR_KEYS = new Set(
+  themes.flatMap((t) => [...Object.keys(t.light), ...Object.keys(t.dark)]),
+);
+
+function clearAllThemeVars() {
   const root = document.documentElement;
-  const allKeys = new Set([...Object.keys(theme.light), ...Object.keys(theme.dark)]);
-  for (const key of allKeys) {
+  for (const key of ALL_VAR_KEYS) {
     root.style.removeProperty(key);
   }
 }
@@ -47,14 +51,19 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   // Apply theme vars on mount, change, and when OS color scheme changes
   useEffect(() => {
+    clearAllThemeVars();
     applyTheme(currentTheme);
+    document.documentElement.setAttribute("data-theme", currentTheme.id);
 
     const mql = window.matchMedia("(prefers-color-scheme: dark)");
-    const handler = () => applyTheme(currentTheme);
+    const handler = () => {
+      clearAllThemeVars();
+      applyTheme(currentTheme);
+    };
     mql.addEventListener("change", handler);
     return () => {
       mql.removeEventListener("change", handler);
-      clearThemeVars(currentTheme);
+      clearAllThemeVars();
     };
   }, [currentTheme]);
 

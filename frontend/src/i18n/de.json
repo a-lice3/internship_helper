@@ -482,8 +482,12 @@
     "themes": {
       "aurore": "Aurore",
       "sakura": "Sakura",
-      "cyberpunk": "Cyberpunk",
-      "forest": "Wald"
+      "neon": "Neon",
+      "nord": "Nord",
+      "terre": "Terre",
+      "encre": "Encre",
+      "mono": "Monochrom",
+      "crepuscule": "Crépuscule"
     }
   },
   "aiPage": {
